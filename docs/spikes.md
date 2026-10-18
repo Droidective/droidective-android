@@ -7,7 +7,7 @@ Android version and date, so a later change can be checked against what was meas
 |---|---|---|---|
 | 1 | Does a widget tap on a cold process reach Shizuku and flip Wi-Fi in under a second on Android 15, 16 and 17? | emulators + your phone | **API 36: yes** (below); 35 and 37 open |
 | 2 | Do the Granted writes take effect at once on Samsung, Xiaomi and OnePlus builds, as AOSP 17's source says? | your phone | open (AOSP emulator: yes, below) |
-| 3 | Does a six-toggle notification row fit the 48 dp collapsed height on Android 15, 16 and 17? | emulators | **API 36: yes**; 35 and 37 open |
+| 3 | Does a six-toggle notification row fit the 48 dp collapsed height on Android 15, 16 and 17? | emulators | **Yes on all three** (below) |
 | 4 | What does Shizuku do after a restart on your phones? | your phone | open |
 | 5 | How stale do widgets get with no foreground service, per OEM? | emulators + your phone | open |
 | 6 | Preferred network type, Bluetooth tethering, hotspot via `TetheringManager`, font size: which work? | emulators + your phone | open |
@@ -51,10 +51,12 @@ page, where a pinned bar may not be.
 `pm grant` of WRITE_SECURE_SETTINGS and DUMP, then Animation scale from the app: all three
 scales went 1.0 → 0.5 → 0 and the screen showed the state read back. OEM builds still open.
 
-### 3. Notification row (API 36)
+### 3. Notification row (API 35, 36 and 37)
 
 Six slots in a `DecoratedCustomViewStyle` custom view: each 126 px tall at 2.625 density (48 dp),
-all six clickable in the shade's collapsed row. A Wi-Fi tap from it reached Shizuku in 66 ms.
+all six clickable in the shade, on `dv-api36` (2026-10-18) and on `dv-api35` and `dv-api37`
+(2026-10-19, same layout injected and measured from a `uiautomator` dump). A Wi-Fi tap from it
+reached Shizuku in 66 ms on API 36.
 
 ### Also verified on API 36
 

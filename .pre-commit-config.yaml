@@ -1,0 +1,20 @@
+# Install with `prek install`; run everything with `prek run --all-files`.
+repos:
+  - repo: local
+    hooks:
+      - id: gitleaks
+        name: gitleaks (block committing secrets)
+        entry: gitleaks protect --staged --redact --no-banner
+        language: system
+        pass_filenames: false
+      - id: actionlint
+        name: actionlint
+        entry: actionlint
+        language: system
+        files: ^\.github/workflows/
+      - id: zizmor
+        name: zizmor (workflow security)
+        entry: zizmor --offline .github/workflows
+        language: system
+        pass_filenames: false
+        files: ^\.github/workflows/

@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Kotlin
+.kotlin/
+
+# Signing material never enters the repo
+*.jks
+*.keystore
+keystore.properties
+
+# macOS
+.DS_Store

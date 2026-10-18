@@ -58,3 +58,13 @@ search
 shield
 toggle_on
 widgets
+open_in_new
+folder
+link
+settings
+notifications
+arrow_upward
+arrow_downward
+close
+add
+palette

@@ -1,10 +1,5 @@
 package com.droidective.android.ui
 
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,10 +42,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.DroidectiveApplication
+import com.droidective.android.surface.Launch
+import com.droidective.android.surface.Surfaces
+import com.droidective.android.surface.ToggleTaps
 import com.droidective.core.Access
 import com.droidective.core.AccessLevel
+import com.droidective.core.layout.Target
 import com.droidective.core.toggles.Outcome
-import com.droidective.core.toggles.SpecialAccess
 import com.droidective.core.toggles.ToggleDef
 import com.droidective.core.toggles.Toggles
 import com.droidective.core.toggles.Write
@@ -66,11 +64,17 @@ fun TogglesScreen(app: DroidectiveApplication, onOpenSetup: () -> Unit) {
     val states = remember { mutableStateMapOf<String, String>() }
     var query by rememberSaveable { mutableStateOf("") }
 
-    LaunchedEffect(access) {
+    suspend fun readAll() {
         Toggles.all
             .filter { it.isBuilt }
-            .forEach { toggle -> app.toggles.read(toggle)?.let { states[toggle.id] = it } }
+            .forEach { toggle ->
+                ToggleTaps.stateOf(context, toggle)?.let { states[toggle.id] = it }
+            }
     }
+
+    LaunchedEffect(access) { readAll() }
+    // A widget, tile or the notification bar can change a toggle while this screen is open.
+    LaunchedEffect(Unit) { Surfaces.changes.collect { readAll() } }
 
     val visible =
         Toggles.all.filter { toggle ->
@@ -84,21 +88,11 @@ fun TogglesScreen(app: DroidectiveApplication, onOpenSetup: () -> Unit) {
         scope.launch {
             val write = toggle.write
             if (write is Write.Api && write.api.opensScreen) {
-                snackbar.showSnackbar("${toggle.title} arrives with the widgets.")
+                Launch.intentFor(context, Target.ToggleScreen(toggle.id))?.let(context::openSafely)
                 return@launch
             }
-            val outcome = app.toggles.apply(toggle, toggle.next(states[toggle.id]).id)
-            when (outcome) {
-                is Outcome.Applied -> if (!toggle.isAction) states[toggle.id] = outcome.state
-                is Outcome.UseFallback ->
-                    context.openSafely(Intent(outcome.fallback.settingsAction))
-                is Outcome.NeedsSpecialAccess ->
-                    context.openSafely(specialAccessIntent(context, outcome.access))
-                is Outcome.DidNotStick -> outcome.actual?.let { states[toggle.id] = it }
-                is Outcome.NeedsLevel,
-                is Outcome.Failed -> Unit
-            }
-            val message = OutcomeText.describe(toggle, outcome) ?: return@launch
+            val (outcome, text) = runInForeground(context, toggle)
+            val message = text ?: return@launch
             val result =
                 snackbar.showSnackbar(
                     message,
@@ -195,24 +189,5 @@ fun LevelChip(level: AccessLevel, missing: Boolean) {
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             )
         }
-    }
-}
-
-private fun specialAccessIntent(context: Context, access: SpecialAccess): Intent =
-    when (access) {
-        SpecialAccess.ModifySystemSettings ->
-            Intent(
-                Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                Uri.parse("package:${context.packageName}"),
-            )
-        SpecialAccess.DoNotDisturb -> Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
-    }
-
-/** Opens a system screen; OEMs drop some actions, so a missing one is not a crash. */
-fun Context.openSafely(intent: Intent) {
-    try {
-        startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    } catch (_: ActivityNotFoundException) {
-        startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 }

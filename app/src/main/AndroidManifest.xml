@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Only for "Bluetooth discoverable", which asks Android to show its own dialog. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
+    <queries>
+        <!-- The Apps tab lists launchable apps; no QUERY_ALL_PACKAGES. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- The Custom tab lists apps that offer shortcuts, like WhatsApp chats or Gmail labels. -->
+        <intent>
+            <action android:name="android.intent.action.CREATE_SHORTCUT" />
+        </intent>
+    </queries>
+
     <application
         android:name=".DroidectiveApplication"
         android:allowBackup="true"
@@ -14,11 +30,191 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- The launcher starts this when a bar is added or reconfigured, so it's exported. -->
+        <activity
+            android:name=".widget.BarConfigureActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".folder.FolderActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Droidective.Panel" />
+
+        <activity
+            android:name=".screen.ToggleScreenActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Droidective.Panel" />
+
+        <receiver
+            android:name=".widget.ToggleBarReceiver"
+            android:exported="true"
+            android:label="@string/widget_bar_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/toggle_bar_info" />
+        </receiver>
+
+        <receiver
+            android:name=".surface.NotificationTapReceiver"
+            android:exported="false" />
+
+        <service
+            android:name=".surface.TileSlot1"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_1"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.TileSlot2"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_2"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.TileSlot3"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_3"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.TileSlot4"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_4"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.TileSlot5"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_5"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.TileSlot6"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_6"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.TileSlot7"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_7"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.TileSlot8"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_8"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.TileSlot9"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_9"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.TileSlot10"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_10"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.TileSlot11"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_11"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.TileSlot12"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_12"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+
+        <service
+            android:name=".surface.LayoutBoundsTile"
+            android:exported="true"
+            android:icon="@drawable/sym_border_outer"
+            android:label="@string/tile_layout_bounds"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.ShowTapsTile"
+            android:exported="true"
+            android:icon="@drawable/sym_touch_app"
+            android:label="@string/tile_show_taps"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.AnimationScaleTile"
+            android:exported="true"
+            android:icon="@drawable/sym_animation"
+            android:label="@string/tile_animation_scale"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.DemoModeTile"
+            android:exported="true"
+            android:icon="@drawable/sym_auto_awesome"
+            android:label="@string/tile_demo_mode"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.WirelessDebuggingTile"
+            android:exported="true"
+            android:icon="@drawable/sym_adb"
+            android:label="@string/tile_wireless_debugging"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
     </application>
 </manifest>

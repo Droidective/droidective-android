@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.DroidectiveApplication
@@ -81,7 +81,7 @@ fun SetupScreen(app: DroidectiveApplication) {
                 context.openSafely(
                     Intent(
                         Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                        Uri.parse("package:${context.packageName}"),
+                        "package:${context.packageName}".toUri(),
                     )
                 )
             }
@@ -142,9 +142,7 @@ private fun ShizukuStep(status: ShizukuStatus, onRequest: () -> Unit, context: C
         ShizukuStatus.NotInstalled -> {
             Text("Install Shizuku, a free app that gives other apps the shell user’s access.")
             Button(
-                onClick = {
-                    context.openSafely(Intent(Intent.ACTION_VIEW, Uri.parse(SHIZUKU_PAGE)))
-                }
+                onClick = { context.openSafely(Intent(Intent.ACTION_VIEW, SHIZUKU_PAGE.toUri())) }
             ) {
                 Text("Get Shizuku")
             }

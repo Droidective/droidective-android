@@ -11,9 +11,13 @@ object Symbols {
     val byName: Map<String, Symbol> =
         mapOf(
             "adb" to Symbol(R.drawable.sym_adb, R.drawable.sym_adb_fill),
+            "add" to Symbol(R.drawable.sym_add, R.drawable.sym_add_fill),
             "airplanemode_active" to
                 Symbol(R.drawable.sym_airplanemode_active, R.drawable.sym_airplanemode_active_fill),
             "animation" to Symbol(R.drawable.sym_animation, R.drawable.sym_animation_fill),
+            "arrow_downward" to
+                Symbol(R.drawable.sym_arrow_downward, R.drawable.sym_arrow_downward_fill),
+            "arrow_upward" to Symbol(R.drawable.sym_arrow_upward, R.drawable.sym_arrow_upward_fill),
             "auto_awesome" to Symbol(R.drawable.sym_auto_awesome, R.drawable.sym_auto_awesome_fill),
             "bar_chart" to Symbol(R.drawable.sym_bar_chart, R.drawable.sym_bar_chart_fill),
             "battery_5_bar" to
@@ -32,6 +36,7 @@ object Symbols {
             "brightness_low" to
                 Symbol(R.drawable.sym_brightness_low, R.drawable.sym_brightness_low_fill),
             "check_circle" to Symbol(R.drawable.sym_check_circle, R.drawable.sym_check_circle_fill),
+            "close" to Symbol(R.drawable.sym_close, R.drawable.sym_close_fill),
             "cloud_sync" to Symbol(R.drawable.sym_cloud_sync, R.drawable.sym_cloud_sync_fill),
             "coffee" to Symbol(R.drawable.sym_coffee, R.drawable.sym_coffee_fill),
             "content_copy" to Symbol(R.drawable.sym_content_copy, R.drawable.sym_content_copy_fill),
@@ -49,20 +54,27 @@ object Symbols {
                 Symbol(R.drawable.sym_filter_b_and_w, R.drawable.sym_filter_b_and_w_fill),
             "flashlight_on" to
                 Symbol(R.drawable.sym_flashlight_on, R.drawable.sym_flashlight_on_fill),
+            "folder" to Symbol(R.drawable.sym_folder, R.drawable.sym_folder_fill),
             "format_size" to Symbol(R.drawable.sym_format_size, R.drawable.sym_format_size_fill),
             "keyboard" to Symbol(R.drawable.sym_keyboard, R.drawable.sym_keyboard_fill),
             "lan" to Symbol(R.drawable.sym_lan, R.drawable.sym_lan_fill),
             "layers" to Symbol(R.drawable.sym_layers, R.drawable.sym_layers_fill),
+            "link" to Symbol(R.drawable.sym_link, R.drawable.sym_link_fill),
             "location_on" to Symbol(R.drawable.sym_location_on, R.drawable.sym_location_on_fill),
             "lock" to Symbol(R.drawable.sym_lock, R.drawable.sym_lock_fill),
             "my_location" to Symbol(R.drawable.sym_my_location, R.drawable.sym_my_location_fill),
             "nfc" to Symbol(R.drawable.sym_nfc, R.drawable.sym_nfc_fill),
             "nightlight" to Symbol(R.drawable.sym_nightlight, R.drawable.sym_nightlight_fill),
+            "notifications" to
+                Symbol(R.drawable.sym_notifications, R.drawable.sym_notifications_fill),
+            "open_in_new" to Symbol(R.drawable.sym_open_in_new, R.drawable.sym_open_in_new_fill),
+            "palette" to Symbol(R.drawable.sym_palette, R.drawable.sym_palette_fill),
             "power" to Symbol(R.drawable.sym_power, R.drawable.sym_power_fill),
             "screen_rotation" to
                 Symbol(R.drawable.sym_screen_rotation, R.drawable.sym_screen_rotation_fill),
             "screenshot" to Symbol(R.drawable.sym_screenshot, R.drawable.sym_screenshot_fill),
             "search" to Symbol(R.drawable.sym_search, R.drawable.sym_search_fill),
+            "settings" to Symbol(R.drawable.sym_settings, R.drawable.sym_settings_fill),
             "shield" to Symbol(R.drawable.sym_shield, R.drawable.sym_shield_fill),
             "signal_cellular_alt" to
                 Symbol(R.drawable.sym_signal_cellular_alt, R.drawable.sym_signal_cellular_alt_fill),

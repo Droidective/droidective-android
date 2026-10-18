@@ -2,6 +2,7 @@ package com.droidective.android
 
 import android.app.Application
 import android.content.Context
+import com.droidective.core.layout.LayoutRepository
 import com.droidective.core.toggles.ToggleRunner
 import com.droidective.platform.AccessMonitor
 import com.droidective.platform.AndroidPlatformToggles
@@ -21,8 +22,12 @@ class DroidectiveApplication : Application() {
     lateinit var toggles: ToggleRunner
         private set
 
+    lateinit var layouts: LayoutRepository
+        private set
+
     override fun onCreate() {
         super.onCreate()
+        layouts = LayoutRepository(filesDir)
         access = AccessMonitor(this, scope).also { it.start() }
         toggles =
             ToggleRunner(

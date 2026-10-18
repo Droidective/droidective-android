@@ -128,9 +128,20 @@ data class ToggleDef(
     val isBuilt: Boolean
         get() = write !is Write.Pending
 
+    /**
+     * Whether [state] should draw highlighted: anything but a resting state. Actions and unknown
+     * states never are.
+     */
+    fun isActive(state: String?): Boolean = !isAction && state != null && state !in restingStates
+
     /** The state a tap moves to from [current]; an unknown current state starts the cycle. */
     fun next(current: String?): ToggleState {
         val index = states.indexOfFirst { it.id == current }
         return states[(index + 1) % states.size]
+    }
+
+    companion object {
+        /** States that mean "as Android ships it", which a widget draws in the off colour. */
+        val restingStates = setOf("off", "enforced", "real", "default", "1")
     }
 }

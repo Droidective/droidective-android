@@ -18,15 +18,38 @@ import org.robolectric.annotation.Config
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [36], application = Application::class)
 class ManifestTest {
+    /** Quick Settings must bind these, and only the system holds BIND_QUICK_SETTINGS_TILE. */
+    private val tileServices =
+        (1..12).map { "com.droidective.android.surface.TileSlot$it" } +
+            listOf("LayoutBounds", "ShowTaps", "AnimationScale", "DemoMode", "WirelessDebugging")
+                .map { "com.droidective.android.surface.${it}Tile" }
+
     private val allowed =
         setOf(
             "com.droidective.android.MainActivity",
+            // The launcher starts it when a bar is added or reconfigured.
+            "com.droidective.android.widget.BarConfigureActivity",
+            // The launcher sends it APPWIDGET_UPDATE.
+            "com.droidective.android.widget.ToggleBarReceiver",
             // Guarded by INTERACT_ACROSS_USERS_FULL, which only the system holds.
             "rikka.shizuku.ShizukuProvider",
+        ) + tileServices
+
+    /**
+     * What libraries export, each behind a permission only the system (or adb, for DUMP) holds. A
+     * library update that adds an export, or drops its permission, fails here.
+     */
+    private val libraryExports =
+        mapOf(
+            "androidx.glance.appwidget.GlanceRemoteViewsService" to
+                "android.permission.BIND_REMOTEVIEWS",
+            "androidx.work.impl.background.systemjob.SystemJobService" to
+                "android.permission.BIND_JOB_SERVICE",
+            "androidx.work.impl.diagnostics.DiagnosticsReceiver" to "android.permission.DUMP",
+            "androidx.profileinstaller.ProfileInstallReceiver" to "android.permission.DUMP",
         )
 
-    @Test
-    fun onlyAllowedComponentsAreExported() {
+    private fun exported(): List<ComponentInfo> {
         val context = ApplicationProvider.getApplicationContext<Application>()
         val flags =
             PackageManager.GET_ACTIVITIES or
@@ -34,10 +57,29 @@ class ManifestTest {
                 PackageManager.GET_RECEIVERS or
                 PackageManager.GET_PROVIDERS
         val info = context.packageManager.getPackageInfo(context.packageName, flags)
-        val components: List<ComponentInfo> =
-            listOfNotNull(info.activities, info.services, info.receivers, info.providers).flatMap {
-                it.toList()
-            }
-        assertEquals(allowed, components.filter { it.exported }.map { it.name }.toSet())
+        return listOfNotNull(info.activities, info.services, info.receivers, info.providers)
+            .flatMap { it.toList() }
+            .filter { it.exported }
+    }
+
+    @Test
+    fun onlyAllowedComponentsAreExported() {
+        assertEquals(allowed + libraryExports.keys, exported().map { it.name }.toSet())
+    }
+
+    @Test
+    fun everyExportedServiceIsGuardedByASystemPermission() {
+        exported().filterIsInstance<android.content.pm.ServiceInfo>().forEach {
+            val expected = libraryExports[it.name] ?: "android.permission.BIND_QUICK_SETTINGS_TILE"
+            assertEquals(expected, it.permission, it.name)
+        }
+    }
+
+    @Test
+    fun libraryReceiversKeepTheirPermission() {
+        exported()
+            .filterIsInstance<android.content.pm.ActivityInfo>()
+            .filter { it.name in libraryExports }
+            .forEach { assertEquals(libraryExports[it.name], it.permission, it.name) }
     }
 }

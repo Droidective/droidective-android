@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ktfmt)
+    alias(libs.plugins.android.lint)
     `java-test-fixtures`
 }
 
@@ -22,6 +23,12 @@ kotlin {
 }
 
 ktfmt { kotlinLangStyle() }
+
+lint {
+    warningsAsErrors = true
+    abortOnError = true
+    disable += setOf("GradleDependency", "NewerVersionAvailable")
+}
 
 dependencies {
     api(libs.kotlinx.coroutines.core)

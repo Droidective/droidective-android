@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.telephony.TelephonyManager
+import androidx.core.content.edit
 import com.droidective.core.toggles.DemoMode
 import com.droidective.core.toggles.Keyboards
 import com.droidective.core.toggles.Outcome
@@ -167,14 +168,13 @@ class AndroidPlatformToggles(private val context: Context) : PlatformToggles {
         val resolver = context.contentResolver
         val key = Settings.System.SCREEN_OFF_TIMEOUT
         if (on && !prefs.contains(KEY_SAVED_TIMEOUT)) {
-            prefs
-                .edit()
-                .putInt(KEY_SAVED_TIMEOUT, Settings.System.getInt(resolver, key, DEFAULT_TIMEOUT))
-                .apply()
+            prefs.edit {
+                putInt(KEY_SAVED_TIMEOUT, Settings.System.getInt(resolver, key, DEFAULT_TIMEOUT))
+            }
             Settings.System.putInt(resolver, key, Int.MAX_VALUE)
         } else if (!on && prefs.contains(KEY_SAVED_TIMEOUT)) {
             Settings.System.putInt(resolver, key, prefs.getInt(KEY_SAVED_TIMEOUT, DEFAULT_TIMEOUT))
-            prefs.edit().remove(KEY_SAVED_TIMEOUT).apply()
+            prefs.edit { remove(KEY_SAVED_TIMEOUT) }
         }
         return Outcome.Applied(onOff(on), confirmed = false)
     }
@@ -201,7 +201,7 @@ class AndroidPlatformToggles(private val context: Context) : PlatformToggles {
         } else {
             sendDemo(DemoMode.exit)
         }
-        prefs.edit().putString(KEY_DEMO, onOff(on)).apply()
+        prefs.edit { putString(KEY_DEMO, onOff(on)) }
     }
 
     private fun sendDemo(extras: Map<String, String>) {

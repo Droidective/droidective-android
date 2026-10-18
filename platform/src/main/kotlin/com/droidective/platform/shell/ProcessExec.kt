@@ -23,12 +23,13 @@ internal object ProcessExec {
         val finished = process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS)
         if (!finished) process.destroyForcibly()
         readers.forEach { it.join(READER_GRACE_MILLIS) }
-        val err = stderr.toString(Charsets.UTF_8)
-        return if (finished) ShellResult(process.exitValue(), stdout.toString(Charsets.UTF_8), err)
+        val err = String(stderr.toByteArray(), Charsets.UTF_8)
+        val out = String(stdout.toByteArray(), Charsets.UTF_8)
+        return if (finished) ShellResult(process.exitValue(), out, err)
         else
             ShellResult(
                 TIMED_OUT_EXIT,
-                stdout.toString(Charsets.UTF_8),
+                out,
                 "Timed out after ${timeoutMillis} ms\n$err",
             )
     }

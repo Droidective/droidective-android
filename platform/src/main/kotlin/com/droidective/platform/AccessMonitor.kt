@@ -3,6 +3,7 @@ package com.droidective.platform
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import androidx.core.content.edit
 import com.droidective.core.Access
 import com.droidective.core.Grants
 import com.droidective.core.ShellProvider
@@ -10,11 +11,13 @@ import com.droidective.core.shell.Shell
 import com.droidective.core.shell.ShellUnavailableException
 import com.droidective.platform.shell.RootShell
 import com.droidective.platform.shell.ShizukuShell
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import rikka.shizuku.Shizuku
 
 /** Where Shizuku stands on this phone, in the order Setup walks someone through it. */
@@ -35,14 +38,24 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
     private val root = RootShell()
     private val prefs = context.getSharedPreferences("access", Context.MODE_PRIVATE)
     private val state = MutableStateFlow(Access.Nothing)
+    private val firstRefresh = CompletableDeferred<Unit>()
 
     val access: StateFlow<Access> = state.asStateFlow()
+
+    /**
+     * The access once the first check has finished. A widget drawn straight after a cold start
+     * would otherwise see no access and send every Shell tap to its stand-in.
+     */
+    suspend fun settled(): Access {
+        withTimeoutOrNull(SETTLE_TIMEOUT_MILLIS) { firstRefresh.await() }
+        return state.value
+    }
 
     /** Whether the user chose to use root. Probing su before that would show a root prompt. */
     var rootAllowed: Boolean
         get() = prefs.getBoolean(KEY_ROOT_ALLOWED, false)
         set(value) {
-            prefs.edit().putBoolean(KEY_ROOT_ALLOWED, value).apply()
+            prefs.edit { putBoolean(KEY_ROOT_ALLOWED, value) }
             scope.launch { refresh() }
         }
 
@@ -90,6 +103,7 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
             }
         val granted = hasGrants() || (provider != null && grantSelf(provider))
         state.value = Access(granted = granted, shell = provider)
+        firstRefresh.complete(Unit)
     }
 
     private suspend fun grantSelf(provider: ShellProvider): Boolean {
@@ -117,5 +131,6 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
         const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
         const val SHIZUKU_REQUEST_CODE = 7001
         const val KEY_ROOT_ALLOWED = "root_allowed"
+        const val SETTLE_TIMEOUT_MILLIS = 3_000L
     }
 }

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android may offer any widget on the lock screen, where a tap runs without unlocking. Nobody
+     should be able to set a proxy or turn off Wi-Fi on a locked phone, so the bar opts out. -->
+<!-- targetCell* size the bar on Android 12+; minWidth and minHeight size it on Android 11. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="UnusedAttribute"
+    android:configure="com.droidective.android.widget.BarConfigureActivity"
+    android:description="@string/widget_bar_description"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:minWidth="180dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="40dp"
+    android:minResizeHeight="40dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="1800000"
+    android:widgetFeatures="reconfigurable|configuration_optional"
+    android:widgetCategory="home_screen|not_keyguard" />

@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- The automation service, which runs only while an automation watches the phone. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
         android:name=".DroidectiveApplication"
@@ -112,6 +115,14 @@
         <receiver
             android:name=".automation.StateSignalReceiver"
             android:exported="false" />
+        <service
+            android:name=".automation.AutomationService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Runs the automations the person set up: watches the triggers they chose (an app opening, charging, the screen, the battery, headphones, Wi-Fi, a setting changing) and acts when one fires. Runs only while such an automation is on." />
+        </service>
         <!-- A Bluetooth device connecting or disconnecting. Protected broadcasts from the system;
              the receiver only re-reads which devices are connected. -->
         <receiver

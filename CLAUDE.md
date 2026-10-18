@@ -91,6 +91,14 @@ runs actions.
   and time windows (an alarm at the next edge). Each signal re-reads every watched state and
   keeps the readings in `automation-watch.json`. Wi-Fi triggers need the automation service: a
   PendingIntent network callback fires once on joining and never on leaving (spike 7).
+- **`AutomationService` runs only while an enabled automation needs it** (`Matcher.needsService`),
+  as a `specialUse` foreground service whose notification names what it watches. It feeds the
+  same `StateSignals.check`: power, screen, unlock, battery, headset and install broadcasts, a
+  live Wi-Fi callback, settings observers for toggles (a 30 s poll for the rest), and a 2 s poll of
+  the app in front while the screen is on (usage access, else the shell). Android 12+ refuses to
+  start it from the background; boot, an update and opening the app all start it.
+- **`RecentWrites` carries a run's chain into the changes it causes**, so two automations that
+  set each other's triggers stop after five instead of looping.
 - **Emulators are shared with other agents.** `adb tcpip`/`adb root` restart adbd and kill
   Shizuku's server; a run that says "needs Shell" may just be that.
 

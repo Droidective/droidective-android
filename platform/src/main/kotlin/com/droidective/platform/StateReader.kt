@@ -36,10 +36,7 @@ class StateReader(
                 BluetoothAudio.connectedNames(context)?.let { names ->
                     if (state.device == null) names.isNotEmpty() else state.device in names
                 }
-            is State.AppOpen ->
-                inShell(DUMPSYS_ACTIVITIES)?.let(Parse::resumedPackage)?.let {
-                    it == state.packageName
-                }
+            is State.AppOpen -> foregroundPackage()?.let { it == state.packageName }
             State.Charging -> battery()?.let { it.plugged != 0 }
             State.ScreenOn -> context.getSystemService(PowerManager::class.java).isInteractive
             State.Headphones -> headphones()
@@ -49,6 +46,13 @@ class StateReader(
             is State.TimeBetween -> state.holdsAt(LocalDateTime.now())
             State.ShellAvailable -> shell() != null
         }
+
+    /**
+     * The app in front: from usage access when the person allowed it, which costs nothing, or from
+     * the shell.
+     */
+    suspend fun foregroundPackage(): String? =
+        ForegroundApp.fromUsage(context) ?: inShell(DUMPSYS_ACTIVITIES)?.let(Parse::resumedPackage)
 
     private suspend fun onWifi(network: String?): Boolean? {
         val connectivity = context.getSystemService(ConnectivityManager::class.java)

@@ -212,6 +212,31 @@ class AutomationRuntimeTest {
     }
 
     @Test
+    fun aChangeAnAutomationMadeCarriesItsChain() {
+        val writes = RecentWrites()
+        val chain = Cause(listOf("a", "b"))
+        writes.record("wifi", chain, at = 1_000)
+        val wifiOff = StateChange(State.ToggleIs("wifi", "off"), holds = true)
+        assertEquals(chain, writes.causeOf(wifiOff, at = 2_000))
+        assertEquals(
+            Cause(),
+            writes.causeOf(wifiOff, at = 1_000 + RecentWrites.WINDOW_MILLIS + 1),
+            "by hand, later",
+        )
+        assertEquals(Cause(), writes.causeOf(StateChange(State.Charging, true), at = 2_000))
+        // Two automations setting each other's triggers: the chain grows until it stops.
+        var cause = Cause()
+        repeat(10) { i ->
+            val id = if (i % 2 == 0) "a" else "b"
+            if (!cause.allows(id)) return@repeat
+            writes.record("wifi", cause.then(id), at = 3_000L + i)
+            cause = writes.causeOf(wifiOff, at = 3_001L + i)
+        }
+        assertTrue(cause.chain.size <= Cause.MAX_CHAIN)
+        assertTrue(!cause.allows("a") || !cause.allows("b"), "the loop stopped")
+    }
+
+    @Test
     fun historyKeepsTheNewestRuns() {
         val ledger = AutomationLedger(dir)
         repeat(AutomationLedger.HISTORY_SIZE + 5) { i ->

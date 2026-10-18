@@ -46,8 +46,10 @@ import com.droidective.core.automations.AutomationRules
 import com.droidective.core.automations.Condition
 import com.droidective.core.automations.Event
 import com.droidective.core.automations.Review
+import com.droidective.core.automations.State
 import com.droidective.core.automations.Trigger
 import com.droidective.core.automations.isDestructive
+import com.droidective.platform.ForegroundApp
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -91,6 +93,7 @@ fun AutomationEditor(original: Automation?, tool: ToolContext) {
         )
         TriggerSection(draft, onChange = { draft = it }, onDialog = { dialog = it })
         ConditionsSection(draft, onChange = { draft = it }, onDialog = { dialog = it })
+        AppOpenNote(draft)
         ActionsSection(draft, onChange = { draft = it }, onDialog = { dialog = it })
         if (problems.isNotEmpty()) {
             ToolSection("Before it can be saved") {
@@ -345,3 +348,33 @@ private fun ActionRow(
         }
     }
 }
+
+/** "An app is open" needs Shell or usage access; say so, with the way to allow it. */
+@Composable
+private fun AppOpenNote(draft: Automation) {
+    val context = LocalContext.current
+    val app = context.droidective
+    val uses =
+        (draft.conditions.map { it.state } + listOfNotNull(draft.trigger.state)).any {
+            it is State.AppOpen
+        }
+    if (!uses || app.access.shell() != null || ForegroundApp.usageAccess(context)) return
+    ToolNote(
+        "Telling which app is open needs Shell, or Usage access for Droidective. Without " +
+            "either, it never counts as open."
+    )
+    OutlinedButton(
+        onClick = { context.openSafely(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+    ) {
+        Text("Allow Usage access")
+    }
+}
+
+private val Trigger.state: State?
+    get() =
+        when (this) {
+            is Trigger.Starts -> state
+            is Trigger.Ends -> state
+            is Trigger.While -> state
+            is Trigger.On -> null
+        }

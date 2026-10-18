@@ -14,7 +14,7 @@ object Parse {
         return if (value.isEmpty() || value == "null") null else value
     }
 
-    private val propLine = Regex("""^\[([^\]]+)]: \[(.*)]$""")
+    private val propLine = Regex("""^\[([^\]]+)\]: \[(.*)\]$""")
 
     /** Plain `getprop` prints every property as `[key]: [value]`, one per line. */
     fun props(output: String): Map<String, String> =

@@ -11,14 +11,14 @@ class ToggleRegistryTest {
 
     @Test
     fun hasTheFiftyTogglesThePlanLists() {
-        assertEquals(50, all.size)
+        assertEquals(52, all.size)
         assertEquals(
             mapOf(
                 ToggleGroup.Network to 15,
                 ToggleGroup.Sound to 3,
                 ToggleGroup.Display to 11,
                 ToggleGroup.Device to 6,
-                ToggleGroup.Developer to 15,
+                ToggleGroup.Developer to 17,
             ),
             all.groupingBy { it.group }.eachCount(),
         )
@@ -46,6 +46,7 @@ class ToggleRegistryTest {
                     is Write.Settings -> write.values.keys
                     is Write.Commands -> write.commands.keys
                     is Write.Api,
+                    is Write.Derived,
                     is Write.Pending -> continue
                 }
             assertEquals(toggle.states.map { it.id }.toSet(), covered, toggle.id)
@@ -69,6 +70,7 @@ class ToggleRegistryTest {
                 "fake-battery",
                 "display-density",
                 "hidden-api",
+                "selinux",
             )
         val missing =
             all.filter { it.level >= AccessLevel.Shell && it.fallback == null }
@@ -84,19 +86,21 @@ class ToggleRegistryTest {
                 "preferred-network",
                 "hotspot",
                 "bluetooth-tethering",
-                "http-proxy",
                 "screenshot",
-                "display-density",
             ),
             all.filterNot { it.isBuilt }.map { it.id }.toSet(),
         )
     }
 
     @Test
-    fun appLevelProbeCommandsOnlyReadProperties() {
+    fun appLevelProbeCommandsOnlyRead() {
+        // Commands the app runs as itself must only read: the shell is for writes.
+        val readOnly = setOf("getprop", "getenforce")
         all.mapNotNull { it.read as? Probe.Command }
             .filter { it.level == AccessLevel.App }
-            .forEach { assertTrue(it.command.line.startsWith("getprop "), it.command.line) }
+            .forEach {
+                assertTrue(it.command.line.substringBefore(' ') in readOnly, it.command.line)
+            }
     }
 
     @Test
@@ -118,6 +122,21 @@ class ToggleRegistryTest {
                 "keep-activities",
             )
         assertEquals(emptySet(), macIds - all.map { it.id }.toSet())
+    }
+
+    @Test
+    fun everyPlaceholderNamesAKnownParam() {
+        val placeholder = Regex("""\{([a-z_]+)}""")
+        val used = all.flatMap { toggle ->
+            when (val write = toggle.write) {
+                is Write.Settings -> write.values.values.flatMap { it.values }
+                is Write.Commands -> write.commands.values.flatten().map { it.line }
+                else -> emptyList()
+            }
+        }
+        used
+            .flatMap { text -> placeholder.findAll(text).map { it.groupValues[1] } }
+            .forEach { assertTrue(Param.of(it) != null, "{$it} isn't a Param") }
     }
 
     @Test

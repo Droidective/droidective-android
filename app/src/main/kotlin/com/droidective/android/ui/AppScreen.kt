@@ -11,29 +11,49 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
 import com.droidective.android.DroidectiveApplication
+import com.droidective.android.ui.tools.ToolsScreen
 
 enum class Destination(val label: String, val icon: String) {
     Toggles("Toggles", "toggle_on"),
+    Tools("Tools", "build"),
     Widgets("Widgets", "widgets"),
     Setup("Setup", "shield"),
 }
 
 /**
- * The app's frame: a bottom bar on phones, a rail on tablets and foldables.
+ * A place asked for from outside: a widget's Setup tap, a tile, a toggle that needs a value. Each
+ * request is new, so asking for the same place twice goes there twice.
  *
- * @param requested a destination asked for from outside, such as a tile or a widget's Setup tap.
+ * @property tool the tool to open, for [Destination.Tools].
  */
+data class Request(
+    val destination: Destination,
+    val tool: String? = null,
+    val id: Long = System.nanoTime(),
+)
+
+/** The app's frame: a bottom bar on phones, a rail on tablets and foldables. */
 @Composable
-fun AppScreen(app: DroidectiveApplication, requested: Destination?) {
+fun AppScreen(app: DroidectiveApplication, request: Request?) {
     var destination by rememberSaveable { mutableStateOf(Destination.Toggles) }
-    LaunchedEffect(requested) { requested?.let { destination = it } }
+    var openTool by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(request) {
+        request?.let {
+            destination = it.destination
+            it.tool?.let { tool -> openTool = tool }
+        }
+    }
     NavigationSuiteScaffold(
         navigationSuiteItems = {
             Destination.entries.forEach { item ->
                 val symbol = Symbols.byName.getValue(item.icon)
                 item(
                     selected = item == destination,
-                    onClick = { destination = item },
+                    onClick = {
+                        // Tapping Tools while in a tool goes back to the list.
+                        if (item == destination && item == Destination.Tools) openTool = null
+                        destination = item
+                    },
                     icon = {
                         Icon(
                             painterResource(
@@ -50,6 +70,12 @@ fun AppScreen(app: DroidectiveApplication, requested: Destination?) {
         when (destination) {
             Destination.Toggles ->
                 TogglesScreen(app, onOpenSetup = { destination = Destination.Setup })
+            Destination.Tools ->
+                ToolsScreen(
+                    openTool,
+                    onOpen = { openTool = it },
+                    onOpenSetup = { destination = Destination.Setup },
+                )
             Destination.Widgets -> WidgetsScreen(app)
             Destination.Setup -> SetupScreen(app)
         }

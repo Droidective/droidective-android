@@ -20,4 +20,5 @@
     <string name="tile_animation_scale">Animation scale</string>
     <string name="tile_demo_mode">Demo mode</string>
     <string name="tile_wireless_debugging">Wireless debugging</string>
+    <string name="tile_network_speed">Network speed</string>
 </resources>

@@ -12,21 +12,24 @@ import com.droidective.android.surface.Surfaces
 import com.droidective.android.ui.AppScreen
 import com.droidective.android.ui.Destination
 import com.droidective.android.ui.DroidectiveTheme
+import com.droidective.android.ui.Request
+import com.droidective.core.features.Features
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    private val requested = mutableStateOf<Destination?>(null)
+    private val request = mutableStateOf<Request?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        requested.value = destinationOf(intent)
-        setContent { DroidectiveTheme { AppScreen(droidective, requested.value) } }
+        // After a rotation the screen restores itself; the launch intent was already handled.
+        if (savedInstanceState == null) request.value = requestOf(intent)
+        setContent { DroidectiveTheme { AppScreen(droidective, request.value) } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        requested.value = destinationOf(intent)
+        request.value = requestOf(intent)
     }
 
     override fun onResume() {
@@ -39,10 +42,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun destinationOf(intent: Intent?): Destination? =
+    private fun requestOf(intent: Intent?): Request? =
         when (intent?.getStringExtra(Launch.EXTRA_DESTINATION)) {
-            Launch.DESTINATION_SETUP -> Destination.Setup
-            Launch.DESTINATION_TILES -> Destination.Widgets
+            Launch.DESTINATION_SETUP -> Request(Destination.Setup)
+            Launch.DESTINATION_TILES -> Request(Destination.Widgets)
+            Launch.DESTINATION_TOOL ->
+                // Any app can start this activity, so only a real tool id opens anything.
+                intent
+                    .getStringExtra(Launch.EXTRA_TOOL)
+                    ?.takeIf { Features.byId(it) != null }
+                    ?.let { Request(Destination.Tools, tool = it) }
             else -> null
         }
 }

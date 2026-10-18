@@ -32,9 +32,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.droidective.android.droidective
+import com.droidective.android.surface.CommandTaps
 import com.droidective.android.surface.Launch
+import com.droidective.android.surface.ShellRuns
 import com.droidective.android.surface.Surfaces
 import com.droidective.android.ui.CellButton
+import com.droidective.android.ui.CommandOutput
 import com.droidective.android.ui.DroidectiveTheme
 import com.droidective.android.ui.openSafely
 import com.droidective.android.ui.runInForeground
@@ -100,6 +103,16 @@ private fun FolderPanel(id: String, name: String, on: Long, off: Long, onOpened:
                                 scope.launch {
                                     val toggle = Toggles.byId(tap.toggleId) ?: return@launch
                                     message = runInForeground(context, toggle).second
+                                }
+                            is Tap.RunCommand ->
+                                scope.launch {
+                                    val command =
+                                        context.droidective.commands.get(tap.commandId)
+                                            ?: return@launch
+                                    val result = CommandTaps.execute(context, command)
+                                    if (result is ShellRuns.Result.Ran)
+                                        Surfaces.refreshBehind(context)
+                                    message = CommandOutput.describe(command.name, result)
                                 }
                             is Tap.Open -> {
                                 Launch.intentFor(context, tap.target)?.let(context::openSafely)

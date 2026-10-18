@@ -46,6 +46,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.droidective.android.droidective
+import com.droidective.android.surface.CommandTaps
 import com.droidective.android.surface.Launch
 import com.droidective.android.surface.Problems
 import com.droidective.android.surface.Surfaces
@@ -232,6 +233,10 @@ private fun actionFor(context: Context, cell: Cell): Action? =
             actionRunCallback<RunToggleAction>(
                 actionParametersOf(RunToggleAction.toggleKey to tap.toggleId)
             )
+        is Tap.RunCommand ->
+            actionRunCallback<RunCommandAction>(
+                actionParametersOf(RunCommandAction.commandKey to tap.commandId)
+            )
         is Tap.Open ->
             Launch.intentFor(context, tap.target)?.let {
                 actionStartActivity(OpenActivity.wrap(context, it))
@@ -255,6 +260,22 @@ class RunToggleAction : ActionCallback {
 
     companion object {
         val toggleKey = ActionParameters.Key<String>("toggle")
+    }
+}
+
+/** Runs a custom command tapped on a widget, in the background. */
+class RunCommandAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        val command = parameters[commandKey]?.let { context.droidective.commands.get(it) } ?: return
+        Problems.reportCommand(context, command, CommandTaps.run(context, command))
+    }
+
+    companion object {
+        val commandKey = ActionParameters.Key<String>("command")
     }
 }
 

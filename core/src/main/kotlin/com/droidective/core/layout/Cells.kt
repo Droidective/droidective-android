@@ -2,6 +2,7 @@ package com.droidective.core.layout
 
 import com.droidective.core.Access
 import com.droidective.core.AccessLevel
+import com.droidective.core.commands.CustomCommand
 import com.droidective.core.toggles.ToggleDef
 import com.droidective.core.toggles.Toggles
 import com.droidective.core.toggles.Write
@@ -10,6 +11,9 @@ import com.droidective.core.toggles.Write
 sealed interface Tap {
     /** Runs in the background, then the surface redraws. No activity starts. */
     data class RunToggle(val toggleId: String) : Tap
+
+    /** Runs a saved custom command in the background, as the shell user. */
+    data class RunCommand(val commandId: String) : Tap
 
     /** Starts an activity straight from the tap, never through a trampoline. */
     data class Open(val target: Target) : Tap
@@ -32,6 +36,9 @@ sealed interface Target {
     data class ToggleScreen(val toggleId: String) : Target
 
     data class Setup(val level: AccessLevel) : Target
+
+    /** One of the app's tool screens, such as the proxy screen when its address is missing. */
+    data class Tool(val featureId: String) : Target
 }
 
 sealed interface CellIcon {
@@ -62,10 +69,19 @@ object Cells {
     /**
      * @param state the toggle's current state id when [item] is a toggle.
      * @param folderName looks up a folder's name for its label.
+     * @param command looks up a saved command; for a command item, [state] is "on" or "off".
      * @return null for an item that points at something gone, such as a removed toggle.
      */
-    fun plan(item: Item, state: String?, access: Access, folderName: (String) -> String?): Cell? =
+    fun plan(
+        item: Item,
+        state: String?,
+        access: Access,
+        folderName: (String) -> String?,
+        command: (String) -> CustomCommand? = { null },
+    ): Cell? =
         when (item) {
+            is Item.Command ->
+                command(item.commandId)?.let { commandCell(item.key, it, state, access) }
             is Item.Toggle ->
                 Toggles.byId(item.toggleId)?.let { toggleCell(item.key, it, state, access) }
             is Item.App ->
@@ -116,6 +132,25 @@ object Cells {
                     Tap.Open(Target.SystemScreen(item.action)),
                 )
         }
+
+    private fun commandCell(
+        key: String,
+        command: CustomCommand,
+        state: String?,
+        access: Access,
+    ): Cell {
+        val inPlace = access.allows(AccessLevel.Shell)
+        return Cell(
+            key = key,
+            label = command.name,
+            icon = CellIcon.Symbol("terminal"),
+            active = command.isToggle && state == "on",
+            degraded = !inPlace,
+            tap =
+                if (inPlace) Tap.RunCommand(command.id)
+                else Tap.Open(Target.Setup(AccessLevel.Shell)),
+        )
+    }
 
     private fun toggleCell(key: String, toggle: ToggleDef, state: String?, access: Access): Cell? {
         if (!toggle.isBuilt) return null

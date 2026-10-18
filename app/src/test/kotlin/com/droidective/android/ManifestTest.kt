@@ -21,7 +21,14 @@ class ManifestTest {
     /** Quick Settings must bind these, and only the system holds BIND_QUICK_SETTINGS_TILE. */
     private val tileServices =
         (1..12).map { "com.droidective.android.surface.TileSlot$it" } +
-            listOf("LayoutBounds", "ShowTaps", "AnimationScale", "DemoMode", "WirelessDebugging")
+            listOf(
+                    "LayoutBounds",
+                    "ShowTaps",
+                    "AnimationScale",
+                    "DemoMode",
+                    "WirelessDebugging",
+                    "NetworkSpeed",
+                )
                 .map { "com.droidective.android.surface.${it}Tile" }
 
     private val allowed =

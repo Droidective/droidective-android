@@ -86,11 +86,25 @@ sealed interface Write {
             get() = scope.writeLevel
     }
 
-    /** Runs `commands[state]` in order, as the shell user. */
-    data class Commands(val commands: Map<String, List<ShellCommand>>) : Write {
-        override val level: AccessLevel
-            get() = AccessLevel.Shell
-    }
+    /**
+     * Runs `commands[state]` in order, as the shell user, or as root for [AccessLevel.Root]. A
+     * `{name}` in a line is replaced with that parameter, shell-quoted.
+     */
+    data class Commands(
+        val commands: Map<String, List<ShellCommand>>,
+        override val level: AccessLevel = AccessLevel.Shell,
+    ) : Write
+
+    /**
+     * For steps relative to the phone's own value, such as display density: runs [probe], then the
+     * commands [derive] builds from its output for the state. Null from [derive] means the output
+     * didn't say enough to go on.
+     */
+    data class Derived(
+        val probe: ShellCommand,
+        val derive: (output: String, state: String) -> List<ShellCommand>?,
+        override val level: AccessLevel = AccessLevel.Shell,
+    ) : Write
 
     data class Api(val api: PlatformApi, override val level: AccessLevel) : Write
 
@@ -142,6 +156,7 @@ data class ToggleDef(
 
     companion object {
         /** States that mean "as Android ships it", which a widget draws in the off colour. */
-        val restingStates = setOf("off", "enforced", "real", "default", "1")
+        val restingStates =
+            setOf("off", "enforced", "enforcing", "automatic", "real", "default", "1")
     }
 }

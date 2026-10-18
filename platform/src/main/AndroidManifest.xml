@@ -20,10 +20,16 @@
     <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
     <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
 
-    <queries>
-        <!-- To tell "Shizuku isn't installed" apart from "Shizuku isn't running". -->
-        <package android:name="moe.shizuku.privileged.api" />
-    </queries>
+    <!-- AppCatalog lists every package, system ones included, and RootProbe and the Shizuku check
+         look for apps by name. The build ships outside Play; a Play flavor drops this and goes
+         back to <queries> (see CLAUDE.md). -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+    <!-- AdbPort browses mDNS for adbd. NsdManager won't start without INTERNET, and Android 17
+         asks before an app browses the local network. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
     <application>
         <!-- Shizuku hands its binder to the app through this provider. Only the system can

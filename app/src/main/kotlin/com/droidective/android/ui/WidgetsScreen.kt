@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.droidective.android.DroidectiveApplication
+import com.droidective.android.droidective
 import com.droidective.android.editor.ItemPicker
 import com.droidective.android.editor.LayoutEditor
 import com.droidective.android.surface.Surfaces
@@ -251,6 +252,8 @@ private fun TileSlotRow(context: Context, slot: Int, onChoose: () -> Unit) {
             is Item.DeepLink -> item.label
             is Item.SettingsScreen -> item.label
             is Item.Folder -> "Folder"
+            is Item.Command ->
+                context.droidective.commands.get(item.commandId)?.name ?: "Removed command"
         }
     ListItem(
         headlineContent = { Text("Droidective $slot") },

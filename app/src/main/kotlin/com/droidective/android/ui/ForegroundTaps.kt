@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import androidx.core.net.toUri
+import com.droidective.android.surface.Launch
 import com.droidective.android.surface.ToggleTaps
+import com.droidective.core.layout.Target
 import com.droidective.core.toggles.Outcome
 import com.droidective.core.toggles.SpecialAccess
 import com.droidective.core.toggles.ToggleDef
@@ -14,12 +16,22 @@ import com.droidective.core.toggles.ToggleDef
  * A tap on a screen someone is looking at. Unlike a widget in the background, it can open whatever
  * the outcome needs straight away: the stand-in panel or the special-access page.
  *
+ * @param state the state to set, or null to move to the next one.
  * @return the message to show, or null when the result speaks for itself.
  */
-suspend fun runInForeground(context: Context, toggle: ToggleDef): Pair<Outcome, String?> {
-    val outcome = ToggleTaps.advance(context, toggle)
+suspend fun runInForeground(
+    context: Context,
+    toggle: ToggleDef,
+    state: String? = null,
+): Pair<Outcome, String?> {
+    val outcome =
+        if (state == null) ToggleTaps.advance(context, toggle)
+        else ToggleTaps.set(context, toggle, state)
     when (outcome) {
         is Outcome.UseFallback -> context.openSafely(Intent(outcome.fallback.settingsAction))
+        is Outcome.NeedsValue ->
+            Launch.intentFor(context, Target.Tool(outcome.param.featureId))
+                ?.let(context::openSafely)
         is Outcome.NeedsSpecialAccess ->
             context.openSafely(specialAccessIntent(context, outcome.access))
         else -> Unit

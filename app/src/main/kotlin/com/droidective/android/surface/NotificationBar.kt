@@ -109,6 +109,14 @@ object NotificationBar {
                         .putExtra(NotificationTapReceiver.EXTRA_TOGGLE_ID, tap.toggleId),
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
                 )
+            is Tap.RunCommand ->
+                PendingIntent.getBroadcast(
+                    context,
+                    "command:${tap.commandId}".hashCode(),
+                    Intent(context, NotificationTapReceiver::class.java)
+                        .putExtra(NotificationTapReceiver.EXTRA_COMMAND_ID, tap.commandId),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                )
             is Tap.Open ->
                 Launch.intentFor(context, tap.target)?.let { intent ->
                     PendingIntent.getActivity(
@@ -124,12 +132,19 @@ object NotificationBar {
 /** Runs a toggle tapped in the notification bar. Not exported: only our PendingIntents reach it. */
 class NotificationTapReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val toggle = intent.getStringExtra(EXTRA_TOGGLE_ID)?.let { Toggles.byId(it) } ?: return
+        val toggle = intent.getStringExtra(EXTRA_TOGGLE_ID)?.let { Toggles.byId(it) }
+        val command =
+            intent.getStringExtra(EXTRA_COMMAND_ID)?.let { context.droidective.commands.get(it) }
+        if (toggle == null && command == null) return
         val pending = goAsync()
         context.droidective.scope.launch {
             try {
-                val outcome = ToggleTaps.advance(context, toggle)
-                if (outcome !is Outcome.Applied) Problems.report(context, toggle, outcome)
+                if (toggle != null) {
+                    val outcome = ToggleTaps.advance(context, toggle)
+                    if (outcome !is Outcome.Applied) Problems.report(context, toggle, outcome)
+                }
+                if (command != null)
+                    Problems.reportCommand(context, command, CommandTaps.run(context, command))
             } finally {
                 pending.finish()
             }
@@ -138,5 +153,6 @@ class NotificationTapReceiver : BroadcastReceiver() {
 
     companion object {
         const val EXTRA_TOGGLE_ID = "com.droidective.android.extra.TOGGLE_ID"
+        const val EXTRA_COMMAND_ID = "com.droidective.android.extra.COMMAND_ID"
     }
 }

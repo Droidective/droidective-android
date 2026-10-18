@@ -23,7 +23,7 @@ import kotlinx.coroutines.withTimeout
 import rikka.shizuku.Shizuku
 
 private const val COMMAND_TIMEOUT_MILLIS = 30_000L
-private const val BIND_TIMEOUT_MILLIS = 5_000L
+private const val BIND_TIMEOUT_MILLIS = 10_000L
 
 /** Runs commands as the app itself. For reads that need no privilege, such as `getprop`. */
 class AppShell : Shell {
@@ -60,6 +60,10 @@ class RootShell : Shell {
 /**
  * Runs commands in a [ShellUserService] that Shizuku starts as the shell user, or as root when
  * Shizuku itself runs as root. The service is bound on first use and rebound if it dies.
+ *
+ * It's a daemon: it outlives the app's process. Starting it means a new app_process JVM; as a
+ * daemon that happens once per boot, so a widget tap on a cold app only rebinds. Measured on an
+ * API 36 emulator: 327 to 504 ms from the tap to Wi-Fi changing.
  */
 class ShizukuShell(packageName: String) : Shell {
     /** Which kind of Shizuku is running: started from root, or from adb as the shell user. */
@@ -68,7 +72,7 @@ class ShizukuShell(packageName: String) : Shell {
 
     private val args =
         Shizuku.UserServiceArgs(ComponentName(packageName, ShellUserService::class.java.name))
-            .daemon(false)
+            .daemon(true)
             .processNameSuffix("shell")
             .debuggable(BuildConfig.DEBUG)
             .version(SERVICE_VERSION)

@@ -14,9 +14,20 @@ enum class SpecialAccess(val title: String) {
     DoNotDisturb("Do Not Disturb access"),
 }
 
+/** A settings value as the app could read it. */
+sealed interface SettingRead {
+    data class Value(val value: String?) : SettingRead
+
+    /**
+     * Android 12+ won't let an app read a hidden key unless it's marked readable, even one the app
+     * may write. Only the shell can read it then.
+     */
+    data object Unreadable : SettingRead
+}
+
 /** The Settings provider, as the app sees it. The platform module implements it. */
 interface SettingsStore {
-    fun get(scope: SettingScope, key: String): String?
+    fun get(scope: SettingScope, key: String): SettingRead
 
     /** Writes through the Settings API. @return false when Android refused the write. */
     fun put(scope: SettingScope, key: String, value: String): Boolean
@@ -67,10 +78,22 @@ class ToggleRunner(
     /** The toggle's current state id, or null when it can't be read. */
     suspend fun read(toggle: ToggleDef): String? =
         when (val probe = toggle.read) {
-            is Probe.Setting -> probe.parse(settings.get(probe.scope, probe.key))
+            is Probe.Setting -> readSetting(probe)
             is Probe.Api -> platform.read(probe.api)
             is Probe.Command -> readCommand(probe)
             Probe.None -> null
+        }
+
+    /** Through the Settings API, or `settings get` as the shell when Android hides the key. */
+    private suspend fun readSetting(probe: Probe.Setting): String? =
+        when (val read = settings.get(probe.scope, probe.key)) {
+            is SettingRead.Value -> probe.parse(read.value)
+            SettingRead.Unreadable -> {
+                val get = ShellCommand.of("settings", "get", probe.scope.namespace, probe.key)
+                readCommand(
+                    Probe.Command(get, { probe.parse(Parse.settingValue(it)) }, AccessLevel.Shell)
+                )
+            }
         }
 
     /** Sets [toggle] to [state], then reads it back. */

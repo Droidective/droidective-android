@@ -144,6 +144,21 @@ class ToggleRunnerTest {
     }
 
     @Test
+    fun aHiddenSettingIsReadThroughTheShell() = runTest {
+        settings.hidden += "reduce_bright_colors_activated"
+        shell.respond("settings get secure reduce_bright_colors_activated", stdout = "1\r\n")
+        assertEquals("on", runner.read(toggle("extra-dim")))
+    }
+
+    @Test
+    fun aHiddenSettingWithoutShellIsUnknownNotACrash() = runTest {
+        access = Access(granted = true, shell = null)
+        settings.hidden += "reduce_bright_colors_activated"
+        assertEquals(null, runner.read(toggle("extra-dim")))
+        assertEquals(emptyList(), shell.invocations)
+    }
+
+    @Test
     fun cyclesMoveThroughStatesInOrderAndRestartFromUnknown() {
         val scale = toggle("animation-scale")
         assertEquals("0.5", scale.next("1").id)

@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.Settings
+import com.droidective.core.toggles.SettingRead
 import com.droidective.core.toggles.SettingScope
 import com.droidective.core.toggles.SettingsStore
 
@@ -12,12 +13,20 @@ class AndroidSettingsStore(private val context: Context) : SettingsStore {
     private val resolver
         get() = context.contentResolver
 
-    override fun get(scope: SettingScope, key: String): String? =
-        when (scope) {
-            SettingScope.Global -> Settings.Global.getString(resolver, key)
-            SettingScope.Secure -> Settings.Secure.getString(resolver, key)
-            SettingScope.SystemPublic,
-            SettingScope.SystemPrivate -> Settings.System.getString(resolver, key)
+    override fun get(scope: SettingScope, key: String): SettingRead =
+        try {
+            SettingRead.Value(
+                when (scope) {
+                    SettingScope.Global -> Settings.Global.getString(resolver, key)
+                    SettingScope.Secure -> Settings.Secure.getString(resolver, key)
+                    SettingScope.SystemPublic,
+                    SettingScope.SystemPrivate -> Settings.System.getString(resolver, key)
+                }
+            )
+        } catch (_: SecurityException) {
+            // Android 12+ throws for hidden keys not marked readable, such as
+            // reduce_bright_colors_activated, even when the app may write them.
+            SettingRead.Unreadable
         }
 
     override fun put(scope: SettingScope, key: String, value: String): Boolean =

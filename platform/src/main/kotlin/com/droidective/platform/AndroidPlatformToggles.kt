@@ -49,6 +49,14 @@ class AndroidPlatformToggles(private val context: Context) : PlatformToggles {
     }
 
     override suspend fun read(api: PlatformApi): String? =
+        try {
+            readUnchecked(api)
+        } catch (_: SecurityException) {
+            // An OEM can guard a read that AOSP leaves open; unknown beats a crash.
+            null
+        }
+
+    private fun readUnchecked(api: PlatformApi): String? =
         when (api) {
             PlatformApi.WifiEnabled ->
                 onOff(context.getSystemService(WifiManager::class.java).isWifiEnabled)

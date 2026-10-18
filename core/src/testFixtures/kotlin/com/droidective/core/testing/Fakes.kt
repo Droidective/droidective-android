@@ -7,6 +7,7 @@ import com.droidective.core.shell.ShellUnavailableException
 import com.droidective.core.toggles.Outcome
 import com.droidective.core.toggles.PlatformApi
 import com.droidective.core.toggles.PlatformToggles
+import com.droidective.core.toggles.SettingRead
 import com.droidective.core.toggles.SettingScope
 import com.droidective.core.toggles.SettingsStore
 
@@ -34,9 +35,13 @@ class FakeShell : Shell {
 class FakeSettingsStore : SettingsStore {
     val values = mutableMapOf<Pair<String, String>, String>()
     val writable = mutableSetOf<SettingScope>()
+    /** Keys Android 12+ hides from apps: reading them through the API fails. */
+    val hidden = mutableSetOf<String>()
     var refuseWrites = false
 
-    override fun get(scope: SettingScope, key: String): String? = values[scope.namespace to key]
+    override fun get(scope: SettingScope, key: String): SettingRead =
+        if (key in hidden) SettingRead.Unreadable
+        else SettingRead.Value(values[scope.namespace to key])
 
     override fun put(scope: SettingScope, key: String, value: String): Boolean {
         if (refuseWrites) return false

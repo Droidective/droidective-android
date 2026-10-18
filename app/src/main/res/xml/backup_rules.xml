@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11's backup rules; data_extraction_rules.xml covers Android 12 and later. -->
+<full-backup-content>
+    <include domain="file" path="." />
+    <include domain="sharedpref" path="." />
+</full-backup-content>

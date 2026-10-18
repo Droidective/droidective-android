@@ -42,12 +42,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.DroidectiveApplication
 import com.droidective.core.AccessLevel
 import com.droidective.core.Grants
+import com.droidective.platform.RootUse
 import com.droidective.platform.ShizukuStatus
 
 /** The access ladder: what the app has at each level, and the one next step for what it lacks. */
 @Composable
 fun SetupScreen(app: DroidectiveApplication) {
     val access by app.access.access.collectAsStateWithLifecycle()
+    val root by app.access.root.collectAsStateWithLifecycle()
     val context = LocalContext.current
     // Bumped on every resume, so the special-access and Shizuku rows re-read Android's state.
     var resumes by remember { mutableIntStateOf(0) }
@@ -123,14 +125,25 @@ fun SetupScreen(app: DroidectiveApplication) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Use root when it’s available", modifier = Modifier.weight(1f))
                 Switch(
-                    checked = app.access.rootAllowed,
+                    checked = root != RootUse.Off,
                     onCheckedChange = { app.access.rootAllowed = it },
                 )
             }
             Text(
-                "Turning this on asks su for access once. Root also covers everything Shell does.",
+                when (root) {
+                    RootUse.Off,
+                    RootUse.Granted ->
+                        "Turning this on asks su for access once. Root also covers everything " +
+                            "Shell does."
+                    RootUse.Asking -> "Waiting for your root manager to answer…"
+                    RootUse.Refused ->
+                        "su said no. Allow Droidective in your root manager, then turn this " +
+                            "off and on to ask again."
+                },
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color =
+                    if (root == RootUse.Refused) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

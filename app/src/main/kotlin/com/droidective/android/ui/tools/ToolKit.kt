@@ -75,10 +75,18 @@ class ToolContext(
     }
 }
 
-/** A tool's frame: back arrow, title, and a scrolling column; system back goes back too. */
+/**
+ * A tool's frame: back arrow, title, and a scrolling column; system back goes back too. A tab's own
+ * top screen passes [back] false, so system back leaves the app as usual.
+ */
 @Composable
-fun ToolScaffold(title: String, tool: ToolContext, content: @Composable ColumnScope.() -> Unit) {
-    BackHandler(onBack = tool.onBack)
+fun ToolScaffold(
+    title: String,
+    tool: ToolContext,
+    back: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    BackHandler(enabled = back, onBack = tool.onBack)
     Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
         Column(
             Modifier.fillMaxSize()
@@ -87,7 +95,8 @@ fun ToolScaffold(title: String, tool: ToolContext, content: @Composable ColumnSc
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ToolTitle(title, tool)
+            if (back) ToolTitle(title, tool)
+            else Text(title, style = MaterialTheme.typography.headlineSmall)
             content()
         }
     }

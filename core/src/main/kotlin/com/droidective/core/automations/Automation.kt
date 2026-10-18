@@ -112,7 +112,8 @@ sealed interface Event {
     @Serializable
     @SerialName("manual")
     data object Manual : Event {
-        override val wakes = Wake.Tap
+        override val wakes: Wake
+            get() = Wake.Tap
 
         override fun describe() = "When you run it"
     }
@@ -124,7 +125,8 @@ sealed interface Event {
     @Serializable
     @SerialName("schedule")
     data class Schedule(val minuteOfDay: Int, val days: Set<Day> = Day.entries.toSet()) : Event {
-        override val wakes = Wake.Android
+        override val wakes: Wake
+            get() = Wake.Android
 
         override fun describe() = "${Day.describe(days)} at ${clock(minuteOfDay)}"
     }
@@ -132,7 +134,8 @@ sealed interface Event {
     @Serializable
     @SerialName("restarted")
     data object Restarted : Event {
-        override val wakes = Wake.Android
+        override val wakes: Wake
+            get() = Wake.Android
 
         override fun describe() = "When the phone restarts"
     }
@@ -141,7 +144,8 @@ sealed interface Event {
     @Serializable
     @SerialName("app-installed")
     data class AppInstalled(val packageName: String? = null) : Event {
-        override val wakes = Wake.Service
+        override val wakes: Wake
+            get() = Wake.Service
 
         override fun describe() =
             if (packageName == null) "When an app is installed or updated"
@@ -151,7 +155,8 @@ sealed interface Event {
     @Serializable
     @SerialName("unlocked")
     data object Unlocked : Event {
-        override val wakes = Wake.Service
+        override val wakes: Wake
+            get() = Wake.Service
 
         override fun describe() = "When the phone is unlocked"
     }
@@ -181,11 +186,14 @@ sealed interface State {
     @Serializable
     @SerialName("wifi")
     data class OnWifi(val network: String? = null) : State {
-        override val wakes = Wake.Android
+        override val wakes: Wake
+            get() = Wake.Android
+
         override val level
             get() = if (network == null) AccessLevel.App else AccessLevel.Shell
 
-        override val settleMillis = SETTLE_MILLIS
+        override val settleMillis: Long
+            get() = SETTLE_MILLIS
 
         override fun describe(holds: Boolean): String {
             val where = if (network == null) "Wi-Fi" else "the Wi-Fi network “$network”"
@@ -197,8 +205,11 @@ sealed interface State {
     @Serializable
     @SerialName("bluetooth")
     data class BluetoothConnected(val device: String? = null) : State {
-        override val wakes = Wake.Android
-        override val settleMillis = SETTLE_MILLIS
+        override val wakes: Wake
+            get() = Wake.Android
+
+        override val settleMillis: Long
+            get() = SETTLE_MILLIS
 
         override fun describe(holds: Boolean): String {
             val what = if (device == null) "a Bluetooth device" else "“$device”"
@@ -209,8 +220,11 @@ sealed interface State {
     @Serializable
     @SerialName("app-open")
     data class AppOpen(val packageName: String) : State {
-        override val wakes = Wake.Service
-        override val level = AccessLevel.Shell
+        override val wakes: Wake
+            get() = Wake.Service
+
+        override val level: AccessLevel
+            get() = AccessLevel.Shell
 
         override fun describe(holds: Boolean) =
             if (holds) "$packageName is open" else "$packageName closes"
@@ -219,8 +233,11 @@ sealed interface State {
     @Serializable
     @SerialName("charging")
     data object Charging : State {
-        override val wakes = Wake.Service
-        override val settleMillis = SETTLE_MILLIS
+        override val wakes: Wake
+            get() = Wake.Service
+
+        override val settleMillis: Long
+            get() = SETTLE_MILLIS
 
         override fun describe(holds: Boolean) = if (holds) "charging" else "not charging"
     }
@@ -228,7 +245,8 @@ sealed interface State {
     @Serializable
     @SerialName("screen-on")
     data object ScreenOn : State {
-        override val wakes = Wake.Service
+        override val wakes: Wake
+            get() = Wake.Service
 
         override fun describe(holds: Boolean) =
             if (holds) "the screen is on" else "the screen is off"
@@ -237,8 +255,11 @@ sealed interface State {
     @Serializable
     @SerialName("headphones")
     data object Headphones : State {
-        override val wakes = Wake.Service
-        override val settleMillis = SETTLE_MILLIS
+        override val wakes: Wake
+            get() = Wake.Service
+
+        override val settleMillis: Long
+            get() = SETTLE_MILLIS
 
         override fun describe(holds: Boolean) =
             if (holds) "headphones are plugged in" else "headphones are unplugged"
@@ -247,8 +268,11 @@ sealed interface State {
     @Serializable
     @SerialName("battery-below")
     data class BatteryBelow(val percent: Int) : State {
-        override val wakes = Wake.Service
-        override val settleMillis = SETTLE_MILLIS
+        override val wakes: Wake
+            get() = Wake.Service
+
+        override val settleMillis: Long
+            get() = SETTLE_MILLIS
 
         override fun describe(holds: Boolean) =
             if (holds) "the battery is below $percent%" else "the battery is at $percent% or more"
@@ -257,8 +281,11 @@ sealed interface State {
     @Serializable
     @SerialName("battery-above")
     data class BatteryAbove(val percent: Int) : State {
-        override val wakes = Wake.Service
-        override val settleMillis = SETTLE_MILLIS
+        override val wakes: Wake
+            get() = Wake.Service
+
+        override val settleMillis: Long
+            get() = SETTLE_MILLIS
 
         override fun describe(holds: Boolean) =
             if (holds) "the battery is above $percent%" else "the battery is at $percent% or less"
@@ -268,7 +295,8 @@ sealed interface State {
     @Serializable
     @SerialName("toggle")
     data class ToggleIs(val toggleId: String, val state: String) : State {
-        override val wakes = Wake.Service
+        override val wakes: Wake
+            get() = Wake.Service
 
         override fun describe(holds: Boolean) =
             if (holds) "$toggleId is $state" else "$toggleId isn’t $state"
@@ -285,7 +313,8 @@ sealed interface State {
         val endMinute: Int,
         val days: Set<Day> = Day.entries.toSet(),
     ) : State {
-        override val wakes = Wake.Android
+        override val wakes: Wake
+            get() = Wake.Android
 
         override fun describe(holds: Boolean): String {
             val window = "${clock(startMinute)}–${clock(endMinute)}, ${Day.describe(days)}"
@@ -297,7 +326,8 @@ sealed interface State {
     @Serializable
     @SerialName("shell")
     data object ShellAvailable : State {
-        override val wakes: Wake? = null
+        override val wakes: Wake?
+            get() = null
 
         override fun describe(holds: Boolean) =
             if (holds) "Shell is available" else "Shell isn’t available"

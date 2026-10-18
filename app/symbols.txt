@@ -82,3 +82,9 @@ edit
 play_arrow
 refresh
 build
+bolt
+history
+schedule
+download
+upload
+more_vert

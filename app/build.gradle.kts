@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.material3.adaptive.navigation.suite)
     implementation(libs.glance.appwidget)
+    implementation(libs.work.runtime.ktx)
 
     testImplementation(testFixtures(project(":core")))
     testImplementation(kotlin("test-junit"))

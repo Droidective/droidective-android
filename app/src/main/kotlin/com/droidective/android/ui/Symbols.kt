@@ -31,6 +31,7 @@ object Symbols {
                 Symbol(R.drawable.sym_bluetooth_connected, R.drawable.sym_bluetooth_connected_fill),
             "bluetooth_searching" to
                 Symbol(R.drawable.sym_bluetooth_searching, R.drawable.sym_bluetooth_searching_fill),
+            "bolt" to Symbol(R.drawable.sym_bolt, R.drawable.sym_bolt_fill),
             "border_outer" to Symbol(R.drawable.sym_border_outer, R.drawable.sym_border_outer_fill),
             "brightness_6" to Symbol(R.drawable.sym_brightness_6, R.drawable.sym_brightness_6_fill),
             "brightness_auto" to
@@ -54,6 +55,7 @@ object Symbols {
             "dns" to Symbol(R.drawable.sym_dns, R.drawable.sym_dns_fill),
             "do_not_disturb_on" to
                 Symbol(R.drawable.sym_do_not_disturb_on, R.drawable.sym_do_not_disturb_on_fill),
+            "download" to Symbol(R.drawable.sym_download, R.drawable.sym_download_fill),
             "edit" to Symbol(R.drawable.sym_edit, R.drawable.sym_edit_fill),
             "error" to Symbol(R.drawable.sym_error, R.drawable.sym_error_fill),
             "filter_b_and_w" to
@@ -62,6 +64,7 @@ object Symbols {
                 Symbol(R.drawable.sym_flashlight_on, R.drawable.sym_flashlight_on_fill),
             "folder" to Symbol(R.drawable.sym_folder, R.drawable.sym_folder_fill),
             "format_size" to Symbol(R.drawable.sym_format_size, R.drawable.sym_format_size_fill),
+            "history" to Symbol(R.drawable.sym_history, R.drawable.sym_history_fill),
             "info" to Symbol(R.drawable.sym_info, R.drawable.sym_info_fill),
             "keyboard" to Symbol(R.drawable.sym_keyboard, R.drawable.sym_keyboard_fill),
             "lan" to Symbol(R.drawable.sym_lan, R.drawable.sym_lan_fill),
@@ -70,6 +73,7 @@ object Symbols {
             "location_on" to Symbol(R.drawable.sym_location_on, R.drawable.sym_location_on_fill),
             "lock" to Symbol(R.drawable.sym_lock, R.drawable.sym_lock_fill),
             "lock_open" to Symbol(R.drawable.sym_lock_open, R.drawable.sym_lock_open_fill),
+            "more_vert" to Symbol(R.drawable.sym_more_vert, R.drawable.sym_more_vert_fill),
             "my_location" to Symbol(R.drawable.sym_my_location, R.drawable.sym_my_location_fill),
             "nfc" to Symbol(R.drawable.sym_nfc, R.drawable.sym_nfc_fill),
             "nightlight" to Symbol(R.drawable.sym_nightlight, R.drawable.sym_nightlight_fill),
@@ -81,6 +85,7 @@ object Symbols {
             "policy" to Symbol(R.drawable.sym_policy, R.drawable.sym_policy_fill),
             "power" to Symbol(R.drawable.sym_power, R.drawable.sym_power_fill),
             "refresh" to Symbol(R.drawable.sym_refresh, R.drawable.sym_refresh_fill),
+            "schedule" to Symbol(R.drawable.sym_schedule, R.drawable.sym_schedule_fill),
             "screen_rotation" to
                 Symbol(R.drawable.sym_screen_rotation, R.drawable.sym_screen_rotation_fill),
             "screenshot" to Symbol(R.drawable.sym_screenshot, R.drawable.sym_screenshot_fill),
@@ -98,6 +103,7 @@ object Symbols {
             "toggle_on" to Symbol(R.drawable.sym_toggle_on, R.drawable.sym_toggle_on_fill),
             "touch_app" to Symbol(R.drawable.sym_touch_app, R.drawable.sym_touch_app_fill),
             "tune" to Symbol(R.drawable.sym_tune, R.drawable.sym_tune_fill),
+            "upload" to Symbol(R.drawable.sym_upload, R.drawable.sym_upload_fill),
             "usb" to Symbol(R.drawable.sym_usb, R.drawable.sym_usb_fill),
             "verified_user" to
                 Symbol(R.drawable.sym_verified_user, R.drawable.sym_verified_user_fill),

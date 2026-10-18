@@ -25,8 +25,16 @@ object ToggleTaps {
         return set(context, toggle, toggle.next(stateOf(context, toggle)).id)
     }
 
-    /** Sets [toggle] to [state] directly, for screens that offer every state at once. */
-    suspend fun set(context: Context, toggle: ToggleDef, state: String): Outcome {
+    /**
+     * Sets [toggle] to [state] directly, for screens that offer every state at once and for
+     * automations, which set several and redraw once at the end, so they pass [refresh] false.
+     */
+    suspend fun set(
+        context: Context,
+        toggle: ToggleDef,
+        state: String,
+        refresh: Boolean = true,
+    ): Outcome {
         val app = context.droidective
         app.access.settled()
         val outcome = app.toggles.apply(toggle, state)
@@ -35,7 +43,7 @@ object ToggleTaps {
                 putString(toggle.id, outcome.state)
             }
         }
-        Surfaces.refresh(context)
+        if (refresh) Surfaces.refresh(context)
         return outcome
     }
 }

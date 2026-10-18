@@ -11,11 +11,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
 import com.droidective.android.DroidectiveApplication
+import com.droidective.android.ui.automations.AutomationsScreen
 import com.droidective.android.ui.tools.ToolsScreen
 
 enum class Destination(val label: String, val icon: String) {
     Toggles("Toggles", "toggle_on"),
     Tools("Tools", "build"),
+    Automations("Automations", "bolt"),
     Widgets("Widgets", "widgets"),
     Setup("Setup", "shield"),
 }
@@ -37,6 +39,7 @@ data class Request(
 fun AppScreen(app: DroidectiveApplication, request: Request?) {
     var destination by rememberSaveable { mutableStateOf(Destination.Toggles) }
     var openTool by rememberSaveable { mutableStateOf<String?>(null) }
+    var openAutomation by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(request) {
         request?.let {
             destination = it.destination
@@ -50,8 +53,11 @@ fun AppScreen(app: DroidectiveApplication, request: Request?) {
                 item(
                     selected = item == destination,
                     onClick = {
-                        // Tapping Tools while in a tool goes back to the list.
+                        // Tapping the tab you're on goes back to its list.
                         if (item == destination && item == Destination.Tools) openTool = null
+                        if (item == destination && item == Destination.Automations) {
+                            openAutomation = null
+                        }
                         destination = item
                     },
                     icon = {
@@ -74,6 +80,12 @@ fun AppScreen(app: DroidectiveApplication, request: Request?) {
                 ToolsScreen(
                     openTool,
                     onOpen = { openTool = it },
+                    onOpenSetup = { destination = Destination.Setup },
+                )
+            Destination.Automations ->
+                AutomationsScreen(
+                    openAutomation,
+                    onOpen = { openAutomation = it },
                     onOpenSetup = { destination = Destination.Setup },
                 )
             Destination.Widgets -> WidgetsScreen(app)

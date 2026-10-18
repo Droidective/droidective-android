@@ -7,6 +7,8 @@ activity-compose = "1.13.0"
 lifecycle = "2.11.0"
 core-ktx = "1.19.1"
 glance = "1.2.0"
+# Glance pulls in 2.7.1; automations use it directly, so it is pinned to the current release.
+work = "2.12.0"
 kotlinx-serialization = "1.11.0"
 kotlinx-coroutines = "1.11.0"
 shizuku = "13.1.5"
@@ -28,6 +30,7 @@ compose-ui = { module = "androidx.compose.ui:ui" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
 compose-material3-adaptive-navigation-suite = { module = "androidx.compose.material3:material3-adaptive-navigation-suite" }
 glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
+work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }

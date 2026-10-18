@@ -22,6 +22,30 @@ object Parse {
             .mapNotNull { propLine.find(it.trim())?.destructured }
             .associate { (key, value) -> key to value }
 
+    private val connectedTo = Regex("""^Wifi is connected to "(.*)"$""")
+    private val wifiInfoSsid = Regex("""WifiInfo: SSID: "(.*?)",""")
+
+    /**
+     * The network `cmd wifi status` says the phone is on, or null when it isn't on one. Android
+     * 11's output has only the WifiInfo line, so that's the fallback.
+     */
+    fun wifiSsid(output: String): String? {
+        val lines = lines(output).map { it.trim() }
+        return lines.firstNotNullOfOrNull { connectedTo.find(it)?.groupValues?.get(1) }
+            ?: lines
+                .firstNotNullOfOrNull { wifiInfoSsid.find(it)?.groupValues?.get(1) }
+                ?.takeUnless { it == "<unknown ssid>" }
+    }
+
+    private val resumed =
+        Regex(
+            """(?:topResumedActivity|mResumedActivity|ResumedActivity)[=:]\s*ActivityRecord\{\S+ u\d+ ([\w.]+)/"""
+        )
+
+    /** The package in front, from `dumpsys activity activities`. */
+    fun resumedPackage(output: String): String? =
+        lines(output).firstNotNullOfOrNull { resumed.find(it)?.groupValues?.get(1) }
+
     /** `getprop <key>` prints the value or an empty line. */
     fun prop(output: String): String? = lines(output).firstOrNull()?.trim()?.ifEmpty { null }
 

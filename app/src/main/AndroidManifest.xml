@@ -5,6 +5,11 @@
     <!-- Only for "Bluetooth discoverable", which asks Android to show its own dialog. -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <!-- Package visibility (QUERY_ALL_PACKAGES) comes from the platform module's manifest. -->
+    <!-- Automations: "When the phone restarts", schedules on the minute (with Alarms & reminders
+         allowed), and opening apps from the background (with Display over other apps allowed). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:name=".DroidectiveApplication"
@@ -47,6 +52,14 @@
             android:theme="@android:style/Theme.NoDisplay" />
 
         <activity
+            android:name=".automation.RunAutomationActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay" />
+
+        <activity
             android:name=".folder.FolderActivity"
             android:excludeFromRecents="true"
             android:exported="false"
@@ -74,6 +87,30 @@
 
         <receiver
             android:name=".surface.NotificationTapReceiver"
+            android:exported="false" />
+
+        <!-- Restarts, updates and clock changes. Protected broadcasts only the system can send. -->
+        <receiver
+            android:name=".automation.AutomationSystemReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+        <!-- Run from the Mac or adb. Only senders holding WRITE_SECURE_SETTINGS, and the receiver
+             also checks the shell sent it. -->
+        <receiver
+            android:name=".RunAutomation"
+            android:exported="true"
+            android:permission="android.permission.WRITE_SECURE_SETTINGS" />
+        <receiver
+            android:name=".automation.AutomationAlarmReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".automation.AutomationButtonReceiver"
             android:exported="false" />
 
         <service

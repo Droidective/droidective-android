@@ -75,6 +75,19 @@ runs actions.
   holds but is never a Starts or an Ends. `Cause` stops a chain after five and never repeats one.
 - **Imports arrive switched off**, with clashing ids renamed and references rewritten, and
   `Review` spells out every shell line an automation can run before someone turns it on.
+- **Every firing is WorkManager work** (`Automations.enqueue` → `AutomationWorker` →
+  `AutomationRunner`), so it outlives the receiver that noticed it, and a Wait re-enqueues the rest
+  with a delay. A run redraws surfaces once at the end (`ToggleTaps.set(refresh = false)`), and
+  every run, skipped ones included, lands in History.
+- **Opening something from the background**: a direct start when the app is on screen or has
+  Display over other apps, else `ShellStarts` (`am start`) with Shell, else a tap-to-open
+  notification. Another app's shortcut never goes through the shell.
+- **`RunAutomation` is the only way in from outside**: exported, but guarded by
+  WRITE_SECURE_SETTINGS and `FLAG_RECEIVER_FROM_SHELL`, which Android strips from anyone but the
+  shell and root (Remote v2's enrollment guard). Alarms reschedule on save, on every app start
+  (a force stop clears them), at boot, after an update and when the clock changes.
+- **Emulators are shared with other agents.** `adb tcpip`/`adb root` restart adbd and kill
+  Shizuku's server; a run that says "needs Shell" may just be that.
 
 ## Conventions
 

@@ -3,6 +3,9 @@ package com.droidective.android
 import android.app.Application
 import android.content.Context
 import androidx.core.content.edit
+import com.droidective.android.automation.Automations
+import com.droidective.core.automations.AutomationLedger
+import com.droidective.core.automations.AutomationRepository
 import com.droidective.core.commands.CommandRepository
 import com.droidective.core.commands.DeepLinkRepository
 import com.droidective.core.layout.LayoutRepository
@@ -15,6 +18,7 @@ import com.droidective.platform.shell.AppShell
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /** Holds the app-wide objects every surface shares: the app, widgets, tiles and automations. */
 class DroidectiveApplication : Application() {
@@ -35,6 +39,13 @@ class DroidectiveApplication : Application() {
     lateinit var deepLinks: DeepLinkRepository
         private set
 
+    lateinit var automations: AutomationRepository
+        private set
+
+    /** The toggles running Whiles hold, and History. */
+    lateinit var ledger: AutomationLedger
+        private set
+
     private val params by lazy { getSharedPreferences("params", Context.MODE_PRIVATE) }
 
     /** A value a parameterised toggle reuses, such as the proxy's host and port. */
@@ -49,7 +60,11 @@ class DroidectiveApplication : Application() {
         layouts = LayoutRepository(filesDir)
         commands = CommandRepository(filesDir)
         deepLinks = DeepLinkRepository(filesDir)
+        automations = AutomationRepository(filesDir)
+        ledger = AutomationLedger(filesDir)
         access = AccessMonitor(this, scope).also { it.start() }
+        // A force stop clears the app's alarms; starting again puts the schedules back.
+        scope.launch { Automations.reschedule(this@DroidectiveApplication) }
         toggles =
             ToggleRunner(
                 settings = AndroidSettingsStore(this),

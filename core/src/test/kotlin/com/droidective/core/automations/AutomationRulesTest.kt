@@ -2,7 +2,9 @@ package com.droidective.core.automations
 
 import com.droidective.core.apps.AppAction
 import com.droidective.core.automations.Clock.holdsAt
+import java.io.File
 import java.time.LocalDateTime
+import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -65,13 +67,19 @@ class AutomationRulesTest {
                 conditions = listOf(Condition(State.ShellAvailable, negate = true)),
                 actions = listOf(Action.SetToggle("http-proxy", "on")),
             )
-        val json = Json { encodeDefaults = false }
+        // Exactly what the store writes: the file is the format.
+        val dir = createTempDirectory("format").toFile()
+        AutomationRepository(dir).save(desk)
+        val written = Json.parseToJsonElement(File(dir, "automations.json").readText())
+        dir.deleteRecursively()
         assertEquals(
-            """{"id":"proxy-at-desk","name":"Proxy at my desk",""" +
-                """"trigger":{"type":"while","state":{"type":"wifi","network":"Office-5G"}},""" +
-                """"conditions":[{"state":{"type":"shell"},"negate":true}],""" +
-                """"actions":[{"type":"set-toggle","toggleId":"http-proxy","state":"on"}]}""",
-            json.encodeToString(Automation.serializer(), desk),
+            Json.parseToJsonElement(
+                """[{"id":"proxy-at-desk","name":"Proxy at my desk","enabled":true,""" +
+                    """"trigger":{"type":"while","state":{"type":"wifi","network":"Office-5G"}},""" +
+                    """"conditions":[{"state":{"type":"shell"},"negate":true}],""" +
+                    """"actions":[{"type":"set-toggle","toggleId":"http-proxy","state":"on"}]}]"""
+            ),
+            written,
         )
     }
 

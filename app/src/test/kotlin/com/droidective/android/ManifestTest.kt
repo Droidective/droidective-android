@@ -38,6 +38,10 @@ class ManifestTest {
             "com.droidective.android.widget.BarConfigureActivity",
             // The launcher sends it APPWIDGET_UPDATE.
             "com.droidective.android.widget.ToggleBarReceiver",
+            // Boot, update and clock broadcasts, which only the system can send.
+            "com.droidective.android.automation.AutomationSystemReceiver",
+            // Run from the Mac: WRITE_SECURE_SETTINGS, and a shell check in code.
+            "com.droidective.android.RunAutomation",
             // Guarded by INTERACT_ACROSS_USERS_FULL, which only the system holds.
             "rikka.shizuku.ShizukuProvider",
         ) + tileServices
@@ -80,6 +84,14 @@ class ManifestTest {
             val expected = libraryExports[it.name] ?: "android.permission.BIND_QUICK_SETTINGS_TILE"
             assertEquals(expected, it.permission, it.name)
         }
+    }
+
+    @Test
+    fun runFromTheMacNeedsWhatOnlyTheShellHas() {
+        val receiver =
+            exported().first { it.name == "com.droidective.android.RunAutomation" }
+                as android.content.pm.ActivityInfo
+        assertEquals("android.permission.WRITE_SECURE_SETTINGS", receiver.permission)
     }
 
     @Test

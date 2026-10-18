@@ -24,6 +24,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.launch
 
 /**
  * One firing of one automation, as the work that runs it carries it.
@@ -135,8 +136,9 @@ object Automations {
     }
 
     /**
-     * Sets an alarm for the next time of every enabled schedule, and cancels the rest. Runs on
-     * every save, after each alarm, at boot, and when the clock or time zone changes.
+     * Sets an alarm for the next time of every enabled schedule and cancels the rest, then arms the
+     * listeners the watched states need. Runs on every save, on every app start, after each alarm,
+     * at boot, and when the clock or time zone changes.
      */
     fun reschedule(context: Context) {
         val alarms = context.getSystemService(AlarmManager::class.java)
@@ -157,21 +159,24 @@ object Automations {
                             .atZone(ZoneId.systemDefault())
                             .toInstant()
                             .toEpochMilli()
-                    val pending = alarmIntent(context, automation.id)
-                    if (exactAlarms(context)) {
-                        alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
-                    } else {
-                        // The narrowest window Android allows without exact alarms.
-                        alarms.setWindow(
-                            AlarmManager.RTC_WAKEUP,
-                            at,
-                            INEXACT_WINDOW_MILLIS,
-                            pending,
-                        )
-                    }
+                    setAlarm(context, at, alarmIntent(context, automation.id))
                     automation.id
                 }
         prefs.edit { putStringSet(KEY_SCHEDULED, scheduled.toSet()) }
+        // The states Android wakes the app for: their listeners, then one look at where they are.
+        StateSignals.arm(context)
+        val app = context.droidective
+        app.scope.launch { StateSignals.check(app) }
+    }
+
+    /** On the minute with Alarms & reminders; otherwise the narrowest window Android allows. */
+    fun setAlarm(context: Context, atMillis: Long, pending: PendingIntent) {
+        val alarms = context.getSystemService(AlarmManager::class.java)
+        if (exactAlarms(context)) {
+            alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pending)
+        } else {
+            alarms.setWindow(AlarmManager.RTC_WAKEUP, atMillis, INEXACT_WINDOW_MILLIS, pending)
+        }
     }
 
     private fun alarmIntent(context: Context, automationId: String): PendingIntent =

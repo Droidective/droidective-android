@@ -57,8 +57,9 @@ class AutomationRepository(root: File) {
 }
 
 /**
- * What the runtime keeps between runs: the toggles running Whiles hold, in `automation-holds.json`,
- * and History, the last [HISTORY_SIZE] runs, in `automation-history.json`.
+ * What the runtime keeps between runs: the toggles running Whiles hold (`automation-holds.json`),
+ * what the watched states read last (`automation-watch.json`), and History, the last [HISTORY_SIZE]
+ * runs (`automation-history.json`).
  */
 class AutomationLedger(root: File) {
     private val holdsStore =
@@ -70,6 +71,16 @@ class AutomationLedger(root: File) {
         ) {
             emptyList()
         }
+
+    private val watchStore =
+        JsonFileStore(File(root, "automation-watch.json"), WatchSnapshot.serializer()) {
+            WatchSnapshot()
+        }
+
+    /** What the watched states read last, for triggers Android wakes the app for. */
+    @Synchronized fun watch(): WatchSnapshot = watchStore.load()
+
+    @Synchronized fun saveWatch(snapshot: WatchSnapshot) = watchStore.save(snapshot)
 
     @Synchronized fun holds(): Holds = holdsStore.load()
 

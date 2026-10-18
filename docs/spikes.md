@@ -11,8 +11,8 @@ Android version and date, so a later change can be checked against what was meas
 | 4 | What does Shizuku do after a restart on your phones? | your phone | open |
 | 5 | How stale do widgets get with no foreground service, per OEM? | emulators + your phone | open |
 | 6 | Preferred network type, Bluetooth tethering, hotspot via `TetheringManager`, font size: which work? | emulators + your phone | open |
-| 7 | Does joining a Wi-Fi network wake the app through a PendingIntent network callback, and does leaving one? | emulators | open |
-| 8 | Do restart, Bluetooth and exact-alarm triggers arrive on Xiaomi and Samsung with default battery settings? | your phone | open |
+| 7 | Does joining a Wi-Fi network wake the app through a PendingIntent network callback, and does leaving one? | emulators | **Answered: joining once, leaving never** (below) |
+| 8 | Do restart, Bluetooth and exact-alarm triggers arrive on Xiaomi and Samsung with default battery settings? | your phone | open (emulators: restart and exact alarms do, below) |
 
 Brand-specific spikes (2, 4, 5, 8) run only on a phone you plug in, and every toggle a spike
 changes is put back afterwards.
@@ -63,3 +63,26 @@ all six clickable in the shade's collapsed row. A Wi-Fi tap from it reached Shiz
   should resolve that path from `pm path moe.shizuku.privileged.api`.
 - The Layout bounds tile: one click sets `debug.layout` to `true` and SystemUI shows the tile
   active; a second click sets it back to `false`.
+
+### 7. Wi-Fi through a PendingIntent network callback (2026-10-19, `dv-api37`, API 37)
+
+`registerNetworkCallback(NetworkRequest, PendingIntent)` for `TRANSPORT_WIFI`, registered while on
+Wi-Fi: ConnectivityService sent the intent at once, then logged `RELEASE` for the request 5.0 s
+later, and nothing came after. Its source says why
+(`packages/modules/Connectivity`, `ConnectivityService.sendPendingIntentForRequest`): it sends only
+`CALLBACK_AVAILABLE`, only once per registration (`mPendingIntentSent`), and releases the request
+`CONNECTIVITY_RELEASE_PENDING_INTENT_DELAY_MS` (5 000 ms) after the send. Leaving a network never
+sends anything, and registering again while still on Wi-Fi fires again straight away.
+
+So a Wi-Fi trigger needs a listener that's running: Wi-Fi moved to the automation service
+(`State.OnWifi.wakes = Service`). Wi-Fi conditions are unaffected; they're read when checked.
+
+### 8, emulator half (2026-10-19)
+
+- Restart: "When the phone restarts" with Only if "Shell isn't available" posted its notification
+  after `adb reboot` on `dv-api37` (API 37). The app has to have been opened once since install,
+  or Android doesn't send it `BOOT_COMPLETED`.
+- Exact alarms: with Alarms & reminders allowed, a schedule fired at 01:32:00 on `dv-api36`
+  (`window=0 exactAllowReason=permission`); without it the alarm gets the 10-minute window.
+- A time-window While on `dv-api37` began at 01:47:00 and ended at 01:49:00, putting its toggle
+  back.

@@ -118,6 +118,21 @@ class AutomationRuntimeTest {
     }
 
     @Test
+    fun aWatchPicksUpWhereTheLastProcessLeftOff() {
+        val car = State.BluetoothConnected("Car audio")
+        val first = StateWatch()
+        first.observe(car, false, now = 0)
+        first.observe(car, true, now = 1_000) // pending, then the process dies
+        val ledger = AutomationLedger(dir)
+        ledger.saveWatch(first.snapshot())
+        val second = StateWatch(ledger.watch())
+        assertEquals(11_000, second.nextDue())
+        assertNull(second.observe(car, true, now = 5_000), "still settling")
+        assertEquals(listOf(StateChange(car, true)), second.due(now = 11_000))
+        assertEquals(WatchSnapshot(listOf(WatchEntry(car, settled = true))), second.snapshot())
+    }
+
+    @Test
     fun aStateWithoutASettleTimeChangesAtOnce() {
         val watch = StateWatch()
         val app = State.AppOpen("com.example.app")

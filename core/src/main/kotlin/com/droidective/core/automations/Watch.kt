@@ -1,17 +1,45 @@
 package com.droidective.core.automations
 
+import kotlinx.serialization.Serializable
+
 /** A watched state that started or stopped holding. [initial] is the first reading. */
 data class StateChange(val state: State, val holds: Boolean, val initial: Boolean = false)
+
+/** One watched state's last settled reading, and a change waiting to settle, if there is one. */
+@Serializable
+data class WatchEntry(
+    val state: State,
+    val settled: Boolean,
+    val pendingHolds: Boolean? = null,
+    val pendingSince: Long = 0,
+)
+
+/** A [StateWatch] as a file, since the process can die between one broadcast and the next. */
+@Serializable data class WatchSnapshot(val entries: List<WatchEntry> = emptyList())
 
 /**
  * Turns readings of the watched states into changes. A change to a state with a settle time counts
  * only once it has held that long; flapping back first cancels it.
  */
-class StateWatch {
+class StateWatch(snapshot: WatchSnapshot = WatchSnapshot()) {
     private data class Pending(val holds: Boolean, val since: Long)
 
     private val settled = mutableMapOf<State, Boolean>()
     private val pending = mutableMapOf<State, Pending>()
+
+    init {
+        snapshot.entries.forEach { entry ->
+            settled[entry.state] = entry.settled
+            entry.pendingHolds?.let { pending[entry.state] = Pending(it, entry.pendingSince) }
+        }
+    }
+
+    fun snapshot(): WatchSnapshot =
+        WatchSnapshot(
+            settled.map { (state, value) ->
+                WatchEntry(state, value, pending[state]?.holds, pending[state]?.since ?: 0)
+            }
+        )
 
     /** The state's current reading; returns the change it makes, if one counts yet. */
     fun observe(state: State, holds: Boolean, now: Long): StateChange? {

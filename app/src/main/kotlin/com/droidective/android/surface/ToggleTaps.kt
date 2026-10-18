@@ -21,9 +21,15 @@ object ToggleTaps {
             ?: context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(toggle.id, null)
 
     suspend fun advance(context: Context, toggle: ToggleDef): Outcome {
+        context.droidective.access.settled()
+        return set(context, toggle, toggle.next(stateOf(context, toggle)).id)
+    }
+
+    /** Sets [toggle] to [state] directly, for screens that offer every state at once. */
+    suspend fun set(context: Context, toggle: ToggleDef, state: String): Outcome {
         val app = context.droidective
         app.access.settled()
-        val outcome = app.toggles.apply(toggle, toggle.next(stateOf(context, toggle)).id)
+        val outcome = app.toggles.apply(toggle, state)
         if (outcome is Outcome.Applied && !toggle.isAction && toggle.read is Probe.None) {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
                 putString(toggle.id, outcome.state)

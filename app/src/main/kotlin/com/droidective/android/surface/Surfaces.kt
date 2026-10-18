@@ -12,6 +12,7 @@ import com.droidective.core.toggles.Toggles
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 
 /** Loads what a surface draws, and tells every surface when something changed. */
 object Surfaces {
@@ -26,11 +27,30 @@ object Surfaces {
         val access = app.access.settled()
         return layout.items.mapNotNull { item ->
             val state =
-                (item as? Item.Toggle)
-                    ?.let { Toggles.byId(it.toggleId) }
-                    ?.let { ToggleTaps.stateOf(context, it) }
-            Cells.plan(item, state, access) { id -> app.layouts.get(id)?.name }
+                when (item) {
+                    is Item.Toggle ->
+                        Toggles.byId(item.toggleId)?.let { ToggleTaps.stateOf(context, it) }
+                    is Item.Command ->
+                        app.commands.get(item.commandId)?.let { CommandTaps.stateOf(context, it) }
+                    else -> null
+                }
+            Cells.plan(
+                item,
+                state,
+                access,
+                folderName = { id -> app.layouts.get(id)?.name },
+                command = app.commands::get,
+            )
         }
+    }
+
+    /**
+     * [refresh] in the app's scope, for a screen that answers first and lets widgets, tiles and the
+     * notification bar catch up behind it. Leaving the screen doesn't cut it short.
+     */
+    fun refreshBehind(context: Context) {
+        val app = context.droidective
+        app.scope.launch { refresh(app) }
     }
 
     suspend fun refresh(context: Context) {

@@ -68,3 +68,17 @@ arrow_downward
 close
 add
 palette
+arrow_back
+construction
+lock_open
+apps
+info
+speed
+terminal
+policy
+security
+delete
+edit
+play_arrow
+refresh
+build

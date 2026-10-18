@@ -230,7 +230,8 @@ private fun Code(text: String) {
 fun grantCommand(packageName: String): String =
     Grants.commands(packageName).joinToString("\n") { "adb shell ${it.line}" }
 
-private fun Context.copy(label: String, text: String) {
+/** Puts [text] on the clipboard; Android 13 and later confirm it themselves. */
+fun Context.copy(label: String, text: String) {
     getSystemService(ClipboardManager::class.java)
         .setPrimaryClip(ClipData.newPlainText(label, text))
 }

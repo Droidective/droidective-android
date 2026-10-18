@@ -4,18 +4,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Only for "Bluetooth discoverable", which asks Android to show its own dialog. -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-
-    <queries>
-        <!-- The Apps tab lists launchable apps; no QUERY_ALL_PACKAGES. -->
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent>
-        <!-- The Custom tab lists apps that offer shortcuts, like WhatsApp chats or Gmail labels. -->
-        <intent>
-            <action android:name="android.intent.action.CREATE_SHORTCUT" />
-        </intent>
-    </queries>
+    <!-- Package visibility (QUERY_ALL_PACKAGES) comes from the platform module's manifest. -->
 
     <application
         android:name=".DroidectiveApplication"
@@ -213,6 +202,14 @@
             android:exported="true"
             android:icon="@drawable/sym_auto_awesome"
             android:label="@string/tile_demo_mode"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.NetworkSpeedTile"
+            android:exported="true"
+            android:icon="@drawable/sym_speed"
+            android:label="@string/tile_network_speed"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
         </service>

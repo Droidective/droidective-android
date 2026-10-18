@@ -102,6 +102,21 @@ class LayoutTest {
     }
 
     @Test
+    fun deletingACommandTakesItsCellsOutOfEveryLayout() {
+        val repo = LayoutRepository(dir)
+        repo.save(bar(Item.Command("a", "cmd-1"), toggle("b")))
+        repo.save(
+            Layout("folder-x", LayoutKind.Folder, "Tools", listOf(Item.Command("c", "cmd-1")))
+        )
+        repo.save(Layout("other", LayoutKind.Bar, "Other", listOf(Item.Command("d", "cmd-2"))))
+        repo.dropCommand("cmd-1", now = 5)
+        assertEquals(listOf("b"), repo.get("home")?.items?.map { it.key })
+        assertEquals(5, repo.get("home")?.editedAt)
+        assertEquals(emptyList(), repo.get("folder-x")?.items)
+        assertEquals(0, repo.get("other")?.editedAt, "a layout without the command is untouched")
+    }
+
+    @Test
     fun layoutIdsCantEscapeTheirFolder() {
         val repo = LayoutRepository(dir)
         assertFailsWith<IllegalArgumentException> { repo.get("../secrets") }
@@ -110,7 +125,7 @@ class LayoutTest {
 
     @Test
     fun aShellToggleWithoutShellOpensItsStandIn() {
-        val cell = Cells.plan(toggle("a", "wifi"), "on", Access.Nothing) { null }!!
+        val cell = Cells.plan(toggle("a", "wifi"), "on", Access.Nothing, folderName = { null })!!
         assertEquals(Tap.Open(Target.SystemScreen("android.settings.panel.action.WIFI")), cell.tap)
         assertTrue(cell.degraded)
         assertTrue(cell.active)
@@ -118,14 +133,15 @@ class LayoutTest {
 
     @Test
     fun aShellToggleWithNoStandInOpensSetup() {
-        val cell = Cells.plan(toggle("a", "layout-bounds"), "off", Access.Nothing) { null }!!
+        val cell =
+            Cells.plan(toggle("a", "layout-bounds"), "off", Access.Nothing, folderName = { null })!!
         assertEquals(Tap.Open(Target.Setup(AccessLevel.Shell)), cell.tap)
     }
 
     @Test
     fun withShellTheToggleRunsInPlace() {
         val access = Access(granted = false, shell = ShellProvider.Shizuku)
-        val cell = Cells.plan(toggle("a", "wifi"), "off", access) { null }!!
+        val cell = Cells.plan(toggle("a", "wifi"), "off", access, folderName = { null })!!
         assertEquals(Tap.RunToggle("wifi"), cell.tap)
         assertEquals(false, cell.active)
         assertEquals(false, cell.degraded)
@@ -135,10 +151,23 @@ class LayoutTest {
     fun screenTogglesOpenTheirScreenAndGoneThingsDrawNothing() {
         assertEquals(
             Tap.Open(Target.ToggleScreen("brightness-slider")),
-            Cells.plan(toggle("a", "brightness-slider"), null, Access.Nothing) { null }?.tap,
+            Cells.plan(
+                    toggle("a", "brightness-slider"),
+                    null,
+                    Access.Nothing,
+                    folderName = { null },
+                )
+                ?.tap,
         )
-        assertNull(Cells.plan(toggle("a", "removed-toggle"), null, Access.Nothing) { null })
-        assertNull(Cells.plan(toggle("a", "hotspot"), null, Access.Nothing) { null }, "pending")
-        assertNull(Cells.plan(Item.Folder("f", "gone"), null, Access.Nothing) { null })
+        assertNull(
+            Cells.plan(toggle("a", "removed-toggle"), null, Access.Nothing, folderName = { null })
+        )
+        assertNull(
+            Cells.plan(toggle("a", "hotspot"), null, Access.Nothing, folderName = { null }),
+            "pending",
+        )
+        assertNull(
+            Cells.plan(Item.Folder("f", "gone"), null, Access.Nothing, folderName = { null })
+        )
     }
 }

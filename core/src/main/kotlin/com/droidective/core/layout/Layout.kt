@@ -43,6 +43,11 @@ sealed interface Item {
     @SerialName("folder")
     data class Folder(override val key: String, val folderId: String) : Item
 
+    /** A saved custom command: a button, or a toggle when the command has an off line. */
+    @Serializable
+    @SerialName("command")
+    data class Command(override val key: String, val commandId: String) : Item
+
     @Serializable
     @SerialName("deep-link")
     data class DeepLink(override val key: String, val label: String, val uri: String) : Item

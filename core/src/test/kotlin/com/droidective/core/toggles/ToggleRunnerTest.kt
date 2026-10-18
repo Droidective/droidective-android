@@ -3,11 +3,13 @@ package com.droidective.core.toggles
 import com.droidective.core.Access
 import com.droidective.core.AccessLevel
 import com.droidective.core.ShellProvider
+import com.droidective.core.shell.ShellCommand
 import com.droidective.core.testing.FakePlatformToggles
 import com.droidective.core.testing.FakeSettingsStore
 import com.droidective.core.testing.FakeShell
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
 class ToggleRunnerTest {
@@ -15,7 +17,9 @@ class ToggleRunnerTest {
     private val settings = FakeSettingsStore()
     private val platform = FakePlatformToggles()
     private var access = Access(granted = false, shell = ShellProvider.Shizuku)
-    private val runner = ToggleRunner(settings, platform, shell, { shell }, { access })
+    private val params = mutableMapOf<Param, String>()
+    private val runner =
+        ToggleRunner(settings, platform, shell, { shell }, { access }, { params[it] })
 
     private fun toggle(id: String) = requireNotNull(Toggles.byId(id)) { id }
 
@@ -151,11 +155,97 @@ class ToggleRunnerTest {
     }
 
     @Test
+    fun aKeyNeverWrittenReadsAsWhatAndroidDoesWithoutIt() = runTest {
+        settings.hidden += "show_touches"
+        shell.respond("settings get system show_touches", stdout = "null\n")
+        assertEquals("off", runner.read(toggle("show-touches")))
+        assertEquals(
+            "on",
+            runner.read(toggle("verify-adb-installs")),
+            "Android verifies unless told not to",
+        )
+        assertEquals(
+            null,
+            runner.read(toggle("auto-rotate")),
+            "always written, so unset is unknown",
+        )
+    }
+
+    @Test
     fun aHiddenSettingWithoutShellIsUnknownNotACrash() = runTest {
         access = Access(granted = true, shell = null)
         settings.hidden += "reduce_bright_colors_activated"
         assertEquals(null, runner.read(toggle("extra-dim")))
         assertEquals(emptyList(), shell.invocations)
+    }
+
+    @Test
+    fun aProxyWithNoAddressAsksForOne() = runTest {
+        access = Access(granted = true, shell = null)
+        settings.writable += SettingScope.Global
+        assertEquals(Outcome.NeedsValue(Param.Proxy), runner.apply(toggle("http-proxy"), "on"))
+        params[Param.Proxy] = "10.0.0.12:8888"
+        assertEquals(
+            Outcome.Applied("on", confirmed = true),
+            runner.apply(toggle("http-proxy"), "on"),
+        )
+        assertEquals("10.0.0.12:8888", settings.values["global" to "http_proxy"])
+        runner.apply(toggle("http-proxy"), "off")
+        assertEquals(":0", settings.values["global" to "http_proxy"])
+    }
+
+    @Test
+    fun privateDnsSetsTheHostnameBeforeTheMode() = runTest {
+        params[Param.DnsHost] = "dns.adguard-dns.com"
+        runner.apply(toggle("private-dns"), "hostname")
+        assertEquals(
+            listOf(
+                "settings put global private_dns_specifier 'dns.adguard-dns.com'",
+                "settings put global private_dns_mode 'hostname'",
+            ),
+            shell.invocations,
+        )
+    }
+
+    @Test
+    fun densityStepsFromThePhysicalDensity() = runTest {
+        shell.respond("wm density", stdout = "Physical density: 420\r\n")
+        runner.apply(toggle("display-density"), "smaller")
+        assertEquals(listOf("wm density", "wm density 357", "wm density"), shell.invocations)
+    }
+
+    @Test
+    fun densityWithNoPhysicalLineFails() = runTest {
+        shell.respond("wm density", stdout = "cmd: Can't find service: window")
+        assertTrue(runner.apply(toggle("display-density"), "larger") is Outcome.Failed)
+    }
+
+    @Test
+    fun selinuxNeedsRootNotJustShell() = runTest {
+        assertEquals(
+            Outcome.NeedsLevel(AccessLevel.Root),
+            runner.apply(toggle("selinux"), "permissive"),
+        )
+        access = Access(granted = false, shell = ShellProvider.Su)
+        runner.apply(toggle("selinux"), "permissive")
+        assertEquals(listOf("setenforce 0", "getenforce"), shell.invocations)
+    }
+
+    @Test
+    fun aParameterInACommandIsQuoted() = runTest {
+        params[Param.Proxy] = "x'; reboot; '"
+        val synthetic =
+            ToggleDef(
+                id = "synthetic",
+                title = "Synthetic",
+                group = ToggleGroup.Developer,
+                icon = "tune",
+                states = listOf(ToggleState("run", "Run")),
+                read = Probe.None,
+                write = Write.Commands(mapOf("run" to listOf(ShellCommand("echo {proxy}")))),
+            )
+        runner.apply(synthetic, "run")
+        assertEquals(listOf("echo 'x'\\''; reboot; '\\'''"), shell.invocations)
     }
 
     @Test

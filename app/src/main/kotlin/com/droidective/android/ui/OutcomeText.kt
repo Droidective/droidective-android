@@ -11,6 +11,7 @@ object OutcomeText {
             is Outcome.UseFallback -> null
             is Outcome.NeedsLevel ->
                 "${toggle.title} needs ${outcome.level.title} access. Setup shows how to get it."
+            is Outcome.NeedsValue -> "Set ${outcome.param.title} first."
             is Outcome.NeedsSpecialAccess ->
                 "Allow ${outcome.access.title} for Droidective, then try again."
             is Outcome.DidNotStick ->

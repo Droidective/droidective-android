@@ -24,7 +24,12 @@ object Toggles {
         byState.entries.firstOrNull { Parse.sameSettingValue(it.value, stored) }?.key
     }
 
-    /** An on/off toggle backed by one settings key. */
+    /**
+     * An on/off toggle backed by one settings key.
+     *
+     * @param unset the state Android behaves as when the key was never written, which a fresh phone
+     *   shows for most developer settings; null when Android always writes it.
+     */
     private fun setting(
         id: String,
         title: String,
@@ -32,6 +37,7 @@ object Toggles {
         icon: String,
         scope: SettingScope,
         key: String,
+        unset: String?,
         on: String = "1",
         off: String = "0",
         fallback: Fallback? = null,
@@ -42,7 +48,10 @@ object Toggles {
             group = group,
             icon = icon,
             states = onOff,
-            read = Probe.Setting(scope, key, exact(mapOf("on" to on, "off" to off))),
+            read =
+                Probe.Setting(scope, key) { stored ->
+                    if (stored == null) unset else exact(mapOf("on" to on, "off" to off))(stored)
+                },
             write =
                 Write.Settings(scope, mapOf("on" to mapOf(key to on), "off" to mapOf(key to off))),
             fallback = fallback,
@@ -304,29 +313,56 @@ object Toggles {
                 title = "Private DNS",
                 group = ToggleGroup.Network,
                 icon = "dns",
-                states = listOf(ToggleState("automatic", "Automatic"), ToggleState("off", "Off")),
-                read =
-                    Probe.Setting(
-                        SettingScope.Global,
-                        "private_dns_mode",
-                        exact(mapOf("automatic" to "opportunistic", "off" to "off")),
+                states =
+                    listOf(
+                        ToggleState("automatic", "Automatic"),
+                        ToggleState("hostname", "Hostname"),
+                        ToggleState("off", "Off"),
                     ),
+                read =
+                    Probe.Setting(SettingScope.Global, "private_dns_mode") { stored ->
+                        when (stored) {
+                            null,
+                            "opportunistic" -> "automatic"
+                            "hostname" -> "hostname"
+                            "off" -> "off"
+                            else -> null
+                        }
+                    },
                 write =
                     Write.Settings(
                         SettingScope.Global,
                         mapOf(
                             "automatic" to mapOf("private_dns_mode" to "opportunistic"),
+                            // The hostname first, so the mode never points at a stale one.
+                            "hostname" to
+                                linkedMapOf(
+                                    "private_dns_specifier" to "{dns_host}",
+                                    "private_dns_mode" to "hostname",
+                                ),
                             "off" to mapOf("private_dns_mode" to "off"),
                         ),
                     ),
             ),
-            pending(
-                "http-proxy",
-                "HTTP proxy",
-                ToggleGroup.Network,
-                "lan",
-                reason = "Needs the saved host and port from the HTTP Proxy screen (M3)",
-                level = AccessLevel.Granted,
+            ToggleDef(
+                id = "http-proxy",
+                title = "HTTP proxy",
+                group = ToggleGroup.Network,
+                icon = "lan",
+                states = onOff,
+                read =
+                    Probe.Setting(SettingScope.Global, "http_proxy") { stored ->
+                        if (stored.isNullOrBlank() || stored == ":0") "off" else "on"
+                    },
+                // ":0" is how Android spells "no proxy"; clearing the key needs the shell.
+                write =
+                    Write.Settings(
+                        SettingScope.Global,
+                        mapOf(
+                            "on" to mapOf("http_proxy" to "{proxy}"),
+                            "off" to mapOf("http_proxy" to ":0"),
+                        ),
+                    ),
             ),
         )
 
@@ -393,6 +429,7 @@ object Toggles {
                 "brightness_auto",
                 SettingScope.SystemPublic,
                 "screen_brightness_mode",
+                unset = null,
             ),
             api(
                 "brightness-slider",
@@ -425,6 +462,7 @@ object Toggles {
                 "screen_rotation",
                 SettingScope.SystemPublic,
                 "accelerometer_rotation",
+                unset = null,
             ),
             api(
                 "keep-screen-on",
@@ -450,6 +488,7 @@ object Toggles {
                 "nightlight",
                 SettingScope.Secure,
                 "night_display_activated",
+                unset = "off",
             ),
             setting(
                 "extra-dim",
@@ -458,6 +497,7 @@ object Toggles {
                 "brightness_low",
                 SettingScope.Secure,
                 "reduce_bright_colors_activated",
+                unset = "off",
             ),
             ToggleDef(
                 id = "grayscale",
@@ -517,6 +557,7 @@ object Toggles {
                 "location_on",
                 SettingScope.Secure,
                 "location_mode",
+                unset = null,
                 on = "3",
                 off = "0",
                 fallback =
@@ -579,6 +620,7 @@ object Toggles {
                 "adb",
                 SettingScope.Global,
                 "adb_wifi_enabled",
+                unset = "off",
                 fallback =
                     Fallback(
                         "android.settings.APPLICATION_DEVELOPMENT_SETTINGS",
@@ -592,6 +634,7 @@ object Toggles {
                 "power",
                 SettingScope.Global,
                 "stay_on_while_plugged_in",
+                unset = "off",
                 on = "7",
             ),
             setting(
@@ -601,6 +644,7 @@ object Toggles {
                 "touch_app",
                 SettingScope.SystemPrivate,
                 "show_touches",
+                unset = "off",
             ),
             setting(
                 "pointer-location",
@@ -609,6 +653,7 @@ object Toggles {
                 "my_location",
                 SettingScope.SystemPrivate,
                 "pointer_location",
+                unset = "off",
             ),
             sysprop(
                 "layout-bounds",
@@ -649,6 +694,7 @@ object Toggles {
                 "delete_sweep",
                 SettingScope.Global,
                 "always_finish_activities",
+                unset = "off",
             ),
             ToggleDef(
                 id = "animation-scale",
@@ -696,28 +742,25 @@ object Toggles {
                 read = Probe.None,
                 write =
                     Write.Commands(
-                        mapOf("real" to listOf(cmd("dumpsys", "battery", "reset"))) +
-                            listOf("5", "15", "50").associateWith { level ->
-                                listOf(
-                                    cmd("dumpsys", "battery", "unplug"),
-                                    cmd("dumpsys", "battery", "set", "level", level),
-                                )
+                        mapOf("real" to FakeBattery.reset) +
+                            listOf(5, 15, 50).associate { level ->
+                                level.toString() to FakeBattery.set(level, unplugged = true)
                             }
                     ),
             ),
-            pending(
-                "display-density",
-                "Display density",
-                ToggleGroup.Developer,
-                "density_medium",
-                reason =
-                    "Steps are relative to the physical density, read first with wm density (M3)",
+            ToggleDef(
+                id = "display-density",
+                title = "Display density",
+                group = ToggleGroup.Developer,
+                icon = "density_medium",
                 states =
                     listOf(
                         ToggleState("default", "Default"),
                         ToggleState("smaller", "Smaller"),
                         ToggleState("larger", "Larger"),
                     ),
+                read = Probe.Command(DensitySteps.probe, DensitySteps::state, AccessLevel.Shell),
+                write = Write.Derived(DensitySteps.probe, DensitySteps::commands),
             ),
             ToggleDef(
                 id = "hidden-api",
@@ -747,6 +790,46 @@ object Toggles {
                 "verified_user",
                 SettingScope.Global,
                 "verifier_verify_adb_installs",
+                unset = "on",
+            ),
+            setting(
+                "package-verifier",
+                "Package verifier",
+                ToggleGroup.Developer,
+                "policy",
+                SettingScope.Global,
+                "package_verifier_enable",
+                unset = "on",
+            ),
+            ToggleDef(
+                id = "selinux",
+                title = "SELinux",
+                group = ToggleGroup.Developer,
+                icon = "security",
+                states =
+                    listOf(
+                        ToggleState("enforcing", "Enforcing"),
+                        ToggleState("permissive", "Permissive"),
+                    ),
+                read =
+                    Probe.Command(
+                        cmd("getenforce"),
+                        { out ->
+                            when (Parse.lines(out).firstOrNull()?.trim()) {
+                                "Enforcing" -> "enforcing"
+                                "Permissive" -> "permissive"
+                                else -> null
+                            }
+                        },
+                    ),
+                write =
+                    Write.Commands(
+                        mapOf(
+                            "enforcing" to listOf(cmd("setenforce", "1")),
+                            "permissive" to listOf(cmd("setenforce", "0")),
+                        ),
+                        level = AccessLevel.Root,
+                    ),
             ),
         )
 

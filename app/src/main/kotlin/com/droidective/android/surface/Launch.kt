@@ -15,6 +15,8 @@ object Launch {
     const val EXTRA_DESTINATION = "com.droidective.android.extra.DESTINATION"
     const val DESTINATION_SETUP = "setup"
     const val DESTINATION_TILES = "tiles"
+    const val DESTINATION_TOOL = "tool"
+    const val EXTRA_TOOL = "com.droidective.android.extra.TOOL"
 
     private val grantFlags =
         Intent.FLAG_GRANT_READ_URI_PERMISSION or
@@ -46,6 +48,10 @@ object Launch {
             is Target.Setup ->
                 Intent(context, MainActivity::class.java)
                     .putExtra(EXTRA_DESTINATION, DESTINATION_SETUP)
+            is Target.Tool ->
+                Intent(context, MainActivity::class.java)
+                    .putExtra(EXTRA_DESTINATION, DESTINATION_TOOL)
+                    .putExtra(EXTRA_TOOL, target.featureId)
         }?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     /**

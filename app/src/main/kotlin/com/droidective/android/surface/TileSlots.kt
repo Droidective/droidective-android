@@ -6,24 +6,32 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.os.SystemClock
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import com.droidective.android.MainActivity
+import com.droidective.android.R
+import com.droidective.android.droidective
 import com.droidective.android.ui.Symbols
+import com.droidective.core.device.Rate
+import com.droidective.core.device.RateMeter
 import com.droidective.core.layout.Cell
 import com.droidective.core.layout.CellIcon
 import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
 import com.droidective.core.layout.LayoutKind
 import com.droidective.core.layout.Tap
+import com.droidective.core.layout.Target
 import com.droidective.core.store.JsonFileStore
 import com.droidective.core.toggles.Outcome
 import com.droidective.core.toggles.Toggles
+import com.droidective.platform.TrafficCounters
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -112,6 +120,15 @@ abstract class ItemTileService : TileService() {
                         Problems.report(this@ItemTileService, toggle, outcome)
                     draw()
                 }
+                is Tap.RunCommand -> {
+                    val command = droidective.commands.get(tap.commandId) ?: return@launch
+                    Problems.reportCommand(
+                        this@ItemTileService,
+                        command,
+                        CommandTaps.run(this@ItemTileService, command),
+                    )
+                    draw()
+                }
                 is Tap.Open -> Launch.intentFor(this@ItemTileService, tap.target)?.let(::open)
             }
         }
@@ -150,24 +167,24 @@ abstract class ItemTileService : TileService() {
         Intent(this, MainActivity::class.java)
             .putExtra(Launch.EXTRA_DESTINATION, Launch.DESTINATION_TILES)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+}
 
-    /** Android 14 removed the Intent overload of startActivityAndCollapse. */
-    // Before Android 14 the Intent overload is the only one there is.
-    @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")
-    private fun open(intent: Intent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startActivityAndCollapse(
-                PendingIntent.getActivity(
-                    this,
-                    0,
-                    intent,
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                )
+/** Opens [intent] and collapses Quick Settings. Android 14 removed the Intent overload. */
+// Before Android 14 the Intent overload is the only one there is.
+@android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")
+internal fun TileService.open(intent: Intent) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        startActivityAndCollapse(
+            PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
-        } else {
-            @Suppress("DEPRECATION") // The only overload before Android 14.
-            startActivityAndCollapse(intent)
-        }
+        )
+    } else {
+        @Suppress("DEPRECATION") // The only overload before Android 14.
+        startActivityAndCollapse(intent)
     }
 }
 
@@ -212,3 +229,57 @@ class AnimationScaleTile : FixedTileService("animation-scale")
 class DemoModeTile : FixedTileService("demo-mode")
 
 class WirelessDebuggingTile : FixedTileService("wireless-debugging")
+
+/** Live network speed while Quick Settings is open; a tap opens the Network Speed tool. */
+class NetworkSpeedTile : TileService() {
+    private var scope: CoroutineScope? = null
+
+    override fun onStartListening() {
+        super.onStartListening()
+        val listening = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        scope = listening
+        listening.launch {
+            val meter = RateMeter()
+            while (true) {
+                val total = TrafficCounters.total()
+                val rate = total?.let { (down, up) ->
+                    meter.sample(down, up, SystemClock.elapsedRealtime())
+                }
+                draw(rate, reported = total != null)
+                delay(1_000)
+            }
+        }
+    }
+
+    override fun onStopListening() {
+        scope?.cancel()
+        scope = null
+        super.onStopListening()
+    }
+
+    override fun onClick() {
+        super.onClick()
+        Launch.intentFor(this, Target.Tool("network-speed"))?.let(::open)
+    }
+
+    private fun draw(rate: Rate?, reported: Boolean) {
+        val tile = qsTile ?: return
+        tile.state = Tile.STATE_ACTIVE
+        tile.icon = Icon.createWithResource(this, Symbols.byName.getValue("speed").outlined)
+        when {
+            !reported -> {
+                tile.label = getString(R.string.tile_network_speed)
+                tile.subtitle = "Not reported"
+            }
+            rate == null -> {
+                tile.label = getString(R.string.tile_network_speed)
+                tile.subtitle = "Measuring…"
+            }
+            else -> {
+                tile.label = "↓ ${RateMeter.format(rate.downPerSecond)}"
+                tile.subtitle = "↑ ${RateMeter.format(rate.upPerSecond)}"
+            }
+        }
+        tile.updateTile()
+    }
+}

@@ -37,6 +37,15 @@ class LayoutRepository(private val root: File) {
 
     @Synchronized fun save(layout: Layout) = store(layout.id).save(layout)
 
+    /** Takes every cell that runs [commandId] out of every layout, once the command is deleted. */
+    @Synchronized
+    fun dropCommand(commandId: String, now: Long) {
+        all().forEach { layout ->
+            val kept = layout.items.filterNot { it is Item.Command && it.commandId == commandId }
+            if (kept.size != layout.items.size) save(layout.copy(items = kept, editedAt = now))
+        }
+    }
+
     @Synchronized
     fun delete(id: String) {
         store(id).delete()

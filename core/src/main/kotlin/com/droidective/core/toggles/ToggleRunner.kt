@@ -56,6 +56,9 @@ sealed interface Outcome {
 
     data class NeedsSpecialAccess(val access: SpecialAccess) : Outcome
 
+    /** The write needs a value the person hasn't set yet, such as the proxy's address. */
+    data class NeedsValue(val param: Param) : Outcome
+
     /** Android accepted the request but the read-back shows [actual] instead. */
     data class DidNotStick(val wanted: String, val actual: String?) : Outcome
 
@@ -74,6 +77,8 @@ class ToggleRunner(
     /** The privileged shell, when Shizuku or root is available. */
     private val shell: () -> Shell?,
     private val access: () -> Access,
+    /** Values a person set for parameterised toggles, such as [Param.Proxy]. */
+    private val params: (Param) -> String? = { null },
 ) {
     /** The toggle's current state id, or null when it can't be read. */
     suspend fun read(toggle: ToggleDef): String? =
@@ -106,7 +111,8 @@ class ToggleRunner(
         val written =
             when (val write = toggle.write) {
                 is Write.Settings -> writeSettings(write, state)
-                is Write.Commands -> runCommands(write.commands.getValue(state))
+                is Write.Commands -> runFilled(write.commands.getValue(state))
+                is Write.Derived -> runDerived(write, state)
                 is Write.Api ->
                     platform.write(write.api, state).takeUnless { it is Outcome.Applied }
                 is Write.Pending ->
@@ -134,11 +140,41 @@ class ToggleRunner(
 
     /** @return null when every key was written, or the outcome that stopped it. */
     private suspend fun writeSettings(write: Write.Settings, state: String): Outcome? {
-        for ((key, value) in write.values.getValue(state)) {
+        for ((key, template) in write.values.getValue(state)) {
+            val value =
+                when (val filled = Placeholders.fill(template, params, quote = false)) {
+                    is Placeholders.Result.Filled -> filled.text
+                    is Placeholders.Result.Missing -> return Outcome.NeedsValue(filled.param)
+                }
             val outcome = writeSetting(write.scope, key, value)
             if (outcome != null) return outcome
         }
         return null
+    }
+
+    /** Fills `{name}` parameters, quoted, then runs the lines. */
+    private suspend fun runFilled(templates: List<ShellCommand>): Outcome? {
+        val commands = templates.map { template ->
+            when (val filled = Placeholders.fill(template.line, params, quote = true)) {
+                is Placeholders.Result.Filled -> ShellCommand(filled.text)
+                is Placeholders.Result.Missing -> return Outcome.NeedsValue(filled.param)
+            }
+        }
+        return runCommands(commands)
+    }
+
+    private suspend fun runDerived(write: Write.Derived, state: String): Outcome? {
+        val runner = shell() ?: return Outcome.NeedsLevel(write.level)
+        val probe =
+            try {
+                runner.run(write.probe)
+            } catch (e: ShellUnavailableException) {
+                return Outcome.Failed(e.message ?: "The shell stopped responding")
+            }
+        val commands =
+            write.derive(probe.stdout, state)
+                ?: return Outcome.Failed("`${write.probe}` didn’t say enough to work from")
+        return runCommands(commands)
     }
 
     /** @return null when the write went through, or the outcome that stopped it. */

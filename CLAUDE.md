@@ -61,6 +61,9 @@ with no stand-in, an unexpected Pending toggle, an icon with no drawable.
 - **Quote every value a person supplies with `shellQuote()`.** Commands run through `sh -c`; the
   quote is the security boundary, not validation.
 - **Split command output with `Parse.lines`**, never `"\n"`: OEM tools and adb emit CRLF.
+- **Android's regex engine is ICU, not the JVM's.** Escape every brace that isn't a quantifier and
+  every `]` outside a set; JVM tests accept a bare `}` that crashes on a phone.
+  `RegexPortabilityTest` holds every `Regex` literal to that rule.
 - **Read back after every write.** `ToggleRunner.apply` reports `DidNotStick` when Android ignored it.
 - **No WebView and no downloaded code anywhere in the app.** Remote v2 will run inside this app.
 - **Exported components are an allowlist** (`ManifestTest`). Adding one means adding it there.
@@ -68,6 +71,9 @@ with no stand-in, an unexpected Pending toggle, an icon with no drawable.
   Play listing for now. If one comes: add a `play` flavor that leaves out Remote and FCM, keep
   the same package, signing key and version codes so either build updates the other, and never
   submit Remote to Play (its Malware policy names backdoors; a strike can cost the account).
+  That flavor also drops `QUERY_ALL_PACKAGES` (Play allows it only for a few app types): its
+  Apps tool lists packages through the shell, and the picker, `RootProbe` and the Shizuku check
+  go back to `<queries>` entries.
 - Shizuku starts `ShellUserService` by class name in another process; `platform/consumer-rules.pro`
   keeps it through R8. Bump `SERVICE_VERSION` in `Shells.kt` when that class changes.
 - Glance adds a `glance-action:` data URI to every activity action, which stops an implicit

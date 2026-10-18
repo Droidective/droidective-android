@@ -42,6 +42,8 @@ class ManifestTest {
             "com.droidective.android.automation.AutomationSystemReceiver",
             // Run from the Mac: WRITE_SECURE_SETTINGS, and a shell check in code.
             "com.droidective.android.RunAutomation",
+            // Bluetooth connect and disconnect, which only the system sends.
+            "com.droidective.android.automation.BluetoothSignalReceiver",
             // Guarded by INTERACT_ACROSS_USERS_FULL, which only the system holds.
             "rikka.shizuku.ShizukuProvider",
         ) + tileServices

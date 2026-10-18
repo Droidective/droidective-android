@@ -33,15 +33,19 @@ internal sealed interface EditorDialog {
 
     data class Percent(val below: Boolean) : EditorDialog
 
-    data object WifiName : EditorDialog
-
     data object AppOpenPick : EditorDialog
 
     data object ToggleIsPick : EditorDialog
 
-    data object WindowStart : EditorDialog
+    data object TriggerKinds : EditorDialog
 
-    data class WindowEnd(val start: Int) : EditorDialog
+    data class BluetoothPick(val place: Place) : EditorDialog
+
+    data class WifiName(val place: Place) : EditorDialog
+
+    data class WindowStart(val place: Place) : EditorDialog
+
+    data class WindowEnd(val place: Place, val start: Int) : EditorDialog
 
     data object ActionKinds : EditorDialog
 
@@ -123,13 +127,15 @@ internal fun EditorDialogs(
         is EditorDialog.ButtonLink,
         is EditorDialog.ButtonAutomation,
         is EditorDialog.ButtonLabel -> ButtonDialogs(dialog, draft, onChange, onDialog)
+        EditorDialog.TriggerKinds,
+        is EditorDialog.BluetoothPick,
+        is EditorDialog.WifiName,
+        is EditorDialog.WindowStart,
+        is EditorDialog.WindowEnd -> StateDialogs(dialog, draft, onChange, onDialog)
         EditorDialog.ConditionKinds,
         is EditorDialog.Percent,
-        EditorDialog.WifiName,
         EditorDialog.AppOpenPick,
-        EditorDialog.ToggleIsPick,
-        EditorDialog.WindowStart,
-        is EditorDialog.WindowEnd -> ConditionDialogs(dialog, onDialog, ::add)
+        EditorDialog.ToggleIsPick -> ConditionDialogs(dialog, onDialog, ::add)
         else -> ActionDialogs(dialog, draft, onDialog, ::add)
     }
 }
@@ -163,10 +169,6 @@ private fun ConditionDialogs(
                     )
                 },
             )
-        EditorDialog.WifiName ->
-            TextDialog("On the Wi-Fi network", "Network name", onDismiss = close) {
-                add(Condition(State.OnWifi(it)))
-            }
         EditorDialog.AppOpenPick ->
             AppChooser("While this app is open", onDismiss = close) {
                 add(Condition(State.AppOpen(it.packageName)))
@@ -178,13 +180,6 @@ private fun ConditionDialogs(
                 onPick = { id, state -> add(Condition(State.ToggleIs(id, state))) },
                 onDismiss = close,
             )
-        EditorDialog.WindowStart ->
-            TimeDialog("From", 22 * 60, onDismiss = close) { onDialog(EditorDialog.WindowEnd(it)) }
-        is EditorDialog.WindowEnd ->
-            TimeDialog("Until", 7 * 60, onDismiss = close) { end ->
-                if (end != dialog.start) add(Condition(State.TimeBetween(dialog.start, end)))
-                else close()
-            }
         else -> Unit
     }
 }
@@ -203,10 +198,13 @@ private val conditionKinds: List<Pair<String, ConditionPick>> =
         "Headphones plugged in" to ConditionPick(Condition(State.Headphones)),
         "On Wi-Fi" to ConditionPick(Condition(State.OnWifi())),
         "Not on Wi-Fi" to ConditionPick(Condition(State.OnWifi(), negate = true)),
-        "On a Wi-Fi network… (Shell)" to ConditionPick(null, EditorDialog.WifiName),
+        "On a Wi-Fi network… (Shell)" to
+            ConditionPick(null, EditorDialog.WifiName(Place.Condition)),
+        "A Bluetooth device is connected…" to
+            ConditionPick(null, EditorDialog.BluetoothPick(Place.Condition)),
         "An app is open… (Shell)" to ConditionPick(null, EditorDialog.AppOpenPick),
         "A toggle is…" to ConditionPick(null, EditorDialog.ToggleIsPick),
-        "Between two times…" to ConditionPick(null, EditorDialog.WindowStart),
+        "Between two times…" to ConditionPick(null, EditorDialog.WindowStart(Place.Condition)),
         "Shell is available" to ConditionPick(Condition(State.ShellAvailable)),
         "Shell isn’t available" to ConditionPick(Condition(State.ShellAvailable, negate = true)),
     )

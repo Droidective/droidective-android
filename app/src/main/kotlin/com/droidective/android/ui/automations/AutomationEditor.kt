@@ -14,9 +14,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -160,20 +157,6 @@ fun AutomationEditor(original: Automation?, tool: ToolContext) {
     }
 }
 
-/** The triggers this version can deliver; the rest arrive with their listeners. */
-private enum class TriggerKind(val label: String) {
-    Manual("I run it"),
-    Schedule("Schedule"),
-    Restart("Restart"),
-}
-
-private fun kindOf(trigger: Trigger): TriggerKind =
-    when ((trigger as? Trigger.On)?.event) {
-        is Event.Schedule -> TriggerKind.Schedule
-        Event.Restarted -> TriggerKind.Restart
-        else -> TriggerKind.Manual
-    }
-
 @Composable
 private fun TriggerSection(
     draft: Automation,
@@ -181,28 +164,15 @@ private fun TriggerSection(
     onDialog: (EditorDialog) -> Unit,
 ) {
     val context = LocalContext.current
-    val kind = kindOf(draft.trigger)
     ToolSection("When") {
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            TriggerKind.entries.forEachIndexed { index, option ->
-                SegmentedButton(
-                    selected = option == kind,
-                    onClick = {
-                        val event =
-                            when (option) {
-                                TriggerKind.Manual -> Event.Manual
-                                TriggerKind.Schedule -> Event.Schedule(23 * 60 + 30)
-                                TriggerKind.Restart -> Event.Restarted
-                            }
-                        if (option != kind) onChange(draft.copy(trigger = Trigger.On(event)))
-                    },
-                    shape = SegmentedButtonDefaults.itemShape(index, TriggerKind.entries.size),
-                ) {
-                    Text(option.label, maxLines = 1)
-                }
-            }
-        }
         Text(draft.trigger.describe(), modifier = Modifier.padding(horizontal = 4.dp))
+        TextButton(onClick = { onDialog(EditorDialog.TriggerKinds) }) { Text("Change") }
+        if (draft.isWhile) {
+            ToolNote(
+                "It sets its toggles while that holds, and puts each one back when it ends, " +
+                    "unless you changed it yourself in between."
+            )
+        }
         val schedule = (draft.trigger as? Trigger.On)?.event as? Event.Schedule
         if (schedule != null) {
             OutlinedButton(onClick = { onDialog(EditorDialog.ScheduleTime) }) {
@@ -227,7 +197,7 @@ private fun TriggerSection(
                 }
             }
         }
-        if (kind == TriggerKind.Manual) {
+        if ((draft.trigger as? Trigger.On)?.event == Event.Manual) {
             ToolNote(
                 "Run it from its card, a home-screen shortcut, or the Mac: " +
                     "adb shell am broadcast -n com.droidective.android/.RunAutomation " +

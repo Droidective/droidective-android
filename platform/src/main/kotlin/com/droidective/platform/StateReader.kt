@@ -32,8 +32,10 @@ class StateReader(
     suspend fun holds(state: State): Boolean? =
         when (state) {
             is State.OnWifi -> onWifi(state.network)
-            // The connection broadcasts arrive with the Bluetooth triggers; until then, unknown.
-            is State.BluetoothConnected -> null
+            is State.BluetoothConnected ->
+                BluetoothAudio.connectedNames(context)?.let { names ->
+                    if (state.device == null) names.isNotEmpty() else state.device in names
+                }
             is State.AppOpen ->
                 inShell(DUMPSYS_ACTIVITIES)?.let(Parse::resumedPackage)?.let {
                     it == state.packageName

@@ -182,12 +182,16 @@ sealed interface State {
 
     fun describe(holds: Boolean): String
 
-    /** On a Wi-Fi network: [network] by name, or any network when null. */
+    /**
+     * On a Wi-Fi network: [network] by name, or any network when null. As a trigger it needs the
+     * automation service: Android's PendingIntent network callback says "joined" once and never
+     * "left" (see docs/spikes.md), so only a listener that's running sees both.
+     */
     @Serializable
     @SerialName("wifi")
     data class OnWifi(val network: String? = null) : State {
         override val wakes: Wake
-            get() = Wake.Android
+            get() = Wake.Service
 
         override val level
             get() = if (network == null) AccessLevel.App else AccessLevel.Shell

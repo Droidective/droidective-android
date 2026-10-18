@@ -110,6 +110,19 @@
             android:name=".automation.AutomationAlarmReceiver"
             android:exported="false" />
         <receiver
+            android:name=".automation.StateSignalReceiver"
+            android:exported="false" />
+        <!-- A Bluetooth device connecting or disconnecting. Protected broadcasts from the system;
+             the receiver only re-reads which devices are connected. -->
+        <receiver
+            android:name=".automation.BluetoothSignalReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
+        <receiver
             android:name=".automation.AutomationButtonReceiver"
             android:exported="false" />
 

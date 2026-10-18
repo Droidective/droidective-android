@@ -86,6 +86,11 @@ runs actions.
   WRITE_SECURE_SETTINGS and `FLAG_RECEIVER_FROM_SHELL`, which Android strips from anyone but the
   shell and root (Remote v2's enrollment guard). Alarms reschedule on save, on every app start
   (a force stop clears them), at boot, after an update and when the clock changes.
+- **`StateSignals` covers the states Android wakes the app for**: Bluetooth (ACL broadcasts, then
+  the audio profiles say who's connected, re-read 8 s later because the profile lags the link)
+  and time windows (an alarm at the next edge). Each signal re-reads every watched state and
+  keeps the readings in `automation-watch.json`. Wi-Fi triggers need the automation service: a
+  PendingIntent network callback fires once on joining and never on leaving (spike 7).
 - **Emulators are shared with other agents.** `adb tcpip`/`adb root` restart adbd and kill
   Shizuku's server; a run that says "needs Shell" may just be that.
 

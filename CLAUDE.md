@@ -56,6 +56,26 @@ Facts that decided levels (AOSP 17 source, not tested on every OEM):
 The registry tests fail on: duplicate ids, a write that doesn't cover every state, a Shell toggle
 with no stand-in, an unexpected Pending toggle, an icon with no drawable.
 
+## Automations
+
+The model and every rule are pure, in `core/…/automations/`; the app only delivers signals and
+runs actions.
+
+- **A `State` is both a trigger and a condition.** `Trigger.Starts`/`Ends`/`While` take a state,
+  `Trigger.On` an `Event`; Only if is a `Condition(state, negate)`. A state says what wakes the app
+  (`wakes`, null for condition-only ones like `ShellAvailable`) and how long a change has to hold
+  (`settleMillis`). Adding a kind means adding it to the exhaustive lists in
+  `AutomationRulesTest`.
+- **`AutomationRules.problems` is the one validator.** The editor and import both use it: a While
+  only sets toggles it can read back, nothing triggers or runs itself.
+- **`Holds` is how a While puts things back.** A stack per toggle: the newest holder is in force,
+  the state from before the first comes back when the last ends, and a hand change is never
+  overwritten. It's persisted, because a While can outlive the process.
+- **`StateWatch` and `Matcher` decide what fires.** A first reading starts a While that already
+  holds but is never a Starts or an Ends. `Cause` stops a chain after five and never repeats one.
+- **Imports arrive switched off**, with clashing ids renamed and references rewritten, and
+  `Review` spells out every shell line an automation can run before someone turns it on.
+
 ## Conventions
 
 - **Quote every value a person supplies with `shellQuote()`.** Commands run through `sh -c`; the

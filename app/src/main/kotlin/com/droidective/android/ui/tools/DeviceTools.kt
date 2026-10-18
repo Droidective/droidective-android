@@ -23,6 +23,7 @@ import com.droidective.core.device.RootVerdict
 import com.droidective.platform.DeviceFacts
 import com.droidective.platform.FactGroup
 import com.droidective.platform.RootProbe
+import com.droidective.platform.RootUse
 import com.droidective.platform.asText
 
 @Composable
@@ -63,6 +64,7 @@ fun RootStatusTool(tool: ToolContext) {
     val context = LocalContext.current
     val app = context.droidective
     val access by app.access.access.collectAsStateWithLifecycle()
+    val root by app.access.root.collectAsStateWithLifecycle()
     var evidence by remember { mutableStateOf<RootEvidence?>(null) }
     LaunchedEffect(Unit) {
         app.access.settled()
@@ -94,7 +96,8 @@ fun RootStatusTool(tool: ToolContext) {
                 when {
                     access.shell?.isRoot == true -> "Yes, through ${access.shell?.title}"
                     verdict != RootVerdict.Rooted -> "No"
-                    !app.access.rootAllowed -> "Not yet: turn on Use root in Setup"
+                    root == RootUse.Off -> "Not yet: turn on Use root in Setup"
+                    root == RootUse.Refused -> "No: su refused it"
                     else -> "Not yet: allow Droidective in your root manager"
                 },
             )

@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import rikka.shizuku.Shizuku
 
@@ -33,12 +35,30 @@ enum class ShizukuStatus {
  * has allowed it and su grants uid 0; Shizuku is next. While either is up, the app grants itself
  * the Granted level so those toggles keep working after a restart.
  */
+/** The person's choice to use root, and what su said about it. */
+enum class RootUse {
+    Off,
+    Asking,
+    Granted,
+    Refused,
+}
+
 class AccessMonitor(private val context: Context, private val scope: CoroutineScope) {
     private val shizuku = ShizukuShell(context.packageName)
-    private val root = RootShell()
+    private val rootShell = RootShell()
     private val prefs = context.getSharedPreferences("access", Context.MODE_PRIVATE)
     private val state = MutableStateFlow(Access.Nothing)
     private val firstRefresh = CompletableDeferred<Unit>()
+    private val refreshing = Mutex()
+
+    /**
+     * su's answer in this process. Asking can show the root manager's prompt, so it's asked once.
+     */
+    @Volatile private var rootAnswer: Boolean? = null
+    private val rootUse = MutableStateFlow(storedRootUse())
+
+    /** Where the person's choice to use root stands, for Setup to show. */
+    val root: StateFlow<RootUse> = rootUse.asStateFlow()
 
     val access: StateFlow<Access> = state.asStateFlow()
 
@@ -51,11 +71,19 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
         return state.value
     }
 
-    /** Whether the user chose to use root. Probing su before that would show a root prompt. */
+    /**
+     * Whether the user chose to use root. Probing su before that would show a root prompt. Turning
+     * it on asks su again, even after a refusal.
+     */
     var rootAllowed: Boolean
         get() = prefs.getBoolean(KEY_ROOT_ALLOWED, false)
         set(value) {
-            prefs.edit { putBoolean(KEY_ROOT_ALLOWED, value) }
+            prefs.edit {
+                putBoolean(KEY_ROOT_ALLOWED, value)
+                remove(KEY_ROOT_REFUSED)
+            }
+            rootAnswer = null
+            rootUse.value = if (value) RootUse.Asking else RootUse.Off
             scope.launch { refresh() }
         }
 
@@ -75,7 +103,7 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
     /** The privileged shell for the current access, or null at App and Granted level. */
     fun shell(): Shell? =
         when (state.value.shell) {
-            ShellProvider.Su -> root
+            ShellProvider.Su -> rootShell
             ShellProvider.Shizuku,
             ShellProvider.ShizukuRoot -> shizuku
             null -> null
@@ -94,10 +122,11 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
         if (Shizuku.pingBinder()) Shizuku.requestPermission(SHIZUKU_REQUEST_CODE)
     }
 
-    suspend fun refresh() {
+    /** One refresh at a time, so two callers can't put two root prompts on screen at once. */
+    suspend fun refresh() = refreshing.withLock {
         val provider =
             when {
-                rootAllowed && RootShell.isGranted() -> ShellProvider.Su
+                useRoot() -> ShellProvider.Su
                 shizukuStatus() == ShizukuStatus.Ready -> shizuku.provider
                 else -> null
             }
@@ -106,8 +135,37 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
         firstRefresh.complete(Unit)
     }
 
+    /**
+     * Whether to run as root. su isn't asked again after it said no, until Use root is turned off
+     * and on: every resume refreshes access, and asking each time put a new prompt over the one
+     * just answered.
+     */
+    private suspend fun useRoot(): Boolean {
+        val stored = storedRootUse()
+        if (stored == RootUse.Off || stored == RootUse.Refused) {
+            rootUse.value = stored
+            return false
+        }
+        val granted =
+            rootAnswer
+                ?: run {
+                    rootUse.value = RootUse.Asking
+                    RootShell.isGranted().also { rootAnswer = it }
+                }
+        if (!granted) prefs.edit { putBoolean(KEY_ROOT_REFUSED, true) }
+        rootUse.value = if (granted) RootUse.Granted else RootUse.Refused
+        return granted
+    }
+
+    private fun storedRootUse(): RootUse =
+        when {
+            !rootAllowed -> RootUse.Off
+            prefs.getBoolean(KEY_ROOT_REFUSED, false) -> RootUse.Refused
+            else -> RootUse.Asking
+        }
+
     private suspend fun grantSelf(provider: ShellProvider): Boolean {
-        val shell = if (provider == ShellProvider.Su) root else shizuku
+        val shell = if (provider == ShellProvider.Su) rootShell else shizuku
         return try {
             Grants.commands(context.packageName).all { shell.run(it).succeeded } && hasGrants()
         } catch (_: ShellUnavailableException) {
@@ -131,6 +189,7 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
         const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
         const val SHIZUKU_REQUEST_CODE = 7001
         const val KEY_ROOT_ALLOWED = "root_allowed"
+        const val KEY_ROOT_REFUSED = "root_refused"
         const val SETTLE_TIMEOUT_MILLIS = 3_000L
     }
 }

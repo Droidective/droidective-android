@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.lifecycleScope
+import com.droidective.android.automation.AutomationService
 import com.droidective.android.surface.Launch
 import com.droidective.android.surface.Surfaces
 import com.droidective.android.ui.AppScreen
@@ -40,6 +41,8 @@ class MainActivity : ComponentActivity() {
             droidective.access.refresh()
             Surfaces.refresh(this@MainActivity)
         }
+        // Android may have refused to start it from the background; on screen, it can't.
+        AutomationService.sync(this)
     }
 
     private fun requestOf(intent: Intent?): Request? =

@@ -19,6 +19,7 @@ import com.droidective.core.automations.Clock
 import com.droidective.core.automations.Event
 import com.droidective.core.automations.Firing
 import com.droidective.core.automations.Matcher
+import com.droidective.core.automations.RecentWrites
 import com.droidective.core.automations.Trigger
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -75,7 +76,7 @@ data class RunRequest(
             )
         }
 
-        fun of(firing: Firing, cause: String) =
+        fun of(firing: Firing, cause: String, chain: Cause = Cause()) =
             RunRequest(
                 firing.automation.id,
                 when (firing) {
@@ -84,6 +85,7 @@ data class RunRequest(
                     is Firing.Finish -> Kind.Finish
                 },
                 cause,
+                chain,
             )
     }
 }
@@ -94,6 +96,9 @@ data class RunRequest(
  * schedules set.
  */
 object Automations {
+    /** The toggles runs just set, so a change they cause carries their chain. */
+    val recentWrites = RecentWrites()
+
     const val CAUSE_MANUAL = "Run from Droidective"
     const val CAUSE_SHELL = "Run from the Mac or adb"
     private const val ALARM_PREFS = "automation-alarms"
@@ -165,6 +170,7 @@ object Automations {
         prefs.edit { putStringSet(KEY_SCHEDULED, scheduled.toSet()) }
         // The states Android wakes the app for: their listeners, then one look at where they are.
         StateSignals.arm(context)
+        AutomationService.sync(context)
         val app = context.droidective
         app.scope.launch { StateSignals.check(app) }
     }

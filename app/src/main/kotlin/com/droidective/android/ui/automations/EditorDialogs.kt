@@ -22,7 +22,6 @@ import com.droidective.core.automations.isDestructive
 import com.droidective.core.commands.DeepLinkRepository
 import com.droidective.core.layout.Item
 import com.droidective.core.layout.LayoutKind
-import com.droidective.core.toggles.Probe
 import com.droidective.core.toggles.Toggles
 
 /** One step of adding something to the draft, as the dialog showing it. */
@@ -31,11 +30,13 @@ internal sealed interface EditorDialog {
 
     data object ConditionKinds : EditorDialog
 
-    data class Percent(val below: Boolean) : EditorDialog
+    data class Percent(val place: Place, val below: Boolean) : EditorDialog
 
-    data object AppOpenPick : EditorDialog
+    data class AppOpenPick(val place: Place) : EditorDialog
 
-    data object ToggleIsPick : EditorDialog
+    data class ToggleIsPick(val place: Place) : EditorDialog
+
+    data class WifiPick(val place: Place) : EditorDialog
 
     data object TriggerKinds : EditorDialog
 
@@ -128,59 +129,23 @@ internal fun EditorDialogs(
         is EditorDialog.ButtonAutomation,
         is EditorDialog.ButtonLabel -> ButtonDialogs(dialog, draft, onChange, onDialog)
         EditorDialog.TriggerKinds,
+        is EditorDialog.Percent,
+        is EditorDialog.AppOpenPick,
+        is EditorDialog.ToggleIsPick,
+        is EditorDialog.WifiPick,
         is EditorDialog.BluetoothPick,
         is EditorDialog.WifiName,
         is EditorDialog.WindowStart,
         is EditorDialog.WindowEnd -> StateDialogs(dialog, draft, onChange, onDialog)
-        EditorDialog.ConditionKinds,
-        is EditorDialog.Percent,
-        EditorDialog.AppOpenPick,
-        EditorDialog.ToggleIsPick -> ConditionDialogs(dialog, onDialog, ::add)
+        EditorDialog.ConditionKinds -> ConditionDialogs(onDialog, ::add)
         else -> ActionDialogs(dialog, draft, onDialog, ::add)
     }
 }
 
 @Composable
-private fun ConditionDialogs(
-    dialog: EditorDialog,
-    onDialog: (EditorDialog?) -> Unit,
-    add: (Condition) -> Unit,
-) {
-    val close = { onDialog(null) }
-    when (dialog) {
-        EditorDialog.ConditionKinds ->
-            ChoiceDialog(
-                "Only if",
-                conditionKinds,
-                onPick = { pick -> pick.condition?.let(add) ?: onDialog(pick.next) },
-                onDismiss = close,
-            )
-        is EditorDialog.Percent ->
-            NumberDialog(
-                if (dialog.below) "Battery below" else "Battery above",
-                "Percent",
-                1..99,
-                onDismiss = close,
-                onDone = { n ->
-                    add(
-                        Condition(
-                            if (dialog.below) State.BatteryBelow(n) else State.BatteryAbove(n)
-                        )
-                    )
-                },
-            )
-        EditorDialog.AppOpenPick ->
-            AppChooser("While this app is open", onDismiss = close) {
-                add(Condition(State.AppOpen(it.packageName)))
-            }
-        EditorDialog.ToggleIsPick ->
-            ToggleStateChooser(
-                "A toggle is",
-                Toggles.all.filter { it.isBuilt && !it.isAction && it.read != Probe.None },
-                onPick = { id, state -> add(Condition(State.ToggleIs(id, state))) },
-                onDismiss = close,
-            )
-        else -> Unit
+private fun ConditionDialogs(onDialog: (EditorDialog?) -> Unit, add: (Condition) -> Unit) {
+    ChoiceDialog("Only if", conditionKinds, onDismiss = { onDialog(null) }) { pick ->
+        pick.condition?.let(add) ?: onDialog(pick.next)
     }
 }
 
@@ -191,8 +156,10 @@ private val conditionKinds: List<Pair<String, ConditionPick>> =
     listOf(
         "Charging" to ConditionPick(Condition(State.Charging)),
         "Not charging" to ConditionPick(Condition(State.Charging, negate = true)),
-        "Battery below…" to ConditionPick(null, EditorDialog.Percent(below = true)),
-        "Battery above…" to ConditionPick(null, EditorDialog.Percent(below = false)),
+        "Battery below…" to
+            ConditionPick(null, EditorDialog.Percent(Place.Condition, below = true)),
+        "Battery above…" to
+            ConditionPick(null, EditorDialog.Percent(Place.Condition, below = false)),
         "The screen is on" to ConditionPick(Condition(State.ScreenOn)),
         "The screen is off" to ConditionPick(Condition(State.ScreenOn, negate = true)),
         "Headphones plugged in" to ConditionPick(Condition(State.Headphones)),
@@ -202,8 +169,8 @@ private val conditionKinds: List<Pair<String, ConditionPick>> =
             ConditionPick(null, EditorDialog.WifiName(Place.Condition)),
         "A Bluetooth device is connected…" to
             ConditionPick(null, EditorDialog.BluetoothPick(Place.Condition)),
-        "An app is open… (Shell)" to ConditionPick(null, EditorDialog.AppOpenPick),
-        "A toggle is…" to ConditionPick(null, EditorDialog.ToggleIsPick),
+        "An app is open…" to ConditionPick(null, EditorDialog.AppOpenPick(Place.Condition)),
+        "A toggle is…" to ConditionPick(null, EditorDialog.ToggleIsPick(Place.Condition)),
         "Between two times…" to ConditionPick(null, EditorDialog.WindowStart(Place.Condition)),
         "Shell is available" to ConditionPick(Condition(State.ShellAvailable)),
         "Shell isn’t available" to ConditionPick(Condition(State.ShellAvailable, negate = true)),

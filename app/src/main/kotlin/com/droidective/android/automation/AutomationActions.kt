@@ -33,7 +33,7 @@ internal class AutomationActions(private val context: Context) {
         val description = Review.describe(action, app.commands::get)
         return try {
             when (action) {
-                is Action.SetToggle -> setToggle(action, description)
+                is Action.SetToggle -> setToggle(action, description, chain.then(automation.id))
                 is Action.OpenApp,
                 is Action.OpenLink,
                 is Action.OpenShortcut,
@@ -59,10 +59,16 @@ internal class AutomationActions(private val context: Context) {
         }
     }
 
-    private suspend fun setToggle(action: Action.SetToggle, description: String): Step {
+    private suspend fun setToggle(
+        action: Action.SetToggle,
+        description: String,
+        chain: Cause,
+    ): Step {
         val toggle =
             Toggles.byId(action.toggleId)
                 ?: return Step(description, ok = false, "There’s no such toggle")
+        // Before writing: the service may see the change before this call returns.
+        Automations.recentWrites.record(toggle.id, chain, System.currentTimeMillis())
         val outcome = ToggleTaps.set(context, toggle, action.state, refresh = false)
         // The phone can't show a panel from the background; a notification asks for the tap.
         if (outcome !is Outcome.Applied) Problems.report(context, toggle, outcome)

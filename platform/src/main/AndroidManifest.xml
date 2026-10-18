@@ -29,6 +29,10 @@
     <!-- AdbPort browses mDNS for adbd. NsdManager won't start without INTERNET, and Android 17
          asks before an app browses the local network. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- "An app is open" without Shell: usage access, which the person turns on in Settings. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
     <!-- Automations' Bluetooth triggers ask the audio profiles who's connected. Nearby devices
          from Android 12; the plain Bluetooth permission before that. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />

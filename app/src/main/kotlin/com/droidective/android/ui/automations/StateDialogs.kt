@@ -18,6 +18,8 @@ import com.droidective.core.automations.Condition
 import com.droidective.core.automations.Event
 import com.droidective.core.automations.State
 import com.droidective.core.automations.Trigger
+import com.droidective.core.toggles.Probe
+import com.droidective.core.toggles.Toggles
 import com.droidective.platform.BluetoothAudio
 
 /** Where a chosen state goes: an Only if, or the trigger as a start, an end or a While. */
@@ -51,6 +53,28 @@ private val triggerKinds: List<Pair<String, TriggerPick>> =
         "While a Bluetooth device is connected…" to
             TriggerPick(null, EditorDialog.BluetoothPick(Place.While)),
         "While it’s between two times…" to TriggerPick(null, EditorDialog.WindowStart(Place.While)),
+        "When an app opens…" to TriggerPick(null, EditorDialog.AppOpenPick(Place.Starts)),
+        "When an app closes…" to TriggerPick(null, EditorDialog.AppOpenPick(Place.Ends)),
+        "While an app is open…" to TriggerPick(null, EditorDialog.AppOpenPick(Place.While)),
+        "When charging starts" to TriggerPick(Trigger.Starts(State.Charging)),
+        "When charging stops" to TriggerPick(Trigger.Ends(State.Charging)),
+        "While charging" to TriggerPick(Trigger.While(State.Charging)),
+        "When the screen turns on" to TriggerPick(Trigger.Starts(State.ScreenOn)),
+        "When the screen turns off" to TriggerPick(Trigger.Ends(State.ScreenOn)),
+        "When the phone is unlocked" to TriggerPick(Trigger.On(Event.Unlocked)),
+        "When the battery drops below…" to
+            TriggerPick(null, EditorDialog.Percent(Place.Starts, below = true)),
+        "While the battery is below…" to
+            TriggerPick(null, EditorDialog.Percent(Place.While, below = true)),
+        "When headphones are plugged in" to TriggerPick(Trigger.Starts(State.Headphones)),
+        "When headphones are unplugged" to TriggerPick(Trigger.Ends(State.Headphones)),
+        "While headphones are plugged in" to TriggerPick(Trigger.While(State.Headphones)),
+        "When a toggle changes to…" to TriggerPick(null, EditorDialog.ToggleIsPick(Place.Starts)),
+        "While a toggle is…" to TriggerPick(null, EditorDialog.ToggleIsPick(Place.While)),
+        "When the phone joins Wi-Fi…" to TriggerPick(null, EditorDialog.WifiPick(Place.Starts)),
+        "When the phone leaves Wi-Fi…" to TriggerPick(null, EditorDialog.WifiPick(Place.Ends)),
+        "While on Wi-Fi…" to TriggerPick(null, EditorDialog.WifiPick(Place.While)),
+        "When an app is installed or updated" to TriggerPick(Trigger.On(Event.AppInstalled())),
     )
 
 /** The trigger list, and the Bluetooth, Wi-Fi and time pickers a trigger or condition uses. */
@@ -78,6 +102,39 @@ internal fun StateDialogs(
             }
         is EditorDialog.BluetoothPick ->
             BluetoothPicker(onDismiss = close) { place(State.BluetoothConnected(it), dialog.place) }
+        is EditorDialog.Percent ->
+            NumberDialog(
+                if (dialog.below) "Battery below" else "Battery above",
+                "Percent",
+                1..99,
+                onDismiss = close,
+            ) { n ->
+                place(
+                    if (dialog.below) State.BatteryBelow(n) else State.BatteryAbove(n),
+                    dialog.place,
+                )
+            }
+        is EditorDialog.AppOpenPick ->
+            AppChooser("Which app", onDismiss = close) {
+                place(State.AppOpen(it.packageName), dialog.place)
+            }
+        is EditorDialog.ToggleIsPick ->
+            ToggleStateChooser(
+                "A toggle is",
+                Toggles.all.filter { it.isBuilt && !it.isAction && it.read != Probe.None },
+                onDismiss = close,
+            ) { id, state ->
+                place(State.ToggleIs(id, state), dialog.place)
+            }
+        is EditorDialog.WifiPick ->
+            ChoiceDialog(
+                "Which Wi-Fi",
+                listOf("Any Wi-Fi network" to false, "A network by name… (Shell)" to true),
+                onDismiss = close,
+            ) { byName ->
+                if (byName) onDialog(EditorDialog.WifiName(dialog.place))
+                else place(State.OnWifi(), dialog.place)
+            }
         is EditorDialog.WifiName ->
             TextDialog("Wi-Fi network", "Network name", onDismiss = close) {
                 place(State.OnWifi(it), dialog.place)

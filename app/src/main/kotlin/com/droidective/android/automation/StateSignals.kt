@@ -19,7 +19,6 @@ import com.droidective.core.automations.Matcher
 import com.droidective.core.automations.State
 import com.droidective.core.automations.StateChange
 import com.droidective.core.automations.StateWatch
-import com.droidective.core.automations.Wake
 import com.droidective.core.toggles.Toggles
 import com.droidective.platform.StateReader
 import java.time.LocalDateTime
@@ -44,11 +43,14 @@ internal object StateSignals {
 
     private val checking = Mutex()
 
-    /** Reads every watched state, and fires the automations their changes set off. */
-    suspend fun check(context: Context) = checking.withLock {
+    /**
+     * Reads every watched state, or just [only], and fires the automations their changes set off.
+     * Android's signals and the automation service's both come here.
+     */
+    suspend fun check(context: Context, only: Set<State>? = null) = checking.withLock {
         val app = context.droidective
         val automations = app.automations.all()
-        val watched = Matcher.watched(automations).filter { it.wakes == Wake.Android }.toSet()
+        val watched = Matcher.watched(automations)
         val watch = StateWatch(app.ledger.watch()).apply { retain(watched) }
         val reader =
             StateReader(
@@ -58,15 +60,16 @@ internal object StateSignals {
             )
         val now = System.currentTimeMillis()
         val changes = watch.due(now).toMutableList()
-        for (state in watched) {
+        for (state in only?.intersect(watched) ?: watched) {
             val holds = reader.holds(state) ?: continue
             watch.observe(state, holds, now)?.let(changes::add)
         }
         app.ledger.saveWatch(watch.snapshot())
         watch.nextDue()?.let { recheck(context, SETTLE_WORK, it - now) }
         for (change in changes) {
+            val chain = Automations.recentWrites.causeOf(change, now)
             Matcher.onChange(automations, change).forEach { firing ->
-                Automations.enqueue(context, RunRequest.of(firing, cause(firing, change)))
+                Automations.enqueue(context, RunRequest.of(firing, cause(firing, change), chain))
             }
         }
     }

@@ -50,6 +50,14 @@
         </activity>
 
         <activity
+            android:name=".widget.OpenActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay" />
+
+        <activity
             android:name=".folder.FolderActivity"
             android:excludeFromRecents="true"
             android:exported="false"

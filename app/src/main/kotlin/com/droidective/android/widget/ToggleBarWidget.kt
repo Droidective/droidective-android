@@ -232,7 +232,10 @@ private fun actionFor(context: Context, cell: Cell): Action? =
             actionRunCallback<RunToggleAction>(
                 actionParametersOf(RunToggleAction.toggleKey to tap.toggleId)
             )
-        is Tap.Open -> Launch.intentFor(context, tap.target)?.let { actionStartActivity(it) }
+        is Tap.Open ->
+            Launch.intentFor(context, tap.target)?.let {
+                actionStartActivity(OpenActivity.wrap(context, it))
+            }
     }
 
 /** The amber of the Shell level: this toggle is running on its stand-in. */

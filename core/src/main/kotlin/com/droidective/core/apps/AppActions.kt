@@ -23,6 +23,8 @@ object AppActions {
 
     fun isPackageName(text: String): Boolean = packageName.matches(text)
 
+    fun isPermissionName(text: String): Boolean = permissionName.matches(text)
+
     fun command(action: AppAction, pkg: String): ShellCommand {
         require(isPackageName(pkg)) { "\"$pkg\" isn’t a package name" }
         val quoted = shellQuote(pkg)

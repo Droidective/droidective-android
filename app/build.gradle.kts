@@ -18,14 +18,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // One app, two builds. They share the package, the signing key and the version codes, so
-    // either one installs over the other. Only `github` will carry Remote.
-    flavorDimensions += "channel"
-    productFlavors {
-        create("play") { dimension = "channel" }
-        create("github") { dimension = "channel" }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true

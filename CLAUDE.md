@@ -64,10 +64,18 @@ with no stand-in, an unexpected Pending toggle, an icon with no drawable.
 - **Read back after every write.** `ToggleRunner.apply` reports `DidNotStick` when Android ignored it.
 - **No WebView and no downloaded code anywhere in the app.** Remote v2 will run inside this app.
 - **Exported components are an allowlist** (`ManifestTest`). Adding one means adding it there.
-- **Two flavors, one package**: `play` and `github` share the package, key and version codes.
-  Only `github` may ever compile Remote or FCM. Never put Remote in the Play build.
+- **One build, distributed outside Play** (GitHub releases, and the Mac's adb install). There's no
+  Play listing for now. If one comes: add a `play` flavor that leaves out Remote and FCM, keep
+  the same package, signing key and version codes so either build updates the other, and never
+  submit Remote to Play (its Malware policy names backdoors; a strike can cost the account).
 - Shizuku starts `ShellUserService` by class name in another process; `platform/consumer-rules.pro`
   keeps it through R8. Bump `SERVICE_VERSION` in `Shells.kt` when that class changes.
+- Glance adds a `glance-action:` data URI to every activity action, which stops an implicit
+  intent (a Settings panel) resolving. Widget buttons that open implicit intents go through
+  `OpenActivity`; explicit ones go direct. RemoteViews and tiles don't have the problem.
+- Android 12+ won't let an app *read* a hidden settings key that isn't marked readable, even one
+  it may write: `SettingsStore.get` returns `Unreadable` and `ToggleRunner` reads it as the shell.
+- The Shizuku user service is a daemon, started once per boot; a cold widget tap only rebinds.
 - Test fakes (`FakeShell`, `FakeSettingsStore`, `FakePlatformToggles`, `FixtureShell`) live in
   `core/src/testFixtures`. `FixtureShell` replays real emulator output from `fixtures/`
   (`scripts/sync-fixtures.sh` copies it from the main repo at a pinned commit).
@@ -76,11 +84,11 @@ with no stand-in, an unexpected Pending toggle, an icon with no drawable.
 
 ```
 ./gradlew :core:test                   # fast, no Android
-./gradlew testPlayDebugUnitTest :platform:testDebugUnitTest
+./gradlew :app:testDebugUnitTest :platform:testDebugUnitTest
 ./gradlew ktfmtCheck                   # ktfmtFormat to fix
-./gradlew :app:lintPlayDebug :app:lintGithubDebug :platform:lintDebug
-./gradlew :app:assemblePlayDebug :app:assembleGithubDebug
-./gradlew :app:installGithubDebug      # onto the running emulator
+./gradlew :core:lint :platform:lintDebug :app:lintDebug
+./gradlew :app:assembleDebug
+./gradlew :app:installDebug            # onto the running emulator
 ```
 
 Warnings are errors everywhere: Kotlin `allWarningsAsErrors`, Android Lint `warningsAsErrors`.

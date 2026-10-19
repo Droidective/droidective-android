@@ -226,6 +226,15 @@ object Features {
                 AccessLevel.Shell,
             ),
             FeatureDef(
+                "file-explorer",
+                "File Explorer",
+                "The phone's folders, from Downloads to /proc, as the shell or root sees them",
+                listOf("files", "file explorer", "folders", "storage", "sdcard", "proc", "system"),
+                FeatureCategory.Device,
+                "folder",
+                AccessLevel.Shell,
+            ),
+            FeatureDef(
                 "sandbox-browser",
                 "Sandbox Browser",
                 "An app's private files, preferences and databases",

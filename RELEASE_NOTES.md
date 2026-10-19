@@ -3,6 +3,13 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.1.2
+
+- **Widgets work again.** In 0.1.0 and 0.1.1 a tap on a home-screen bar or a folder did nothing:
+  the release build had stripped what Android needs to run it. Update to use your bars.
+- **The app icon is Droidective's logo**, the same one as the Mac app, with a themed version for
+  launchers that tint icons.
+
 ## 0.1.1
 
 - The Tools, Widgets and Setup tabs no longer draw under the status bar. The Tools search field

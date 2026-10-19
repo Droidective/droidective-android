@@ -57,6 +57,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "meminfo" to { MemoryTool(it) },
         "sandbox-browser" to { SandboxTool(it) },
         "background-work" to { BackgroundWorkTool(it) },
+        "settings-editor" to { SettingsEditorTool(it) },
         "file-explorer" to { FileExplorerTool(it) },
         "locale" to { LanguageTool(it) },
         "monkey" to { MonkeyTool(it) },

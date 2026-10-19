@@ -1,0 +1,21 @@
+
+Exception occurred while executing 'put':
+java.lang.SecurityException: Permission denial for flag 'runtime_native_boot/droidective_probe'; allowlist permission granted, but must add flag to the allowlist
+	at com.android.providers.settings.SettingsProvider.enforceDeviceConfigWritePermission(SettingsProvider.java:2523)
+	at com.android.providers.settings.SettingsProvider.mutateConfigSetting(SettingsProvider.java:1336)
+	at com.android.providers.settings.SettingsProvider.insertConfigSetting(SettingsProvider.java:1198)
+	at com.android.providers.settings.SettingsProvider.call(SettingsProvider.java:467)
+	at android.content.ContentProvider.call(ContentProvider.java:2709)
+	at android.content.ContentProvider$Transport.call(ContentProvider.java:638)
+	at android.provider.Settings$NameValueCache.putStringForUser(Settings.java:3556)
+	at android.provider.Settings$Config.putString(Settings.java:21128)
+	at android.provider.SettingsConfigDataStore.setProperty(SettingsConfigDataStore.java:61)
+	at android.provider.DeviceConfig.setProperty(DeviceConfig.java:1443)
+	at com.android.providers.settings.DeviceConfigService$MyShellCommand.onCommand(DeviceConfigService.java:511)
+	at com.android.modules.utils.BasicShellCommandHandler.exec(BasicShellCommandHandler.java:97)
+	at android.os.ShellCommand.exec(ShellCommand.java:38)
+	at com.android.providers.settings.DeviceConfigService.onShellCommand(DeviceConfigService.java:101)
+	at android.os.Binder.shellCommand(Binder.java:1151)
+	at android.os.Binder.onTransact(Binder.java:953)
+	at android.os.Binder.execTransactInternal(Binder.java:1426)
+	at android.os.Binder.execTransact(Binder.java:1365)

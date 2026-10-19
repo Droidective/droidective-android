@@ -14,6 +14,19 @@ object Parse {
         return if (value.isEmpty() || value == "null") null else value
     }
 
+    private val javaException = Regex("""^(?:[\w$]+\.)*[\w$]*(?:Exception|Error): (.+)$""")
+
+    /**
+     * Why a command failed, in one line. `cmd`, `am` and `device_config` print a failure as
+     * "Exception occurred while executing" over a Java stack trace, so the exception's own message
+     * is the reason; anything else is the first line the command said.
+     */
+    fun failure(vararg outputs: String): String? {
+        val said = outputs.flatMap(::lines).map { it.trim() }.filter { it.isNotEmpty() }
+        return said.firstNotNullOfOrNull { javaException.find(it)?.groupValues?.get(1) }
+            ?: said.firstOrNull()
+    }
+
     private val propLine = Regex("""^\[([^\]]+)\]: \[(.*)\]$""")
 
     /** Plain `getprop` prints every property as `[key]: [value]`, one per line. */

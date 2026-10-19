@@ -20,7 +20,10 @@ never commit it (`.gitignore` already refuses `*.jks` and `*.keystore`).
      -keyalg RSA -keysize 4096 -validity 36500 -dname "CN=Droidective"
    ```
 
-2. Pin its certificate. The fingerprint is public, so it's committed:
+2. Pin its certificate. The fingerprint is public, so it's committed. Droidective for Mac pins the
+   same value (`PhoneAppReleases.signingCertificateSHA256` in ADBKit): its device menu installs and
+   updates this app from the latest release and refuses an APK signed by any other key. A new key
+   therefore needs a Mac release carrying the new pin before the first APK signed with it.
 
    ```sh
    keytool -list -v -keystore droidective-release.jks -alias droidective \

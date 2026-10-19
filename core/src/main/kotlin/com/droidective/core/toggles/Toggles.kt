@@ -104,7 +104,37 @@ object Toggles {
             fallback = fallback,
         )
 
-    /** A UI debug sysprop: set, then poke running apps so they redraw. */
+    /**
+     * Stay awake while charging. The value is a bitmask of chargers (AC 1, USB 2, wireless 4, dock
+     * 8), so any nonzero value is on: Developer options writes 15 from Android 13, and this writes
+     * 7, the three every phone has.
+     */
+    private fun stayAwake() =
+        ToggleDef(
+            id = "stay-awake",
+            title = "Stay awake while charging",
+            group = ToggleGroup.Developer,
+            icon = "power",
+            states = onOff,
+            read =
+                Probe.Setting(SettingScope.Global, "stay_on_while_plugged_in") { stored ->
+                    if (stored == null || Parse.sameSettingValue("0", stored)) "off" else "on"
+                },
+            write =
+                Write.Settings(
+                    SettingScope.Global,
+                    mapOf(
+                        "on" to mapOf("stay_on_while_plugged_in" to "7"),
+                        "off" to mapOf("stay_on_while_plugged_in" to "0"),
+                    ),
+                ),
+        )
+
+    /**
+     * A UI debug sysprop: set, then poke running apps so they redraw. [readLevel] is Shell for a
+     * property apps may not read, such as `persist.sys.*` (`system_prop`): read as the app it comes
+     * back empty, and the toggle would always say off.
+     */
     private fun sysprop(
         id: String,
         title: String,
@@ -112,6 +142,7 @@ object Toggles {
         key: String,
         on: String,
         off: String,
+        readLevel: AccessLevel = AccessLevel.App,
     ) =
         shellToggle(
             id = id,
@@ -122,6 +153,7 @@ object Toggles {
                 Probe.Command(
                     cmd("getprop", key),
                     { out -> if (Parse.prop(out) == on) "on" else "off" },
+                    readLevel,
                 ),
             on = listOf(cmd("setprop", key, on), syspropsPoke),
             off = listOf(cmd("setprop", key, off), syspropsPoke),
@@ -219,30 +251,33 @@ object Toggles {
     private val network =
         listOf(
             shellToggle(
-                "wifi",
-                "Wi-Fi",
-                ToggleGroup.Network,
-                "wifi",
-                read = Probe.Api(PlatformApi.WifiEnabled),
-                on = listOf(cmd("svc", "wifi", "enable")),
-                off = listOf(cmd("svc", "wifi", "disable")),
-                fallback = Fallback("android.settings.panel.action.WIFI", "Opens the Wi-Fi panel"),
-            ),
+                    "wifi",
+                    "Wi-Fi",
+                    ToggleGroup.Network,
+                    "wifi",
+                    read = Probe.Api(PlatformApi.WifiEnabled),
+                    on = listOf(cmd("svc", "wifi", "enable")),
+                    off = listOf(cmd("svc", "wifi", "disable")),
+                    fallback =
+                        Fallback("android.settings.panel.action.WIFI", "Opens the Wi-Fi panel"),
+                )
+                .copy(hardware = Hardware.Wifi),
             shellToggle(
-                "mobile-data",
-                "Mobile data",
-                ToggleGroup.Network,
-                "swap_vert",
-                read = Probe.Api(PlatformApi.MobileData),
-                on = listOf(cmd("svc", "data", "enable")),
-                off = listOf(cmd("svc", "data", "disable")),
-                fallback =
-                    Fallback(
-                        "android.settings.panel.action.INTERNET_CONNECTIVITY",
-                        "Opens the internet panel",
-                    ),
-            ),
-            preferredNetwork(),
+                    "mobile-data",
+                    "Mobile data",
+                    ToggleGroup.Network,
+                    "swap_vert",
+                    read = Probe.Api(PlatformApi.MobileData),
+                    on = listOf(cmd("svc", "data", "enable")),
+                    off = listOf(cmd("svc", "data", "disable")),
+                    fallback =
+                        Fallback(
+                            "android.settings.panel.action.INTERNET_CONNECTIVITY",
+                            "Opens the internet panel",
+                        ),
+                )
+                .copy(hardware = Hardware.Telephony),
+            preferredNetwork().copy(hardware = Hardware.Telephony),
             shellToggle(
                 "airplane-mode",
                 "Airplane mode",
@@ -258,34 +293,37 @@ object Toggles {
                     ),
             ),
             shellToggle(
-                "bluetooth",
-                "Bluetooth",
-                ToggleGroup.Network,
-                "bluetooth",
-                read = Probe.Api(PlatformApi.BluetoothEnabled),
-                on = listOf(cmd("svc", "bluetooth", "enable")),
-                off = listOf(cmd("svc", "bluetooth", "disable")),
-                fallback =
-                    Fallback("android.settings.BLUETOOTH_SETTINGS", "Opens Bluetooth settings"),
-            ),
+                    "bluetooth",
+                    "Bluetooth",
+                    ToggleGroup.Network,
+                    "bluetooth",
+                    read = Probe.Api(PlatformApi.BluetoothEnabled),
+                    on = listOf(cmd("svc", "bluetooth", "enable")),
+                    off = listOf(cmd("svc", "bluetooth", "disable")),
+                    fallback =
+                        Fallback("android.settings.BLUETOOTH_SETTINGS", "Opens Bluetooth settings"),
+                )
+                .copy(hardware = Hardware.Bluetooth),
             api(
-                "bluetooth-discoverable",
-                "Bluetooth discoverable",
-                ToggleGroup.Network,
-                "bluetooth_searching",
-                PlatformApi.BluetoothDiscoverable,
-                states = action("Make discoverable"),
-            ),
+                    "bluetooth-discoverable",
+                    "Bluetooth discoverable",
+                    ToggleGroup.Network,
+                    "bluetooth_searching",
+                    PlatformApi.BluetoothDiscoverable,
+                    states = action("Make discoverable"),
+                )
+                .copy(hardware = Hardware.Bluetooth),
             shellToggle(
-                "nfc",
-                "NFC",
-                ToggleGroup.Network,
-                "nfc",
-                read = Probe.Api(PlatformApi.NfcEnabled),
-                on = listOf(cmd("svc", "nfc", "enable")),
-                off = listOf(cmd("svc", "nfc", "disable")),
-                fallback = Fallback("android.settings.panel.action.NFC", "Opens the NFC panel"),
-            ),
+                    "nfc",
+                    "NFC",
+                    ToggleGroup.Network,
+                    "nfc",
+                    read = Probe.Api(PlatformApi.NfcEnabled),
+                    on = listOf(cmd("svc", "nfc", "enable")),
+                    off = listOf(cmd("svc", "nfc", "disable")),
+                    fallback = Fallback("android.settings.panel.action.NFC", "Opens the NFC panel"),
+                )
+                .copy(hardware = Hardware.Nfc),
             pending(
                 "hotspot",
                 "Wi-Fi hotspot",
@@ -543,8 +581,10 @@ object Toggles {
                     Probe.Setting(
                         SettingScope.Secure,
                         "accessibility_display_daltonizer_enabled",
-                        exact(mapOf("on" to "1", "off" to "0")),
-                    ),
+                    ) { stored ->
+                        if (stored == null) "off"
+                        else exact(mapOf("on" to "1", "off" to "0"))(stored)
+                    },
                 write =
                     Write.Settings(
                         SettingScope.Secure,
@@ -578,12 +618,13 @@ object Toggles {
     private val device =
         listOf(
             api(
-                "flashlight",
-                "Flashlight",
-                ToggleGroup.Device,
-                "flashlight_on",
-                PlatformApi.Flashlight,
-            ),
+                    "flashlight",
+                    "Flashlight",
+                    ToggleGroup.Device,
+                    "flashlight_on",
+                    PlatformApi.Flashlight,
+                )
+                .copy(hardware = Hardware.CameraFlash),
             setting(
                 "location",
                 "Location",
@@ -662,16 +703,7 @@ object Toggles {
                         "Opens Developer options",
                     ),
             ),
-            setting(
-                "stay-awake",
-                "Stay awake while charging",
-                ToggleGroup.Developer,
-                "power",
-                SettingScope.Global,
-                "stay_on_while_plugged_in",
-                unset = "off",
-                on = "7",
-            ),
+            stayAwake(),
             setting(
                 "show-touches",
                 "Show taps",
@@ -721,6 +753,7 @@ object Toggles {
                 "persist.sys.strictmode.visual",
                 "1",
                 "0",
+                readLevel = AccessLevel.Shell,
             ),
             setting(
                 "keep-activities",
@@ -846,6 +879,8 @@ object Toggles {
                         ToggleState("enforcing", "Enforcing"),
                         ToggleState("permissive", "Permissive"),
                     ),
+                // As the app, SELinux refuses the read on a real phone (an emulator allows it); the
+                // shell may read it.
                 read =
                     Probe.Command(
                         cmd("getenforce"),
@@ -856,6 +891,7 @@ object Toggles {
                                 else -> null
                             }
                         },
+                        AccessLevel.Shell,
                     ),
                 write =
                     Write.Commands(

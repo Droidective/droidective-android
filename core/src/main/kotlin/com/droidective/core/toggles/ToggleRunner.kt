@@ -183,7 +183,10 @@ class ToggleRunner(
             when (scope) {
                 SettingScope.Global,
                 SettingScope.Secure -> access().granted && settings.canWrite(scope)
-                SettingScope.SystemPublic -> true
+                // Modify system settings, or else the shell when there is one: someone with Shizuku
+                // or root shouldn't have to grant a special access the shell makes moot.
+                SettingScope.SystemPublic ->
+                    settings.canWrite(scope) || !access().allows(AccessLevel.Shell)
                 SettingScope.SystemPrivate -> false
             }
         if (viaApi) {

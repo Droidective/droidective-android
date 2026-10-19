@@ -39,6 +39,10 @@ Facts that decided levels (AOSP 17 source, not tested on every OEM):
   so the hotspot and Bluetooth tethering keep their stand-ins (spike 6).
 - A READ_LOGS grant still shows a consent prompt per read on Android 13+ and is refused in the
   background; logcat goes through the shell, which is exempt.
+- Apps can't read `persist.sys.*` (`system_prop`) or `getenforce` on real phones, though the
+  emulators allow it; a probe that needs them says `AccessLevel.Shell` (OnePlus, spike results).
+- OxygenOS 16 refuses `pm grant` and `appops set` from adb, so there the Granted level and usage
+  access come only from the app granting itself with root (`Grants`).
 - Ongoing notifications are dismissible on Android 14+, foreground service or not. Play accepts a
   foreground service only while it's needed, so the notification bar has no service behind it.
 

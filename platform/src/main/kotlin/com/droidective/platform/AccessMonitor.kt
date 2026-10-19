@@ -162,7 +162,9 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
                 (shizukuNow == ShizukuStatus.Ready && shizukuProvider == null)
         // With Shell, grant whatever's missing: a grant from an older Phone setup may lack the
         // crash-report permission even when the Granted level is there.
-        if (provider != null && !hasAllGrants()) grantSelf(provider)
+        if (provider != null && !(hasAllGrants() && ForegroundApp.usageAccess(context))) {
+            grantSelf(provider)
+        }
         val granted = hasGrants()
         state.value = Access(granted = granted, shell = provider)
         // A cold widget tap waits for access to settle; an attaching Shizuku settles on the
@@ -204,6 +206,7 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
         try {
             // Each grant on its own: one Android refuses mustn't stop the rest.
             Grants.commands(context.packageName, Build.VERSION.SDK_INT).forEach { shell.run(it) }
+            shell.run(Grants.usageAccessCommand(context.packageName))
         } catch (e: ShellUnavailableException) {
             Log.i(LOG_TAG, "Couldn't grant the app its permissions: ${e.message}")
         }

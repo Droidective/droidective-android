@@ -45,6 +45,28 @@ class RateMeter(private val maxGapMillis: Long = 5_000) {
     }
 }
 
+/** What the bootloader reports about itself, from the properties the shell user can read. */
+object Bootloader {
+    /**
+     * "Locked" or "Unlocked": Android Verified Boot's `ro.boot.vbmeta.device_state`, else the older
+     * `ro.boot.flash.locked`. Null when the phone reports neither, as an app without a shell sees
+     * it.
+     */
+    fun lock(props: Map<String, String>): String? {
+        val state = props["ro.boot.vbmeta.device_state"]?.trim()
+        val flash = props["ro.boot.flash.locked"]?.trim()
+        return when {
+            state == "locked" || (state.isNullOrEmpty() && flash == "1") -> "Locked"
+            state == "unlocked" || (state.isNullOrEmpty() && flash == "0") -> "Unlocked"
+            else -> null
+        }
+    }
+
+    /** The bootloader's version, or null for the "unknown" most phones put in `ro.bootloader`. */
+    fun version(reported: String?): String? =
+        reported?.trim()?.takeUnless { it.isEmpty() || it.equals("unknown", ignoreCase = true) }
+}
+
 /** What the phone shows about root, gathered by the app at App level. */
 data class RootEvidence(
     val suBinaries: List<String>,

@@ -144,7 +144,8 @@ class ToggleRunnerTest {
     }
 
     @Test
-    fun publicSystemSettingsNeedModifySystemSettings() = runTest {
+    fun publicSystemSettingsNeedModifySystemSettingsWithoutAShell() = runTest {
+        access = Access(granted = false, shell = null)
         assertEquals(
             Outcome.NeedsSpecialAccess(SpecialAccess.ModifySystemSettings),
             runner.apply(toggle("auto-rotate"), "on"),

@@ -2,10 +2,8 @@ package com.droidective.android.ui.tools
 
 import android.app.StatusBarManager
 import android.content.ComponentName
-import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
-import android.provider.Settings
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,7 +19,7 @@ import com.droidective.android.surface.ActivityLookup
 import com.droidective.android.surface.CurrentActivities
 import com.droidective.android.surface.CurrentActivityTile
 import com.droidective.android.ui.Symbols
-import com.droidective.android.ui.openSafely
+import com.droidective.android.ui.openUsageAccess
 
 /**
  * The Mac's Current Activity. From inside Droidective the activity in front is Droidective's own,
@@ -54,11 +52,7 @@ fun CurrentActivityTool(tool: ToolContext) {
                     ToolNote(
                         "Telling which screen you came from needs Usage access for Droidective."
                     )
-                    OutlinedButton(
-                        onClick = {
-                            context.openSafely(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                        }
-                    ) {
+                    OutlinedButton(onClick = { context.openUsageAccess() }) {
                         Text("Allow Usage access")
                     }
                 }

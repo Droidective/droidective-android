@@ -25,6 +25,26 @@ class ToggleRegistryTest {
     }
 
     @Test
+    fun aToggleForHardwareSomePhonesLackSaysSo() {
+        // A tablet with no modem or no NFC chip shouldn't list a switch for one.
+        val needs =
+            mapOf(
+                PlatformApi.WifiEnabled to Hardware.Wifi,
+                PlatformApi.MobileData to Hardware.Telephony,
+                PlatformApi.BluetoothEnabled to Hardware.Bluetooth,
+                PlatformApi.BluetoothDiscoverable to Hardware.Bluetooth,
+                PlatformApi.NfcEnabled to Hardware.Nfc,
+                PlatformApi.Flashlight to Hardware.CameraFlash,
+            )
+        for (toggle in all) {
+            val api = (toggle.read as? Probe.Api)?.api ?: (toggle.write as? Write.Api)?.api
+            val expected = needs[api] ?: continue
+            assertEquals(expected, toggle.hardware, toggle.id)
+        }
+        assertEquals(Hardware.Telephony, Toggles.byId("preferred-network")?.hardware)
+    }
+
+    @Test
     fun idsAreUniqueAndKebabCase() {
         assertEquals(all.size, all.map { it.id }.toSet().size)
         all.forEach { assertTrue(Regex("[a-z0-9]+(-[a-z0-9]+)*").matches(it.id), it.id) }

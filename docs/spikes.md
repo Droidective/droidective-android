@@ -5,14 +5,14 @@ Android version and date, so a later change can be checked against what was meas
 
 | # | Question | Where | Status |
 |---|---|---|---|
-| 1 | Does a widget tap on a cold process reach Shizuku and flip Wi-Fi in under a second on Android 15, 16 and 17? | emulators + your phone | **Yes on 35, 36 and 37**, except the first shell use after a boot (below) |
-| 2 | Do the Granted writes take effect at once on Samsung, Xiaomi and OnePlus builds, as AOSP 17's source says? | your phone | open (AOSP emulator: yes, below) |
+| 1 | Does a widget tap on a cold process reach Shizuku and flip Wi-Fi in under a second on Android 15, 16 and 17? | emulators + your phone | **Yes on 35, 36 and 37**, except the first shell use after a boot; **yes on a OnePlus Pad through root**, but some taps were lost (below) |
+| 2 | Do the Granted writes take effect at once on Samsung, Xiaomi and OnePlus builds, as AOSP 17's source says? | your phone | **Yes on OnePlus** and the AOSP emulator; Samsung and Xiaomi open (below) |
 | 3 | Does a six-toggle notification row fit the 48 dp collapsed height on Android 15, 16 and 17? | emulators | **Yes on all three** (below) |
-| 4 | What does Shizuku do after a restart on your phones? | your phone | open |
-| 5 | How stale do widgets get with no foreground service, per OEM? | emulators + your phone | open |
+| 4 | What does Shizuku do after a restart on your phones? | your phone | **OnePlus: it doesn't come back**, and started over adb it can't authorize apps (below) |
+| 5 | How stale do widgets get with no foreground service, per OEM? | emulators + your phone | **OnePlus: still wrong after 60 s** (below) |
 | 6 | Preferred network type, Bluetooth tethering, hotspot via `TetheringManager`, font size: which work? | emulators + your phone | **Network type and font size do; hotspot and Bluetooth tethering have no shell command** (below) |
 | 7 | Does joining a Wi-Fi network wake the app through a PendingIntent network callback, and does leaving one? | emulators | **Answered: joining once, leaving never** (below) |
-| 8 | Do restart, Bluetooth and exact-alarm triggers arrive on Xiaomi and Samsung with default battery settings? | your phone | open (emulators: restart and exact alarms do, below) |
+| 8 | Do restart, Bluetooth and exact-alarm triggers arrive on Xiaomi and Samsung with default battery settings? | your phone | open for Xiaomi and Samsung (emulators and OnePlus: restart does, below) |
 | 9 | Can the app hear about another app's crash, and read it, without a service of its own? | emulators | **Answered: hear it only while running; read it with READ_DROPBOX_DATA and usage access** (below) |
 
 Brand-specific spikes (2, 4, 5, 8) run only on a phone you plug in, and every toggle a spike
@@ -37,6 +37,44 @@ OnePlus if there is one), with Droidective installed and Shizuku allowed:
 
 
 ## Results
+
+### On a OnePlus Pad (2026-10-19 and 20, OPD2514, OxygenOS 16, Android 16 / API 36, Magisk 30.7)
+
+The phone was rooted, so the app's Shell came from root rather than Shizuku. Every setting a test
+changed was read before and put back after.
+
+- **1**: through root, warm taps on the home-screen bar reached `setWifiEnabled` in 133–168 ms,
+  and one cold tap (process killed with `am crash`) in 310 ms. `am kill` couldn't reproduce the
+  cached-process case: the idle process sat at adj 450, and Crash Catcher's watch keeps the
+  automation service up. **Some taps were lost**: two of three cold rounds, and one warm tap about
+  five seconds after a state change, did nothing, with no `setWifiEnabled` and no error. Still to
+  explain; the widget redrawing under the tap is the first suspect.
+- **Release builds broke every widget tap**, 0.1.0 and 0.1.1: R8 removed the no-argument
+  constructors Glance instantiates its `ActionCallback`s through. Debug builds kept them, which is
+  why the emulator runs above never saw it. Fixed in 0.1.2 with a keep rule, and
+  `scripts/check-r8-keeps.sh` fails a release build that drops one again.
+- **2: yes.** Animation scale from the app went 1 → 0.5 → 0 → 1 on all three keys, each read back
+  with `settings get global` at once. The Granted level came from the app granting itself with
+  root: **`pm grant` from adb is refused** ("Neither user 2000 nor current process has
+  GRANT_RUNTIME_PERMISSIONS"), and OxygenOS 16 has no "Disable permission monitoring" switch to
+  turn that off. `appops set` from adb is refused the same way (no `MANAGE_APP_OPS_MODES`), so on
+  this phone the Mac's Phone setup can't give the Granted level; root can.
+- **4: Shizuku doesn't come back** after a restart. Started over adb, it also can't authorize
+  apps on OxygenOS 16 ("The permission of adb is limited"), so on OnePlus, Shell through Shizuku
+  needs Shizuku started from root.
+- **5**: Bluetooth turned off from Quick Settings with no automation running: the home-screen bar
+  still showed it on 60 s later. OxygenOS doesn't wake the app to redraw it.
+- **8**: "When the phone restarts" posted its notification after a restart, on the default
+  battery settings. "When you run it" through an adb broadcast works too.
+- Toggles that read wrong there and not on the emulators: Stay awake (Android 13+ writes 15, not
+  7), Grayscale (never written until first used), SELinux (an app may not read it; it's read
+  through the shell now), Strict mode flash (`persist.sys.*` is a `system_prop`, unreadable by
+  apps). NFC, Mobile data and Preferred network type were offered on a tablet with no NFC or
+  phone radio; a toggle now names the hardware it needs and phones without it don't show it.
+- OxygenOS side effects to put back by hand after a test: Battery Saver flips
+  `oplus_breath_light_master_switch` and `powersave_backup_screenoff_time`, Grayscale clears
+  `accessibility_enabled`, and turning Bluetooth on through `com.oplus.wirelesssettings` leaves
+  it discoverable (scan mode 23), which adb can't undo.
 
 ### 1. Cold widget tap → Shizuku → Wi-Fi (2026-10-18, `dv-api36`, google_apis arm64 emulator)
 

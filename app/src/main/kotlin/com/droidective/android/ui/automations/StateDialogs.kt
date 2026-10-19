@@ -21,6 +21,7 @@ import com.droidective.core.automations.Trigger
 import com.droidective.core.toggles.Probe
 import com.droidective.core.toggles.Toggles
 import com.droidective.platform.BluetoothAudio
+import com.droidective.platform.hasHardwareFor
 
 /** Where a chosen state goes: an Only if, or the trigger as a start, an end or a While. */
 internal enum class Place {
@@ -87,6 +88,7 @@ internal fun StateDialogs(
     onChange: (Automation) -> Unit,
     onDialog: (EditorDialog?) -> Unit,
 ) {
+    val context = LocalContext.current
     val close = { onDialog(null) }
     fun place(state: State, place: Place) {
         onChange(draft.place(state, place))
@@ -128,7 +130,12 @@ internal fun StateDialogs(
         is EditorDialog.ToggleIsPick ->
             ToggleStateChooser(
                 "A toggle is",
-                Toggles.all.filter { it.isBuilt && !it.isAction && it.read != Probe.None },
+                Toggles.all.filter {
+                    it.isBuilt &&
+                        !it.isAction &&
+                        it.read != Probe.None &&
+                        context.hasHardwareFor(it)
+                },
                 onDismiss = close,
             ) { id, state ->
                 place(State.ToggleIs(id, state), dialog.place)

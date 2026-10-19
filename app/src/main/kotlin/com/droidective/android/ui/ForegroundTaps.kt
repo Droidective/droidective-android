@@ -49,6 +49,22 @@ fun specialAccessIntent(context: Context, access: SpecialAccess): Intent =
         SpecialAccess.DoNotDisturb -> Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
     }
 
+/**
+ * Usage access for Droidective itself: Android 10 and later open the app's own switch from a
+ * `package:` URI, rather than a list someone has to find the app in.
+ */
+fun usageAccessIntent(context: Context): Intent =
+    Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, "package:${context.packageName}".toUri())
+
+/** [usageAccessIntent], or the list on a phone that won't open the app's own page. */
+fun Context.openUsageAccess() {
+    try {
+        startActivity(usageAccessIntent(this).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (_: ActivityNotFoundException) {
+        openSafely(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+    }
+}
+
 /** Opens a system screen; OEMs drop some actions, so a missing one falls back to Settings. */
 fun Context.openSafely(intent: Intent) {
     try {

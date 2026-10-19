@@ -5,7 +5,6 @@ import android.app.StatusBarManager
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -67,6 +67,7 @@ fun WidgetsScreen(app: DroidectiveApplication) {
     val scope = rememberCoroutineScope()
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var pickingSlot by rememberSaveable { mutableStateOf<Int?>(null) }
+    var slots by remember { mutableStateOf(TileSlots.all(context)) }
     val askNotifications =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
             scope.launch { Surfaces.refresh(context) }
@@ -173,7 +174,16 @@ fun WidgetsScreen(app: DroidectiveApplication) {
 
         item { SectionHeader("Quick Settings tiles") }
         items((1..TileSlots.COUNT).toList(), key = { "slot-$it" }) { slot ->
-            TileSlotRow(context, slot, onChoose = { pickingSlot = slot })
+            TileSlotRow(
+                context,
+                slot,
+                slots[slot],
+                onChoose = { pickingSlot = slot },
+                onClear = {
+                    TileSlots.bind(context, slot, null)
+                    slots = TileSlots.all(context)
+                },
+            )
         }
         item { Text(" ") }
     }
@@ -183,6 +193,7 @@ fun WidgetsScreen(app: DroidectiveApplication) {
             kind = LayoutKind.Bar,
             onPick = { item ->
                 TileSlots.bind(context, slot, item)
+                slots = TileSlots.all(context)
                 pickingSlot = null
             },
             onDismiss = { pickingSlot = null },
@@ -244,8 +255,13 @@ private fun LayoutCard(layout: Layout, onEdit: () -> Unit, onDelete: () -> Unit)
 }
 
 @Composable
-private fun TileSlotRow(context: Context, slot: Int, onChoose: () -> Unit) {
-    val item = TileSlots.item(context, slot)
+private fun TileSlotRow(
+    context: Context,
+    slot: Int,
+    item: Item?,
+    onChoose: () -> Unit,
+    onClear: () -> Unit,
+) {
     val label =
         when (item) {
             null -> "Empty"
@@ -263,9 +279,12 @@ private fun TileSlotRow(context: Context, slot: Int, onChoose: () -> Unit) {
         headlineContent = { Text("Droidective $slot") },
         supportingContent = { Text(label) },
         trailingContent = {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                TextButton(onClick = { requestTile(context, slot) }) {
-                    Text("Add to Quick Settings")
+            Row {
+                if (item != null) TextButton(onClick = onClear) { Text("Clear") }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    TextButton(onClick = { requestTile(context, slot) }) {
+                        Text("Add to Quick Settings")
+                    }
                 }
             }
         },
@@ -293,11 +312,6 @@ private fun pinBar(context: Context) {
         )
     }
 }
-
-private fun needsNotificationPermission(context: Context): Boolean =
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
 
 /** Android 13's one-tap prompt to place a tile; the app has to be in the foreground to ask. */
 private fun requestTile(context: Context, slot: Int) {

@@ -75,6 +75,8 @@ private val triggerKinds: List<Pair<String, TriggerPick>> =
         "When the phone leaves Wi-Fi…" to TriggerPick(null, EditorDialog.WifiPick(Place.Ends)),
         "While on Wi-Fi…" to TriggerPick(null, EditorDialog.WifiPick(Place.While)),
         "When an app is installed or updated" to TriggerPick(Trigger.On(Event.AppInstalled())),
+        "When an app crashes…" to TriggerPick(null, EditorDialog.CrashPick),
+        "When any app crashes" to TriggerPick(Trigger.On(Event.AppCrashed())),
     )
 
 /** The trigger list, and the Bluetooth, Wi-Fi and time pickers a trigger or condition uses. */
@@ -113,6 +115,11 @@ internal fun StateDialogs(
                     if (dialog.below) State.BatteryBelow(n) else State.BatteryAbove(n),
                     dialog.place,
                 )
+            }
+        EditorDialog.CrashPick ->
+            AppChooser("Which app", onDismiss = close) {
+                onChange(draft.copy(trigger = Trigger.On(Event.AppCrashed(it.packageName))))
+                close()
             }
         is EditorDialog.AppOpenPick ->
             AppChooser("Which app", onDismiss = close) {

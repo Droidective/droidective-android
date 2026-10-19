@@ -1,5 +1,6 @@
 package com.droidective.core.automations
 
+import com.droidective.core.AccessLevel
 import kotlin.io.path.createTempDirectory
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -184,6 +185,31 @@ class AutomationRuntimeTest {
     }
 
     @Test
+    fun crashesMatchTheirAppOrAny() {
+        val anyCrash =
+            Automation(
+                "any",
+                "Any",
+                trigger = Trigger.On(Event.AppCrashed()),
+                actions = listOf(Action.Wait(1)),
+            )
+        val oneCrash =
+            anyCrash.copy(id = "one", trigger = Trigger.On(Event.AppCrashed("com.example.app")))
+        val install = anyCrash.copy(id = "install", trigger = Trigger.On(Event.AppInstalled()))
+        val all = listOf(anyCrash, oneCrash, install)
+        assertEquals(
+            listOf(anyCrash, oneCrash),
+            Matcher.onEvent(all, Event.AppCrashed("com.example.app")).map { it.automation },
+        )
+        assertEquals(
+            listOf(anyCrash),
+            Matcher.onEvent(all, Event.AppCrashed("com.other")).map { it.automation },
+        )
+        assertTrue(Matcher.needsService(listOf(oneCrash)), "only a running listener hears crashes")
+        assertEquals(AccessLevel.Granted, Event.AppCrashed().level)
+    }
+
+    @Test
     fun eventsMatchByKind() {
         val anyInstall =
             Automation(
@@ -206,6 +232,11 @@ class AutomationRuntimeTest {
             Matcher.onEvent(all, Event.AppInstalled("com.other")).map { it.automation },
         )
         assertEquals(listOf(boot), Matcher.onEvent(all, Event.Restarted).map { it.automation })
+        assertEquals(
+            emptyList(),
+            Matcher.onEvent(all, Event.AppCrashed("com.example.app")),
+            "a crash isn't an install",
+        )
         assertEquals(emptyList(), Matcher.onEvent(all, Event.Manual), "manual runs by id")
         assertTrue(Matcher.needsService(all))
         assertTrue(!Matcher.needsService(listOf(boot, manual)))

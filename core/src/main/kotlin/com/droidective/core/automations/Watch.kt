@@ -147,6 +147,9 @@ object Matcher {
             is Event.AppInstalled ->
                 happened is Event.AppInstalled &&
                     (wanted.packageName == null || wanted.packageName == happened.packageName)
+            is Event.AppCrashed ->
+                happened is Event.AppCrashed &&
+                    (wanted.packageName == null || wanted.packageName == happened.packageName)
             Event.Restarted,
             Event.Unlocked -> wanted == happened
         }

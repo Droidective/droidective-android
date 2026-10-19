@@ -51,6 +51,7 @@ object AutomationRules {
         when (event) {
             is Event.Schedule -> timeProblems(event.minuteOfDay) + dayProblems(event.days)
             is Event.AppInstalled -> event.packageName?.let(::packageProblems).orEmpty()
+            is Event.AppCrashed -> event.packageName?.let(::packageProblems).orEmpty()
             Event.Manual,
             Event.Restarted,
             Event.Unlocked -> emptyList()

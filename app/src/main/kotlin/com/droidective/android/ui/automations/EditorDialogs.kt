@@ -40,6 +40,8 @@ internal sealed interface EditorDialog {
 
     data object TriggerKinds : EditorDialog
 
+    data object CrashPick : EditorDialog
+
     data class BluetoothPick(val place: Place) : EditorDialog
 
     data class WifiName(val place: Place) : EditorDialog
@@ -129,6 +131,7 @@ internal fun EditorDialogs(
         is EditorDialog.ButtonAutomation,
         is EditorDialog.ButtonLabel -> ButtonDialogs(dialog, draft, onChange, onDialog)
         EditorDialog.TriggerKinds,
+        EditorDialog.CrashPick,
         is EditorDialog.Percent,
         is EditorDialog.AppOpenPick,
         is EditorDialog.ToggleIsPick,

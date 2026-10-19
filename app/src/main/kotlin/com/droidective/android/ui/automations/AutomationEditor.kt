@@ -49,6 +49,7 @@ import com.droidective.core.automations.Review
 import com.droidective.core.automations.State
 import com.droidective.core.automations.Trigger
 import com.droidective.core.automations.isDestructive
+import com.droidective.platform.CrashLog
 import com.droidective.platform.ForegroundApp
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -94,6 +95,7 @@ fun AutomationEditor(original: Automation?, tool: ToolContext) {
         TriggerSection(draft, onChange = { draft = it }, onDialog = { dialog = it })
         ConditionsSection(draft, onChange = { draft = it }, onDialog = { dialog = it })
         AppOpenNote(draft)
+        CrashNote(draft)
         ActionsSection(draft, onChange = { draft = it }, onDialog = { dialog = it })
         if (problems.isNotEmpty()) {
             ToolSection("Before it can be saved") {
@@ -367,6 +369,29 @@ private fun AppOpenNote(draft: Automation) {
         onClick = { context.openSafely(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
     ) {
         Text("Allow Usage access")
+    }
+}
+
+/** A crash trigger hears nothing until crash reports can be read; say what's missing. */
+@Composable
+private fun CrashNote(draft: Automation) {
+    val context = LocalContext.current
+    if ((draft.trigger as? Trigger.On)?.event !is Event.AppCrashed) return
+    when (CrashLog(context).access()) {
+        CrashLog.Access.Ready -> Unit
+        CrashLog.Access.NeedsGrant ->
+            ToolNote(
+                "Hearing about crashes needs the crash-report permission that comes with the " +
+                    "Granted level. Set it up in Setup, or let Shell grant it."
+            )
+        CrashLog.Access.NeedsUsageAccess -> {
+            ToolNote("Telling which app crashed needs Usage access for Droidective.")
+            OutlinedButton(
+                onClick = { context.openSafely(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+            ) {
+                Text("Allow Usage access")
+            }
+        }
     }
 }
 

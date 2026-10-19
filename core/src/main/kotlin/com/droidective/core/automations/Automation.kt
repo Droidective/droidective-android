@@ -152,6 +152,25 @@ sealed interface Event {
             else "When $packageName is installed or updated"
     }
 
+    /**
+     * An app crashes, crashes in native code, or stops responding; [packageName] null means any
+     * app. Heard through the crash-report permission that comes with the Granted level, so that's
+     * its level; reading which app it was also needs usage access.
+     */
+    @Serializable
+    @SerialName("app-crashed")
+    data class AppCrashed(val packageName: String? = null) : Event {
+        override val wakes: Wake
+            get() = Wake.Service
+
+        override val level: AccessLevel
+            get() = AccessLevel.Granted
+
+        override fun describe() =
+            if (packageName == null) "When an app crashes or stops responding"
+            else "When $packageName crashes or stops responding"
+    }
+
     @Serializable
     @SerialName("unlocked")
     data object Unlocked : Event {

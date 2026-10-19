@@ -38,6 +38,7 @@ import com.droidective.core.features.Features
 val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
     mapOf(
         "dev-settings" to { DeveloperSettingsTool(it) },
+        "logcat" to { LogcatTool(it) },
         "simulate" to { SimulateTool(it) },
         "demo-mode" to { DemoModeTool(it) },
         "system-restrictions" to { RestrictionsTool(it) },

@@ -10,6 +10,8 @@ import com.droidective.core.toggles.PlatformToggles
 import com.droidective.core.toggles.SettingRead
 import com.droidective.core.toggles.SettingScope
 import com.droidective.core.toggles.SettingsStore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 /**
  * A shell that records every command and answers from a script, the Kotlin twin of ADBKit's
@@ -28,6 +30,19 @@ class FakeShell : Shell {
         if (unavailable) throw ShellUnavailableException("Shizuku stopped")
         invocations += command.line
         return responses[command.line] ?: ShellResult(0, "", "")
+    }
+
+    private val streams = mutableMapOf<String, List<String>>()
+
+    /** What [stream] emits for [line] before it ends, as a command that exits would. */
+    fun streamLines(line: String, lines: List<String>) {
+        streams[line] = lines
+    }
+
+    override fun stream(command: ShellCommand): Flow<String> = flow {
+        if (unavailable) throw ShellUnavailableException("Shizuku stopped")
+        invocations += command.line
+        streams[command.line].orEmpty().forEach { emit(it) }
     }
 }
 

@@ -83,9 +83,11 @@ object Symbols {
                 Symbol(R.drawable.sym_notifications, R.drawable.sym_notifications_fill),
             "open_in_new" to Symbol(R.drawable.sym_open_in_new, R.drawable.sym_open_in_new_fill),
             "palette" to Symbol(R.drawable.sym_palette, R.drawable.sym_palette_fill),
+            "pause" to Symbol(R.drawable.sym_pause, R.drawable.sym_pause_fill),
             "play_arrow" to Symbol(R.drawable.sym_play_arrow, R.drawable.sym_play_arrow_fill),
             "policy" to Symbol(R.drawable.sym_policy, R.drawable.sym_policy_fill),
             "power" to Symbol(R.drawable.sym_power, R.drawable.sym_power_fill),
+            "receipt_long" to Symbol(R.drawable.sym_receipt_long, R.drawable.sym_receipt_long_fill),
             "refresh" to Symbol(R.drawable.sym_refresh, R.drawable.sym_refresh_fill),
             "schedule" to Symbol(R.drawable.sym_schedule, R.drawable.sym_schedule_fill),
             "screen_rotation" to
@@ -109,6 +111,11 @@ object Symbols {
             "usb" to Symbol(R.drawable.sym_usb, R.drawable.sym_usb_fill),
             "verified_user" to
                 Symbol(R.drawable.sym_verified_user, R.drawable.sym_verified_user_fill),
+            "vertical_align_bottom" to
+                Symbol(
+                    R.drawable.sym_vertical_align_bottom,
+                    R.drawable.sym_vertical_align_bottom_fill,
+                ),
             "vibration" to Symbol(R.drawable.sym_vibration, R.drawable.sym_vibration_fill),
             "visibility_off" to
                 Symbol(R.drawable.sym_visibility_off, R.drawable.sym_visibility_off_fill),

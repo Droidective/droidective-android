@@ -90,3 +90,6 @@ upload
 more_vert
 bug_report
 memory
+receipt_long
+pause
+vertical_align_bottom

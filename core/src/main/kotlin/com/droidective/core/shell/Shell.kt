@@ -1,5 +1,7 @@
 package com.droidective.core.shell
 
+import kotlinx.coroutines.flow.Flow
+
 /**
  * Wraps [value] in single quotes for the device's `sh`, so it reaches the command as one word
  * whatever it contains. This is the security boundary for every value a person types.
@@ -44,4 +46,14 @@ interface Shell {
      * @throws ShellUnavailableException when the provider is no longer reachable.
      */
     suspend fun run(command: ShellCommand): ShellResult
+
+    /**
+     * Starts [command] through `sh -c` and emits each line it prints, stdout and stderr together,
+     * until it exits. Collecting stops it: cancelling the collector ends the command. [command] is
+     * one long-running command, such as logcat: it replaces the shell (`exec`), so stopping it
+     * can't leave it running under a stopped `sh`.
+     *
+     * @throws ShellUnavailableException when the provider is no longer reachable.
+     */
+    fun stream(command: ShellCommand): Flow<String>
 }

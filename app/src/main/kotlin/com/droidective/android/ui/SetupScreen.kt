@@ -146,6 +146,8 @@ fun SetupScreen(app: DroidectiveApplication) {
                     else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+
+        UpdatesCard()
     }
 }
 

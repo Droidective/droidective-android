@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.core.content.edit
 import com.droidective.android.automation.Automations
+import com.droidective.android.update.Updates
 import com.droidective.core.automations.AutomationLedger
 import com.droidective.core.automations.AutomationRepository
 import com.droidective.core.commands.CommandRepository
@@ -65,6 +66,7 @@ class DroidectiveApplication : Application() {
         access = AccessMonitor(this, scope).also { it.start() }
         // A force stop clears the app's alarms; starting again puts the schedules back.
         scope.launch { Automations.reschedule(this@DroidectiveApplication) }
+        scope.launch { Updates.schedule(this@DroidectiveApplication) }
         toggles =
             ToggleRunner(
                 settings = AndroidSettingsStore(this),

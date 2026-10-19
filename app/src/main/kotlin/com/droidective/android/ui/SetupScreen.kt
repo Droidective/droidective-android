@@ -177,6 +177,7 @@ private fun ShizukuStep(status: ShizukuStatus, onRequest: () -> Unit, context: C
                 Text("Open Shizuku")
             }
         }
+        ShizukuStatus.Attaching -> Text("Connecting to Shizuku…")
         ShizukuStatus.NeedsPermission -> {
             Text("Shizuku is running. Allow Droidective to use it.")
             Button(onClick = onRequest) { Text("Allow in Shizuku") }

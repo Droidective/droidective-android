@@ -3,6 +3,8 @@ package com.droidective.platform
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.RemoteException
+import android.util.Log
 import androidx.core.content.edit
 import com.droidective.core.Access
 import com.droidective.core.Grants
@@ -26,15 +28,16 @@ import rikka.shizuku.Shizuku
 enum class ShizukuStatus {
     NotInstalled,
     NotRunning,
+    /**
+     * Running, but not talking to this process yet. Shizuku's library hands out its binder a moment
+     * before it attaches the app, and a call in that gap throws "Not an attached client". The
+     * binder-received listener fires once the attach lands, and refreshes access.
+     */
+    Attaching,
     NeedsPermission,
     Ready,
 }
 
-/**
- * Tracks the app's [Access] and hands out the matching privileged shell. Root wins when the user
- * has allowed it and su grants uid 0; Shizuku is next. While either is up, the app grants itself
- * the Granted level so those toggles keep working after a restart.
- */
 /** The person's choice to use root, and what su said about it. */
 enum class RootUse {
     Off,
@@ -43,6 +46,11 @@ enum class RootUse {
     Refused,
 }
 
+/**
+ * Tracks the app's [Access] and hands out the matching privileged shell. Root wins when the user
+ * has allowed it and su grants uid 0; Shizuku is next. While either is up, the app grants itself
+ * the Granted level so those toggles keep working after a restart.
+ */
 class AccessMonitor(private val context: Context, private val scope: CoroutineScope) {
     private val shizuku = ShizukuShell(context.packageName)
     private val rootShell = RootShell()
@@ -113,26 +121,49 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
         when {
             !isInstalled(SHIZUKU_PACKAGE) -> ShizukuStatus.NotInstalled
             !Shizuku.pingBinder() -> ShizukuStatus.NotRunning
-            Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED ->
-                ShizukuStatus.NeedsPermission
-            else -> ShizukuStatus.Ready
+            else ->
+                attached {
+                    if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED)
+                        ShizukuStatus.Ready
+                    else ShizukuStatus.NeedsPermission
+                } ?: ShizukuStatus.Attaching
         }
 
     fun requestShizukuPermission() {
-        if (Shizuku.pingBinder()) Shizuku.requestPermission(SHIZUKU_REQUEST_CODE)
+        if (Shizuku.pingBinder()) attached { Shizuku.requestPermission(SHIZUKU_REQUEST_CODE) }
     }
+
+    /**
+     * [call] to Shizuku, or null when Shizuku refused it because it hasn't attached this process
+     * yet, or because it died mid-call. Either way a listener refreshes access once it settles.
+     */
+    private inline fun <T> attached(call: () -> T): T? =
+        try {
+            call()
+        } catch (e: IllegalStateException) {
+            Log.i(LOG_TAG, "Shizuku isn't talking to this process yet: ${e.message}")
+            null
+        } catch (e: RuntimeException) {
+            if (e.cause !is RemoteException) throw e
+            Log.i(LOG_TAG, "Shizuku stopped mid-call: ${e.cause?.message}")
+            null
+        }
 
     /** One refresh at a time, so two callers can't put two root prompts on screen at once. */
     suspend fun refresh() = refreshing.withLock {
-        val provider =
-            when {
-                useRoot() -> ShellProvider.Su
-                shizukuStatus() == ShizukuStatus.Ready -> shizuku.provider
-                else -> null
-            }
+        val root = useRoot()
+        val shizukuNow = if (root) null else shizukuStatus()
+        val shizukuProvider =
+            if (shizukuNow == ShizukuStatus.Ready) attached { shizuku.provider } else null
+        val provider = if (root) ShellProvider.Su else shizukuProvider
+        val attaching =
+            shizukuNow == ShizukuStatus.Attaching ||
+                (shizukuNow == ShizukuStatus.Ready && shizukuProvider == null)
         val granted = hasGrants() || (provider != null && grantSelf(provider))
         state.value = Access(granted = granted, shell = provider)
-        firstRefresh.complete(Unit)
+        // A cold widget tap waits for access to settle; an attaching Shizuku settles on the
+        // refresh its binder-received listener makes, not this one.
+        if (!attaching) firstRefresh.complete(Unit)
     }
 
     /**
@@ -191,5 +222,6 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
         const val KEY_ROOT_ALLOWED = "root_allowed"
         const val KEY_ROOT_REFUSED = "root_refused"
         const val SETTLE_TIMEOUT_MILLIS = 3_000L
+        const val LOG_TAG = "DroidectiveAccess"
     }
 }

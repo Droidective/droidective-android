@@ -10,6 +10,7 @@ import com.droidective.core.automations.AutomationLedger
 import com.droidective.core.automations.AutomationRepository
 import com.droidective.core.commands.CommandRepository
 import com.droidective.core.commands.DeepLinkRepository
+import com.droidective.core.device.ValueChanges
 import com.droidective.core.layout.LayoutRepository
 import com.droidective.core.toggles.Param
 import com.droidective.core.toggles.ToggleRunner
@@ -49,6 +50,10 @@ class DroidectiveApplication : Application() {
     lateinit var automations: AutomationRepository
         private set
 
+    /** What the Settings Editor changed, to undo. */
+    lateinit var valueChanges: ValueChanges
+        private set
+
     /** The toggles running Whiles hold, and History. */
     lateinit var ledger: AutomationLedger
         private set
@@ -74,6 +79,7 @@ class DroidectiveApplication : Application() {
         deepLinks = DeepLinkRepository(filesDir)
         automations = AutomationRepository(filesDir)
         ledger = AutomationLedger(filesDir)
+        valueChanges = ValueChanges(filesDir)
         access = AccessMonitor(this, scope).also { it.start() }
         // A force stop clears the app's alarms; starting again puts the schedules back.
         scope.launch { Automations.reschedule(this@DroidectiveApplication) }

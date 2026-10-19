@@ -217,9 +217,7 @@ private suspend fun runAll(context: Context, commands: List<ShellCommand>): Stri
         commands.firstNotNullOfOrNull { command ->
             val result = shell.run(command)
             if (result.succeeded) null
-            else
-                Parse.lines(result.stderr.ifBlank { result.stdout }).firstOrNull { it.isNotBlank() }
-                    ?: "It exited with ${result.exitCode}."
+            else Parse.failure(result.stderr, result.stdout) ?: "It exited with ${result.exitCode}."
         }
     } catch (e: ShellUnavailableException) {
         e.message ?: "The shell stopped responding."

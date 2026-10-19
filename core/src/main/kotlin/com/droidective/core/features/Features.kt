@@ -55,6 +55,15 @@ object Features {
                 AccessLevel.Granted,
             ),
             FeatureDef(
+                "logcat",
+                "Logcat",
+                "The phone's log, live, by app and level",
+                listOf("log", "logcat", "logs", "debug", "errors", "tag", "stack trace"),
+                FeatureCategory.Developer,
+                "receipt_long",
+                AccessLevel.Shell,
+            ),
+            FeatureDef(
                 "simulate",
                 "Simulate",
                 "Fake battery, display density, dark theme, network",

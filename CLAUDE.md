@@ -131,6 +131,10 @@ runs actions.
 - Android 12+ won't let an app *read* a hidden settings key that isn't marked readable, even one
   it may write: `SettingsStore.get` returns `Unreadable` and `ToggleRunner` reads it as the shell.
 - The Shizuku user service is a daemon, started once per boot; a cold widget tap only rebinds.
+- **`Shell.stream` runs one long command, `exec`'d** (`streamArgv`): without `exec`, `sh -c`
+  forks it and stopping `sh` orphans it. Through Shizuku the service hands back a pipe; the app
+  closing its end stops the command, and a `poll()` watch (POLLERR on a pipe with no reader)
+  catches it for a quiet command that never writes again.
 - Test fakes (`FakeShell`, `FakeSettingsStore`, `FakePlatformToggles`, `FixtureShell`) live in
   `core/src/testFixtures`. `FixtureShell` replays real emulator output from `fixtures/`
   (`scripts/sync-fixtures.sh` copies it from the main repo at a pinned commit).

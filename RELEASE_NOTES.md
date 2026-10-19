@@ -11,10 +11,10 @@ The first release: Droidective's developer toggles and tools on the phone itself
   notification bar one pull down from every screen, twelve Quick Settings tile slots, and
   home-screen shortcuts. Every surface holds the same items: 52 toggles, apps, other apps'
   shortcuts, custom commands, deep links and automations.
-- **Developer tools.** Developer Settings, Simulate, Demo Mode, System Restrictions, HTTP Proxy,
-  Private DNS, Wireless ADB, Wi-Fi, Network Speed, IP addresses, Apps (force stop, clear data,
-  permissions, app info), Current Activity (with a Quick Settings tile), Memory Usage, Crash
-  Catcher, Custom Commands, Deep Links, Device Info and Root Status.
+- **Developer tools.** Developer Settings, Logcat, Simulate, Demo Mode, System Restrictions,
+  HTTP Proxy, Private DNS, Wireless ADB, Wi-Fi, Network Speed, IP addresses, Apps (force stop,
+  clear data, permissions, app info), Current Activity (with a Quick Settings tile), Memory
+  Usage, Crash Catcher, Custom Commands, Deep Links, Device Info and Root Status.
 - **Crash Catcher.** Recent crashes, native crashes and ANRs on the phone, each with its full
   report to copy or share, and a notification when an app you watch crashes.
 - **Automations.** When an event happens, run actions once; while a state holds, keep toggles set

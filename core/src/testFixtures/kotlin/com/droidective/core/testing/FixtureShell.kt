@@ -1,9 +1,12 @@
 package com.droidective.core.testing
 
+import com.droidective.core.shell.Parse
 import com.droidective.core.shell.Shell
 import com.droidective.core.shell.ShellCommand
 import com.droidective.core.shell.ShellResult
 import java.io.File
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -43,6 +46,10 @@ class FixtureShell(name: String = "android-emulator.json") : Shell {
 
     override suspend fun run(command: ShellCommand): ShellResult =
         byCommand[command.line] ?: error("No recording for `${command.line}`")
+
+    override fun stream(command: ShellCommand): Flow<String> = flow {
+        Parse.lines(run(command).stdout).filter { it.isNotEmpty() }.forEach { emit(it) }
+    }
 
     private companion object {
         val json = Json { ignoreUnknownKeys = true }

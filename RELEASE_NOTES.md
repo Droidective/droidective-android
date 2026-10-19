@@ -3,6 +3,26 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.3.0
+
+Six more of the Mac's tools, on the phone.
+
+- **Sandbox Browser.** An app's private files: SharedPreferences as a table of typed values,
+  databases as tables you can query (read from a copy, so nothing writes to the app), text, and a
+  copy saved anywhere. Debug builds through Shell; any app with root.
+- **React Native.** For your app's debug build: reload JS, open the dev menu, restart it, simulate
+  process death, and point it at a Metro dev server. Reload JS and Dev menu are toggles too, so a
+  Quick Settings tile or the notification bar acts on whatever app is open under the shade.
+- **Language.** One app in another language (Android 13+), pseudo-locales included: en-XA for
+  long, accented strings and ar-XB for a mirrored, right-to-left layout.
+- **Monkey Test.** Random taps in one app to hunt for crashes, with the seed shown so a crash can
+  be repeated. It taps only, unless you allow swipes, so it can't wander into Quick Settings, and
+  its notification stops it, since Monkey keeps every other app from opening while it runs.
+- **Terminal.** A shell prompt as root, the shell user or the app, where `cd` sticks, with history
+  and a Stop that ends the command for real.
+- **Bug Report.** The zipped report Android Studio and the Play Console ask for, saved to
+  Downloads with a Share button. It keeps going if you leave the screen.
+
 ## 0.2.0
 
 - **Any action, one tap from the home screen.** A widget slot can now run one of your

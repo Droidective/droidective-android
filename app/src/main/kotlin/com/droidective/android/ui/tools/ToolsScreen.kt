@@ -63,6 +63,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "terminal" to { TerminalTool(it) },
         "deep-link" to { DeepLinksTool(it) },
         "device-info" to { DeviceInfoTool(it) },
+        "bug-report" to { BugReportTool(it) },
         "root-status" to { RootStatusTool(it) },
     )
 

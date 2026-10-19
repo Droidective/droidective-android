@@ -288,6 +288,15 @@ object Features {
                 AccessLevel.App,
             ),
             FeatureDef(
+                "bug-report",
+                "Bug Report",
+                "The zipped report Android Studio and the Play Console ask for",
+                listOf("bug report", "bugreport", "dumpstate", "logs", "zip", "diagnostics"),
+                FeatureCategory.Device,
+                "bug_report",
+                AccessLevel.Shell,
+            ),
+            FeatureDef(
                 "device-info",
                 "Device Info",
                 "Model, build, display, memory, storage, battery",

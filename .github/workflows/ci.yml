@@ -44,7 +44,7 @@ jobs:
       # release tag. The notes check fails a version bump that has no RELEASE_NOTES.md section.
       - name: Release scripts
         run: |
-          shellcheck scripts/*.sh
+          shellcheck scripts/*.sh scripts/spikes/*.sh
           scripts/release-notes.sh "v$(sed -n 's/^droidective\.versionName=//p' gradle.properties)" >/dev/null
       - name: Keep the reports when something fails
         if: failure()

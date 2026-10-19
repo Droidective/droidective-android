@@ -1,0 +1,76 @@
+Registered 198 jobs:
+  JOB androidx.work.systemjobscheduler:u0a221/1: a0ee48d @androidx.work.systemjobscheduler@com.droidective.android/androidx.work.impl.background.systemjob.SystemJobService
+    u0a221 tag=*job*r/@androidx.work.systemjobscheduler@com.droidective.android/androidx.work.impl.background.systemjob.SystemJobService
+    Source: uid=u0a221 user=0 pkg=com.droidective.android
+    JobInfo:
+      Service: com.droidective.android/androidx.work.impl.background.systemjob.SystemJobService
+      Priority: 300 [DEFAULT]
+      Requires: charging=false batteryNotLow=false deviceIdle=false
+      Extras: mParcelledData.dataSize=248
+      Network type: NetworkRequest [ NONE id=0, [ Capabilities: INTERNET&TRUSTED&VALIDATED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10221 UnderlyingNetworks: Null] ]
+      Minimum latency: +23h2m49s878ms
+      Backoff: policy=1 initial=+30s0ms
+      Has early constraint
+    Required constraints: TIMING_DELAY CONNECTIVITY FLEXIBILITY [0x90200000]
+    Dynamic constraints:
+    Satisfied constraints: CONNECTIVITY FLEXIBILITY DEVICE_NOT_DOZING BACKGROUND_NOT_RESTRICTED WITHIN_QUOTA [0x13600000]
+    Unsatisfied constraints: TIMING_DELAY [0x80000000]
+    Num Required Flexible constraints: 0
+    Num Dropped Flexible constraints: 0
+    Constraint history:
+      -25m33s998ms = FLEXIBILITY [0x200000]
+      -25m33s998ms = CONNECTIVITY FLEXIBILITY [0x10200000]
+      -25m33s998ms = CONNECTIVITY FLEXIBILITY BACKGROUND_NOT_RESTRICTED [0x10600000]
+      -25m33s998ms = CONNECTIVITY FLEXIBILITY DEVICE_NOT_DOZING BACKGROUND_NOT_RESTRICTED [0x12600000]
+      -25m33s998ms = CONNECTIVITY FLEXIBILITY DEVICE_NOT_DOZING BACKGROUND_NOT_RESTRICTED WITHIN_QUOTA [0x13600000]
+    Uid: active
+    Tracking: CONNECTIVITY TIME QUOTA
+    Implicit constraints:
+      readyNotDozing: true
+      readyNotRestrictedInBg: true
+      readyComponentEnabled: true
+    Started with foreground flag: false
+    Network: 110
+    Standby bucket: ACTIVE
+    Enqueue time: -25m33s998ms
+    Run time: earliest=+22h37m15s879ms, latest=none, original latest=none
+    Restricted due to: none.
+    Ready: false (job=false user=true !restricted=true !pending=true !active=true !backingup=true comp=true)
+  JOB androidx.work.systemjobscheduler:u0a221/3: f2bb48e @androidx.work.systemjobscheduler@com.droidective.android/androidx.work.impl.background.systemjob.SystemJobService
+    u0a221 tag=*job*r/@androidx.work.systemjobscheduler@com.droidective.android/androidx.work.impl.background.systemjob.SystemJobService
+    Source: uid=u0a221 user=0 pkg=com.droidective.android
+    JobInfo:
+      Service: com.droidective.android/androidx.work.impl.background.systemjob.SystemJobService
+      Priority: 300 [DEFAULT]
+      Requires: charging=true batteryNotLow=false deviceIdle=false
+      Extras: mParcelledData.dataSize=248
+      Minimum latency: +3649d23h3m54s306ms
+      Backoff: policy=1 initial=+30s0ms
+      Has early constraint
+      Trace tag: SessionWorker
+    Required constraints: CHARGING TIMING_DELAY FLEXIBILITY [0x80200001]
+    Dynamic constraints:
+    Satisfied constraints: CHARGING BATTERY_NOT_LOW FLEXIBILITY DEVICE_NOT_DOZING BACKGROUND_NOT_RESTRICTED WITHIN_QUOTA [0x3600003]
+    Unsatisfied constraints: TIMING_DELAY [0x80000000]
+    Num Required Flexible constraints: 0
+    Num Dropped Flexible constraints: 0
+    Constraint history:
+      -25m33s981ms = FLEXIBILITY [0x200000]
+      -25m33s981ms = CHARGING FLEXIBILITY [0x200001]
+      -25m33s981ms = CHARGING BATTERY_NOT_LOW FLEXIBILITY [0x200003]
+      -25m33s981ms = CHARGING BATTERY_NOT_LOW FLEXIBILITY BACKGROUND_NOT_RESTRICTED [0x600003]
+      -25m33s981ms = CHARGING BATTERY_NOT_LOW FLEXIBILITY DEVICE_NOT_DOZING BACKGROUND_NOT_RESTRICTED [0x2600003]
+      -25m33s981ms = CHARGING BATTERY_NOT_LOW FLEXIBILITY DEVICE_NOT_DOZING BACKGROUND_NOT_RESTRICTED WITHIN_QUOTA [0x3600003]
+    Uid: active
+    Tracking: BATTERY TIME QUOTA
+    Implicit constraints:
+      readyNotDozing: true
+      readyNotRestrictedInBg: true
+      readyComponentEnabled: true
+    Started with foreground flag: false
+    Standby bucket: ACTIVE
+    Enqueue time: -25m33s981ms
+    Run time: earliest=+3649d22h38m20s325ms, latest=none, original latest=none
+    Restricted due to: none.
+    Ready: false (job=false user=true !restricted=true !pending=true !active=true !backingup=true comp=true)
+

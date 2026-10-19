@@ -1,0 +1,24 @@
+:Monkey: seed=7 count=500
+:AllowPackage: com.example.app
+:IncludeCategory: android.intent.category.LAUNCHER
+:IncludeCategory: android.intent.category.MONKEY
+:Switch: #Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10200000;component=com.example.app/.MainActivity;end
+    // Allowing start of Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=com.example.app/.MainActivity } in package com.example.app
+:Sending Touch (ACTION_DOWN): 0:(540.0,1200.0)
+:Sending Touch (ACTION_UP): 0:(540.0,1200.0)
+// CRASH: com.example.app (pid 4242)
+// Short Msg: java.lang.IllegalStateException
+// Long Msg: java.lang.IllegalStateException: Cart is empty
+// Build Label: google/sdk_gphone64_arm64/emu64a:16/BP22.250325.006/13344233:user/release-keys
+// Build Changelist: 13344233
+// Build Time: 1745280000000
+// java.lang.IllegalStateException: Cart is empty
+// 	at com.example.app.CheckoutActivity.onClick(CheckoutActivity.kt:42)
+// 	at android.view.View.performClick(View.java:8000)
+// 
+** Monkey aborted due to error.
+Events injected: 12
+:Sending rotation degree=0, persist=false
+:Dropped: keys=0 pointers=0 trackballs=0 flips=0 rotations=0
+## Network stats: elapsed time=811ms (0ms mobile, 0ms wifi, 811ms not connected)
+** System appears to have crashed at event 12 of 500 using seed 7

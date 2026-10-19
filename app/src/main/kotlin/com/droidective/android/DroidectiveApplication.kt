@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.core.content.edit
 import com.droidective.android.automation.Automations
+import com.droidective.android.crashes.OwnCrashes
 import com.droidective.android.update.Updates
 import com.droidective.core.automations.AutomationLedger
 import com.droidective.core.automations.AutomationRepository
@@ -16,6 +17,7 @@ import com.droidective.platform.AccessMonitor
 import com.droidective.platform.AndroidPlatformToggles
 import com.droidective.platform.AndroidSettingsStore
 import com.droidective.platform.shell.AppShell
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +26,10 @@ import kotlinx.coroutines.launch
 /** Holds the app-wide objects every surface shares: the app, widgets, tiles and automations. */
 class DroidectiveApplication : Application() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Droidective's own crashes, recorded before Android ends the process. */
+    lateinit var ownCrashes: OwnCrashes
+        private set
 
     lateinit var access: AccessMonitor
         private set
@@ -58,6 +64,11 @@ class DroidectiveApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // First, so a crash anywhere after this is on record.
+        ownCrashes =
+            OwnCrashes(File(filesDir, "own-crashes")).also {
+                it.install(Thread.getDefaultUncaughtExceptionHandler())
+            }
         layouts = LayoutRepository(filesDir)
         commands = CommandRepository(filesDir)
         deepLinks = DeepLinkRepository(filesDir)

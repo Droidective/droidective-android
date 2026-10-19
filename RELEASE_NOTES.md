@@ -24,6 +24,7 @@ The first release: Droidective's developer toggles and tools on the phone itself
 - **Access.** Each toggle names the level it needs: ordinary app permissions; WRITE_SECURE_SETTINGS,
   which Droidective's Phone setup on the Mac grants in one click; Shizuku; or root.
 - **Updates.** The app checks GitHub once a day and tells you when a new release is out. You can
-  turn that off in Setup.
+  turn that off in Setup. If Droidective itself crashes, Setup keeps the report for you to copy
+  into a bug report; nothing is sent anywhere.
 
 Needs Android 11 or later.

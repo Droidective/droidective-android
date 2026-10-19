@@ -149,6 +149,7 @@ fun SetupScreen(app: DroidectiveApplication) {
         }
 
         UpdatesCard()
+        OwnCrashesCard(app.ownCrashes)
     }
 }
 

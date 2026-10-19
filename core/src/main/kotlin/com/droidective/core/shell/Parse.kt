@@ -39,12 +39,21 @@ object Parse {
 
     private val resumed =
         Regex(
-            """(?:topResumedActivity|mResumedActivity|ResumedActivity)[=:]\s*ActivityRecord\{\S+ u\d+ ([\w.]+)/"""
+            """(?:topResumedActivity|mResumedActivity|ResumedActivity)[=:]\s*ActivityRecord\{\S+ u\d+ ([\w.]+)/([\w.$]+)"""
         )
 
     /** The package in front, from `dumpsys activity activities`. */
     fun resumedPackage(output: String): String? =
         lines(output).firstNotNullOfOrNull { resumed.find(it)?.groupValues?.get(1) }
+
+    /**
+     * The activity in front, as `package/.Activity` the way `am start -n` takes it, from `dumpsys
+     * activity activities`.
+     */
+    fun resumedActivity(output: String): String? =
+        lines(output).firstNotNullOfOrNull { line ->
+            resumed.find(line)?.let { "${it.groupValues[1]}/${it.groupValues[2]}" }
+        }
 
     /** `getprop <key>` prints the value or an empty line. */
     fun prop(output: String): String? = lines(output).firstOrNull()?.trim()?.ifEmpty { null }

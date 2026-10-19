@@ -21,4 +21,5 @@
     <string name="tile_demo_mode">Demo mode</string>
     <string name="tile_wireless_debugging">Wireless debugging</string>
     <string name="tile_network_speed">Network speed</string>
+    <string name="tile_current_activity">Current activity</string>
 </resources>

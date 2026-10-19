@@ -1,8 +1,10 @@
 package com.droidective.android.ui.tools
 
+import android.Manifest
 import android.content.Intent
 import android.os.Build
-import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,7 +39,11 @@ import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.automations.AppChooser
 import com.droidective.android.ui.copy
+import com.droidective.android.ui.needsNotificationPermission
+import com.droidective.android.ui.notificationsShow
+import com.droidective.android.ui.openNotificationSettings
 import com.droidective.android.ui.openSafely
+import com.droidective.android.ui.openUsageAccess
 import com.droidective.core.Grants
 import com.droidective.core.ago
 import com.droidective.core.crashes.CrashReport
@@ -63,8 +69,22 @@ fun CrashCatcherTool(tool: ToolContext) {
     var open by remember { mutableStateOf<CrashReport?>(null) }
     var choosing by remember { mutableStateOf(false) }
     val focus by CrashAlerts.focus.collectAsStateWithLifecycle()
+    // An alert is a notification: without the permission, watching an app does nothing visible.
+    var alertsShow by remember { mutableStateOf(notificationsShow(context)) }
+    val askNotifications =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            alertsShow = notificationsShow(context)
+        }
+    val watch = { packageName: String, on: Boolean ->
+        CrashAlerts.setWatched(context, packageName, on)
+        watched = CrashAlerts.watched(context)
+        if (on && needsNotificationPermission(context)) {
+            askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     LaunchedEffect(resumes) {
+        alertsShow = notificationsShow(context)
         access = log.access()
         reports = withContext(Dispatchers.IO) { log.recent() }
     }
@@ -80,10 +100,7 @@ fun CrashCatcherTool(tool: ToolContext) {
             report,
             ToolContext(tool.snackbar, onBack = { open = null }, tool.onOpenSetup),
             watching = watching,
-            onWatch = {
-                CrashAlerts.setWatched(context, report.packageName, !watching)
-                watched = CrashAlerts.watched(context)
-            },
+            onWatch = { watch(report.packageName, !watching) },
         )
         return
     }
@@ -93,6 +110,19 @@ fun CrashCatcherTool(tool: ToolContext) {
         ToolSection("Alerts") {
             if (watched.isEmpty()) {
                 ToolNote("Watch an app to get a notification when it crashes or stops responding.")
+            } else if (!alertsShow) {
+                ToolNote("Notifications are off for Droidective, so these alerts can't show.")
+                OutlinedButton(
+                    onClick = {
+                        if (needsNotificationPermission(context)) {
+                            askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            openNotificationSettings(context)
+                        }
+                    }
+                ) {
+                    Text("Allow notifications")
+                }
             }
             watched.sorted().forEach { packageName ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -105,12 +135,7 @@ fun CrashCatcherTool(tool: ToolContext) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    IconButton(
-                        onClick = {
-                            CrashAlerts.setWatched(context, packageName, false)
-                            watched = CrashAlerts.watched(context)
-                        }
-                    ) {
+                    IconButton(onClick = { watch(packageName, false) }) {
                         Icon(
                             painterResource(Symbols.byName.getValue("close").outlined),
                             "Stop watching",
@@ -141,8 +166,7 @@ fun CrashCatcherTool(tool: ToolContext) {
             title = "Watch for crashes",
             onDismiss = { choosing = false },
             onPick = {
-                CrashAlerts.setWatched(context, it.packageName, true)
-                watched = CrashAlerts.watched(context)
+                watch(it.packageName, true)
                 choosing = false
             },
         )
@@ -170,11 +194,7 @@ private fun AccessNote(access: CrashLog.Access, tool: ToolContext) {
         }
         CrashLog.Access.NeedsUsageAccess -> {
             ToolNote("Reading a crash report also needs Usage access for Droidective.")
-            OutlinedButton(
-                onClick = { context.openSafely(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
-            ) {
-                Text("Allow Usage access")
-            }
+            OutlinedButton(onClick = { context.openUsageAccess() }) { Text("Allow Usage access") }
         }
     }
 }

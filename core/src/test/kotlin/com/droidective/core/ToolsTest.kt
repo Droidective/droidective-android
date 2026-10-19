@@ -4,6 +4,7 @@ import com.droidective.core.apps.AppAction
 import com.droidective.core.apps.AppActions
 import com.droidective.core.commands.CommandRepository
 import com.droidective.core.commands.CustomCommand
+import com.droidective.core.device.Bootloader
 import com.droidective.core.device.Rate
 import com.droidective.core.device.RateMeter
 import com.droidective.core.device.RootCheck
@@ -132,6 +133,28 @@ class ToolsTest {
         assertEquals("980 B/s", RateMeter.format(980.0))
         assertEquals("1.2 KB/s", RateMeter.format(1_234.0))
         assertEquals("14 MB/s", RateMeter.format(14_200_000.0))
+    }
+
+    @Test
+    fun theBootloaderLockComesFromVerifiedBootThenTheFlashFlag() {
+        assertEquals("Locked", Bootloader.lock(mapOf("ro.boot.vbmeta.device_state" to "locked")))
+        assertEquals(
+            "Unlocked",
+            Bootloader.lock(
+                mapOf("ro.boot.vbmeta.device_state" to "unlocked", "ro.boot.flash.locked" to "1")
+            ),
+        )
+        assertEquals("Unlocked", Bootloader.lock(mapOf("ro.boot.flash.locked" to "0")))
+        assertEquals("Locked", Bootloader.lock(mapOf("ro.boot.flash.locked" to "1\r")))
+        assertNull(Bootloader.lock(emptyMap()))
+        assertNull(Bootloader.lock(mapOf("ro.boot.vbmeta.device_state" to "weird")))
+    }
+
+    @Test
+    fun anUnknownBootloaderVersionIsNoVersion() {
+        assertNull(Bootloader.version("unknown"))
+        assertNull(Bootloader.version(""))
+        assertEquals("slider-1.0-1234", Bootloader.version("slider-1.0-1234"))
     }
 
     @Test

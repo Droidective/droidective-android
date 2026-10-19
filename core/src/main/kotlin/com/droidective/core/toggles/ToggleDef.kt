@@ -24,6 +24,18 @@ enum class SettingScope(val namespace: String, val writeLevel: AccessLevel) {
     SystemPrivate("system", AccessLevel.Shell),
 }
 
+/**
+ * Hardware a toggle drives, named by its PackageManager feature. A phone without it hides the
+ * toggle: a tablet with no modem has no mobile data to switch.
+ */
+enum class Hardware(val feature: String) {
+    Wifi("android.hardware.wifi"),
+    Bluetooth("android.hardware.bluetooth"),
+    Nfc("android.hardware.nfc"),
+    Telephony("android.hardware.telephony"),
+    CameraFlash("android.hardware.camera.flash"),
+}
+
 /** One position a toggle can be in. A toggle with a single state is an action. */
 data class ToggleState(val id: String, val label: String)
 
@@ -132,6 +144,8 @@ data class ToggleDef(
     val read: Probe,
     val write: Write,
     val fallback: Fallback? = null,
+    /** What the phone needs for this toggle to mean anything; null when every phone has it. */
+    val hardware: Hardware? = null,
 ) {
     val level: AccessLevel
         get() = write.level

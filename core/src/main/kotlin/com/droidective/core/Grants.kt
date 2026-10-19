@@ -29,5 +29,12 @@ object Grants {
     fun commands(packageName: String, sdk: Int): List<ShellCommand> =
         permissions(sdk).map { ShellCommand.of("pm", "grant", shellQuote(packageName), it) }
 
+    /**
+     * Usage access, which Android keeps as an app-op rather than a permission. A shell can allow it
+     * outright, which saves a trip through a Settings list some phones only reach by name.
+     */
+    fun usageAccessCommand(packageName: String): ShellCommand =
+        ShellCommand.of("appops", "set", shellQuote(packageName), "GET_USAGE_STATS", "allow")
+
     private const val ANDROID_15 = 35
 }

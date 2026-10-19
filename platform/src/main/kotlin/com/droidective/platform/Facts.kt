@@ -16,6 +16,7 @@ import android.os.Environment
 import android.os.StatFs
 import android.os.SystemClock
 import android.text.format.Formatter
+import com.droidective.core.device.Bootloader
 import com.droidective.core.device.RootCheck
 import com.droidective.core.device.RootEvidence
 import com.droidective.core.shell.Parse
@@ -86,7 +87,8 @@ object DeviceFacts {
                     Fact("Fingerprint", Build.FINGERPRINT),
                     Fact("Kernel", System.getProperty("os.version")),
                     Fact("Uptime", uptime(SystemClock.elapsedRealtime())),
-                    Fact("Bootloader", Build.BOOTLOADER),
+                    Fact("Bootloader", Bootloader.version(Build.BOOTLOADER)),
+                    Fact("Bootloader lock", Bootloader.lock(props)),
                     Fact(
                         "Verified boot",
                         props["ro.boot.verifiedbootstate"]?.takeIf { it.isNotBlank() },

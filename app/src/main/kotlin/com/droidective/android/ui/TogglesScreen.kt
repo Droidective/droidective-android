@@ -44,6 +44,7 @@ import com.droidective.core.Access
 import com.droidective.core.AccessLevel
 import com.droidective.core.toggles.ToggleDef
 import com.droidective.core.toggles.Toggles
+import com.droidective.platform.hasHardwareFor
 
 /** Every built toggle, searchable, grouped the way the widget picker groups them. */
 @Composable
@@ -52,7 +53,7 @@ fun TogglesScreen(app: DroidectiveApplication, onOpenSetup: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
-    val built = remember { Toggles.all.filter { it.isBuilt } }
+    val built = remember { Toggles.all.filter { it.isBuilt && context.hasHardwareFor(it) } }
     val states = rememberToggleStates(built)
     var query by rememberSaveable { mutableStateOf("") }
 

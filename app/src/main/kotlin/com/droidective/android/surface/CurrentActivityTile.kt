@@ -6,11 +6,11 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
-import android.provider.Settings
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import com.droidective.android.droidective
 import com.droidective.android.ui.Symbols
+import com.droidective.android.ui.usageAccessIntent
 import com.droidective.core.apps.CurrentActivity
 import com.droidective.core.shell.Parse
 import com.droidective.platform.ForegroundApp
@@ -93,10 +93,7 @@ class CurrentActivityTile : TileService() {
                             "see which activity is on screen."
                     )
                     .setPositiveButton("Allow Usage access") { _, _ ->
-                        open(
-                            Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        )
+                        open(usageAccessIntent(this).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     }
             is ActivityLookup.Failed -> builder.setMessage(found.message)
         }

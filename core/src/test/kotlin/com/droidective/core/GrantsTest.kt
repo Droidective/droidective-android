@@ -21,6 +21,14 @@ class GrantsTest {
     }
 
     @Test
+    fun usageAccessIsAnAppOpAllowedForTheQuotedPackage() {
+        assertEquals(
+            "appops set 'com.droidective.android' GET_USAGE_STATS allow",
+            Grants.usageAccessCommand("com.droidective.android").line,
+        )
+    }
+
+    @Test
     fun crashReportsNeedReadLogsBeforeAndroid15() {
         assertEquals(Grants.READ_LOGS, Grants.crashReports(30))
         assertEquals(Grants.READ_LOGS, Grants.crashReports(34))

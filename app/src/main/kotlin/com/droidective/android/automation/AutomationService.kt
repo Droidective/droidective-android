@@ -24,20 +24,19 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
-import android.provider.Settings
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.droidective.android.MainActivity
 import com.droidective.android.R
 import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
+import com.droidective.android.surface.uri
 import com.droidective.core.automations.Event
 import com.droidective.core.automations.Matcher
 import com.droidective.core.automations.State
 import com.droidective.core.automations.Trigger
 import com.droidective.core.automations.Wake
 import com.droidective.core.toggles.Probe
-import com.droidective.core.toggles.SettingScope
 import com.droidective.core.toggles.Toggles
 import com.droidective.platform.CrashLog
 import kotlinx.coroutines.CoroutineScope
@@ -218,16 +217,7 @@ class AutomationService : Service() {
             watched.states
                 .filterIsInstance<State.ToggleIs>()
                 .mapNotNull { Toggles.byId(it.toggleId)?.read as? Probe.Setting }
-                .forEach { probe ->
-                    val uri =
-                        when (probe.scope) {
-                            SettingScope.Global -> Settings.Global.getUriFor(probe.key)
-                            SettingScope.Secure -> Settings.Secure.getUriFor(probe.key)
-                            SettingScope.SystemPublic,
-                            SettingScope.SystemPrivate -> Settings.System.getUriFor(probe.key)
-                        }
-                    resolver.registerContentObserver(uri, false, settings)
-                }
+                .forEach { probe -> resolver.registerContentObserver(probe.uri(), false, settings) }
         }
 
         /**

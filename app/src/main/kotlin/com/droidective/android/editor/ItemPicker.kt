@@ -48,6 +48,7 @@ import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
 import com.droidective.core.layout.LayoutKind
 import com.droidective.core.toggles.Toggles
+import com.droidective.platform.hasHardwareFor
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -122,7 +123,11 @@ fun ItemPicker(kind: LayoutKind, onPick: (Item) -> Unit, onDismiss: () -> Unit) 
 
 @Composable
 private fun ToggleList(query: String, onPick: (Item) -> Unit) {
-    val toggles = Toggles.all.filter { it.isBuilt && it.title.contains(query, ignoreCase = true) }
+    val context = LocalContext.current
+    val toggles =
+        Toggles.all.filter {
+            it.isBuilt && context.hasHardwareFor(it) && it.title.contains(query, ignoreCase = true)
+        }
     LazyColumn {
         toggles
             .groupBy { it.group }

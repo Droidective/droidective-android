@@ -48,7 +48,10 @@ object TileSlots {
             emptyMap()
         }
 
-    fun item(context: Context, slot: Int): Item? = store(context).load()[slot]
+    fun item(context: Context, slot: Int): Item? = all(context)[slot]
+
+    /** Every slot that holds something, by slot number. */
+    fun all(context: Context): Map<Int, Item> = store(context).load()
 
     fun bind(context: Context, slot: Int, item: Item?) {
         val current = store(context).load()

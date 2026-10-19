@@ -6,6 +6,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.content.pm.PermissionInfo
 import android.net.TrafficStats
+import com.droidective.core.apps.InstallTimes
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +69,8 @@ object AppCatalog {
             } catch (_: PackageManager.NameNotFoundException) {
                 null
             }
+        fun installed(millis: Long) =
+            InstallTimes.real(millis)?.let { date.format(Date(it)) } ?: "With the system image"
         return listOf(
             Fact("Package", info.packageName),
             Fact("Version", "${info.versionName} (${info.longVersionCode})"),
@@ -79,8 +82,8 @@ object AppCatalog {
                     ?: if (app.flags and ApplicationInfo.FLAG_SYSTEM != 0) "Preinstalled"
                     else "Unknown, or adb",
             ),
-            Fact("First installed", date.format(Date(info.firstInstallTime))),
-            Fact("Updated", date.format(Date(info.lastUpdateTime))),
+            Fact("First installed", installed(info.firstInstallTime)),
+            Fact("Updated", installed(info.lastUpdateTime)),
             Fact(
                 "Debuggable",
                 if (app.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) "Yes" else "No",

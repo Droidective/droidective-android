@@ -36,6 +36,7 @@ import com.droidective.android.automation.RunRequest
 import com.droidective.android.droidective
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.openSafely
+import com.droidective.android.ui.openUsageAccess
 import com.droidective.android.ui.tools.ToolContext
 import com.droidective.android.ui.tools.ToolNote
 import com.droidective.android.ui.tools.ToolScaffold
@@ -365,11 +366,7 @@ private fun AppOpenNote(draft: Automation) {
         "Telling which app is open needs Shell, or Usage access for Droidective. Without " +
             "either, it never counts as open."
     )
-    OutlinedButton(
-        onClick = { context.openSafely(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
-    ) {
-        Text("Allow Usage access")
-    }
+    OutlinedButton(onClick = { context.openUsageAccess() }) { Text("Allow Usage access") }
 }
 
 /** A crash trigger hears nothing until crash reports can be read; say what's missing. */
@@ -386,11 +383,7 @@ private fun CrashNote(draft: Automation) {
             )
         CrashLog.Access.NeedsUsageAccess -> {
             ToolNote("Telling which app crashed needs Usage access for Droidective.")
-            OutlinedButton(
-                onClick = { context.openSafely(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
-            ) {
-                Text("Allow Usage access")
-            }
+            OutlinedButton(onClick = { context.openUsageAccess() }) { Text("Allow Usage access") }
         }
     }
 }

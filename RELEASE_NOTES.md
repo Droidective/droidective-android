@@ -3,6 +3,27 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.4.0
+
+Four more tools, the numbers over any app, and two fixes underneath.
+
+- **Performance Monitor.** CPU per core, memory and the hottest temperatures, live, and for one
+  app the frames it drew since you last reset: how many were janky and how long the slow ones
+  took, 50th to 99th percentile. **Show over other apps** puts the numbers in a small window you
+  can drag over any app, following whichever app is in front.
+- **Settings Editor.** Android's Global, Secure and System settings, system properties and feature
+  flags, searched and changed. Every change remembers what it replaced, so Undo puts it back, even
+  after the app restarts. As the shell user, Android 15 and later change only the flags on their
+  allowlist; root changes any.
+- **Background Work.** Doze on demand, and Wake up to hand it back to Android; an app's standby
+  bucket; and the jobs it has scheduled, WorkManager's included, each runnable now.
+- **File Explorer.** The phone's folders as the shell or root sees them, from Downloads to /proc,
+  with the Sandbox Browser's viewers for preferences, databases and text.
+- Long output can't overflow Shizuku any more: a command's result comes back through a pipe rather
+  than a reply that tops out near 1 MB. The flag list alone made a 714 KB reply on an emulator.
+- Every switch row is one toggle: TalkBack reads its label with its state, and a tap anywhere on
+  the row flips it.
+
 ## 0.3.0
 
 Six more of the Mac's tools, on the phone.

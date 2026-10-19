@@ -139,6 +139,9 @@ runs actions.
 - Test fakes (`FakeShell`, `FakeSettingsStore`, `FakePlatformToggles`, `FixtureShell`) live in
   `core/src/testFixtures`. `FixtureShell` replays real emulator output from `fixtures/`
   (`scripts/sync-fixtures.sh` copies it from the main repo at a pinned commit).
+- **The launcher icon is the Mac app's**, split into adaptive layers (background, foreground,
+  monochrome) by `scripts/import-launcher-icon.sh` from a pinned commit of the main repo. Don't
+  edit the PNGs: bump the commit and rerun it (macOS only, it needs `swift` and `sips`).
 
 ## Build, test, check
 

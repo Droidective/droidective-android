@@ -5,6 +5,7 @@ import androidx.glance.appwidget.updateAll
 import com.droidective.android.automation.AutomationService
 import com.droidective.android.droidective
 import com.droidective.android.widget.ToggleBarWidget
+import com.droidective.core.automations.Action
 import com.droidective.core.layout.Cell
 import com.droidective.core.layout.Cells
 import com.droidective.core.layout.Item
@@ -33,6 +34,11 @@ object Surfaces {
                         Toggles.byId(item.toggleId)?.let { ToggleTaps.stateOf(context, it) }
                     is Item.Command ->
                         app.commands.get(item.commandId)?.let { CommandTaps.stateOf(context, it) }
+                    // An action that sets a toggle lights up while the toggle is in that state.
+                    is Item.Action ->
+                        (item.action as? Action.SetToggle)?.let { set ->
+                            Toggles.byId(set.toggleId)?.let { ToggleTaps.stateOf(context, it) }
+                        }
                     else -> null
                 }
             Cells.plan(
@@ -41,6 +47,7 @@ object Surfaces {
                 access,
                 folderName = { id -> app.layouts.get(id)?.name },
                 command = app.commands::get,
+                automation = app.automations::get,
             )
         }
     }

@@ -26,6 +26,7 @@ object Symbols {
                 Symbol(R.drawable.sym_battery_5_bar, R.drawable.sym_battery_5_bar_fill),
             "battery_saver" to
                 Symbol(R.drawable.sym_battery_saver, R.drawable.sym_battery_saver_fill),
+            "block" to Symbol(R.drawable.sym_block, R.drawable.sym_block_fill),
             "bluetooth" to Symbol(R.drawable.sym_bluetooth, R.drawable.sym_bluetooth_fill),
             "bluetooth_connected" to
                 Symbol(R.drawable.sym_bluetooth_connected, R.drawable.sym_bluetooth_connected_fill),
@@ -41,6 +42,8 @@ object Symbols {
             "bug_report" to Symbol(R.drawable.sym_bug_report, R.drawable.sym_bug_report_fill),
             "build" to Symbol(R.drawable.sym_build, R.drawable.sym_build_fill),
             "check_circle" to Symbol(R.drawable.sym_check_circle, R.drawable.sym_check_circle_fill),
+            "cleaning_services" to
+                Symbol(R.drawable.sym_cleaning_services, R.drawable.sym_cleaning_services_fill),
             "close" to Symbol(R.drawable.sym_close, R.drawable.sym_close_fill),
             "cloud_sync" to Symbol(R.drawable.sym_cloud_sync, R.drawable.sym_cloud_sync_fill),
             "coffee" to Symbol(R.drawable.sym_coffee, R.drawable.sym_coffee_fill),
@@ -65,6 +68,7 @@ object Symbols {
                 Symbol(R.drawable.sym_flashlight_on, R.drawable.sym_flashlight_on_fill),
             "folder" to Symbol(R.drawable.sym_folder, R.drawable.sym_folder_fill),
             "format_size" to Symbol(R.drawable.sym_format_size, R.drawable.sym_format_size_fill),
+            "hide_source" to Symbol(R.drawable.sym_hide_source, R.drawable.sym_hide_source_fill),
             "history" to Symbol(R.drawable.sym_history, R.drawable.sym_history_fill),
             "info" to Symbol(R.drawable.sym_info, R.drawable.sym_info_fill),
             "keyboard" to Symbol(R.drawable.sym_keyboard, R.drawable.sym_keyboard_fill),
@@ -89,6 +93,8 @@ object Symbols {
             "power" to Symbol(R.drawable.sym_power, R.drawable.sym_power_fill),
             "receipt_long" to Symbol(R.drawable.sym_receipt_long, R.drawable.sym_receipt_long_fill),
             "refresh" to Symbol(R.drawable.sym_refresh, R.drawable.sym_refresh_fill),
+            "remove_moderator" to
+                Symbol(R.drawable.sym_remove_moderator, R.drawable.sym_remove_moderator_fill),
             "schedule" to Symbol(R.drawable.sym_schedule, R.drawable.sym_schedule_fill),
             "screen_rotation" to
                 Symbol(R.drawable.sym_screen_rotation, R.drawable.sym_screen_rotation_fill),

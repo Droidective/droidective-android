@@ -56,6 +56,28 @@ sealed interface Item {
     @SerialName("settings-screen")
     data class SettingsScreen(override val key: String, val label: String, val action: String) :
         Item
+
+    /** Runs one of the person's automations now, whatever its trigger. */
+    @Serializable
+    @SerialName("automation")
+    data class Automation(override val key: String, val automationId: String) : Item
+
+    /**
+     * One automation action on its own, such as setting a toggle to one state, force-stopping an
+     * app or granting a permission. [label] is what the slot says.
+     */
+    @Serializable
+    @SerialName("action")
+    data class Action(
+        override val key: String,
+        val action: com.droidective.core.automations.Action,
+        val label: String,
+    ) : Item
+
+    /** Opens one of Droidective's tools, such as Logcat or Current activity. */
+    @Serializable
+    @SerialName("tool")
+    data class Tool(override val key: String, val featureId: String) : Item
 }
 
 /** Where a layout is shown. The kind sets how many items fit. */

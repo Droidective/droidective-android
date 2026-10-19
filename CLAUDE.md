@@ -66,6 +66,25 @@ Facts that decided levels (AOSP 17 source, not tested on every OEM):
 The registry tests fail on: duplicate ids, a write that doesn't cover every state, a Shell toggle
 with no stand-in, an unexpected Pending toggle, an icon with no drawable.
 
+## Slots
+
+Every surface (home-screen bars, notification bars, folders, tiles) holds the same `Item`s, and
+`Cells.plan` decides how each draws and what a tap does (`Tap`). A slot can be a toggle, an app,
+another app's shortcut, a deep link, a Settings screen, a folder, a saved command, an automation
+(run now), one automation `Action` on its own (a toggle set to one state, an app force-stopped, a
+permission granted), or one of the app's tools.
+
+- **Every background tap goes through `BackgroundTaps.run`**, from the widget's Glance callbacks,
+  the notification bar's receiver and the tiles alike, so a slot does the same thing wherever it's
+  placed. A tap that needs a person ends in a `Problems` notification.
+- **A single action runs through the automation engine** (`ActionTaps`), so it does exactly what
+  the same step does in an automation. It rides in the PendingIntent as the automation file's
+  JSON (`SlotActions`). An action's level is `Action.level()`, and a slot without it opens Setup.
+- **A destructive action confirms when it's added**, like the automation editor's, and never when
+  it's tapped.
+- **New `ActionCallback`s need nothing else**: the R8 keep rule covers every implementation, and
+  `scripts/check-r8-keeps.sh` checks a release build kept their constructors.
+
 ## Automations
 
 The model and every rule are pure, in `core/…/automations/`; the app only delivers signals and

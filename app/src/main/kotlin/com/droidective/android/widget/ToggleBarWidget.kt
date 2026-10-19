@@ -47,11 +47,10 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.droidective.android.automation.AutomationService
 import com.droidective.android.droidective
-import com.droidective.android.surface.CommandTaps
+import com.droidective.android.surface.BackgroundTaps
 import com.droidective.android.surface.Launch
-import com.droidective.android.surface.Problems
+import com.droidective.android.surface.SlotActions
 import com.droidective.android.surface.Surfaces
-import com.droidective.android.surface.ToggleTaps
 import com.droidective.android.ui.Symbols
 import com.droidective.core.layout.Cell
 import com.droidective.core.layout.CellIcon
@@ -60,8 +59,6 @@ import com.droidective.core.layout.Layout
 import com.droidective.core.layout.LayoutKind
 import com.droidective.core.layout.Style
 import com.droidective.core.layout.Tap
-import com.droidective.core.toggles.Outcome
-import com.droidective.core.toggles.Toggles
 import java.util.UUID
 import kotlin.math.max
 
@@ -239,6 +236,17 @@ private fun actionFor(context: Context, cell: Cell): Action? =
             actionRunCallback<RunCommandAction>(
                 actionParametersOf(RunCommandAction.commandKey to tap.commandId)
             )
+        is Tap.RunAutomation ->
+            actionRunCallback<RunAutomationAction>(
+                actionParametersOf(RunAutomationAction.automationKey to tap.automationId)
+            )
+        is Tap.RunAction ->
+            actionRunCallback<RunActionAction>(
+                actionParametersOf(
+                    RunActionAction.actionKey to SlotActions.encode(tap.action),
+                    RunActionAction.labelKey to tap.label,
+                )
+            )
         is Tap.Open ->
             Launch.intentFor(context, tap.target)?.let {
                 actionStartActivity(OpenActivity.wrap(context, it))
@@ -255,9 +263,8 @@ class RunToggleAction : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters,
     ) {
-        val toggle = parameters[toggleKey]?.let { Toggles.byId(it) } ?: return
-        val outcome = ToggleTaps.advance(context, toggle)
-        if (outcome !is Outcome.Applied) Problems.report(context, toggle, outcome)
+        val toggleId = parameters[toggleKey] ?: return
+        BackgroundTaps.run(context, Tap.RunToggle(toggleId))
     }
 
     companion object {
@@ -272,12 +279,45 @@ class RunCommandAction : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters,
     ) {
-        val command = parameters[commandKey]?.let { context.droidective.commands.get(it) } ?: return
-        Problems.reportCommand(context, command, CommandTaps.run(context, command))
+        val commandId = parameters[commandKey] ?: return
+        BackgroundTaps.run(context, Tap.RunCommand(commandId))
     }
 
     companion object {
         val commandKey = ActionParameters.Key<String>("command")
+    }
+}
+
+/** Runs one of the person's automations, tapped on a widget. */
+class RunAutomationAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        val automationId = parameters[automationKey] ?: return
+        BackgroundTaps.run(context, Tap.RunAutomation(automationId))
+    }
+
+    companion object {
+        val automationKey = ActionParameters.Key<String>("automation")
+    }
+}
+
+/** Runs one automation action, tapped on a widget. */
+class RunActionAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        val action = parameters[actionKey]?.let(SlotActions::decode) ?: return
+        BackgroundTaps.run(context, Tap.RunAction(action, parameters[labelKey].orEmpty()))
+    }
+
+    companion object {
+        val actionKey = ActionParameters.Key<String>("action")
+        val labelKey = ActionParameters.Key<String>("label")
     }
 }
 

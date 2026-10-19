@@ -2,7 +2,12 @@ package com.droidective.core.layout
 
 import com.droidective.core.Access
 import com.droidective.core.AccessLevel
+import com.droidective.core.apps.AppAction
+import com.droidective.core.automations.Action
+import com.droidective.core.automations.Automation
+import com.droidective.core.automations.level
 import com.droidective.core.commands.CustomCommand
+import com.droidective.core.features.Features
 import com.droidective.core.toggles.ToggleDef
 import com.droidective.core.toggles.Toggles
 import com.droidective.core.toggles.Write
@@ -14,6 +19,12 @@ sealed interface Tap {
 
     /** Runs a saved custom command in the background, as the shell user. */
     data class RunCommand(val commandId: String) : Tap
+
+    /** Runs one of the person's automations now, in the background. */
+    data class RunAutomation(val automationId: String) : Tap
+
+    /** Runs one automation action in the background, such as force-stopping an app. */
+    data class RunAction(val action: Action, val label: String) : Tap
 
     /** Starts an activity straight from the tap, never through a trampoline. */
     data class Open(val target: Target) : Tap
@@ -67,9 +78,11 @@ data class Cell(
 /** Decides how each item draws and what a tap on it does, given the current access. */
 object Cells {
     /**
-     * @param state the toggle's current state id when [item] is a toggle.
+     * @param state the toggle's current state id when [item] is a toggle, or when it's an action
+     *   that sets one; "on" or "off" for a command item.
      * @param folderName looks up a folder's name for its label.
-     * @param command looks up a saved command; for a command item, [state] is "on" or "off".
+     * @param command looks up a saved command.
+     * @param automation looks up an automation.
      * @return null for an item that points at something gone, such as a removed toggle.
      */
     fun plan(
@@ -78,8 +91,32 @@ object Cells {
         access: Access,
         folderName: (String) -> String?,
         command: (String) -> CustomCommand? = { null },
+        automation: (String) -> Automation? = { null },
     ): Cell? =
         when (item) {
+            is Item.Automation ->
+                automation(item.automationId)?.let { found ->
+                    Cell(
+                        item.key,
+                        found.name,
+                        CellIcon.Symbol("bolt"),
+                        active = false,
+                        degraded = false,
+                        Tap.RunAutomation(found.id),
+                    )
+                }
+            is Item.Action -> actionCell(item, state, access, command)
+            is Item.Tool ->
+                Features.byId(item.featureId)?.let { feature ->
+                    Cell(
+                        item.key,
+                        feature.title,
+                        CellIcon.Symbol(feature.icon),
+                        active = false,
+                        degraded = false,
+                        Tap.Open(Target.Tool(feature.id)),
+                    )
+                }
             is Item.Command ->
                 command(item.commandId)?.let { commandCell(item.key, it, state, access) }
             is Item.Toggle ->
@@ -131,6 +168,56 @@ object Cells {
                     degraded = false,
                     Tap.Open(Target.SystemScreen(item.action)),
                 )
+        }
+
+    /**
+     * An action draws as what it does. One that sets a toggle lights up while the toggle is in that
+     * state, so a row of "Animation scale: 0.5×" and "Animation scale: Off" shows which is on.
+     */
+    private fun actionCell(
+        item: Item.Action,
+        state: String?,
+        access: Access,
+        command: (String) -> CustomCommand?,
+    ): Cell? {
+        val action = item.action
+        if (action is Action.SetToggle && Toggles.byId(action.toggleId)?.isBuilt != true)
+            return null
+        if (action is Action.RunCommand && command(action.commandId) == null) return null
+        val level = action.level()
+        val inPlace = access.allows(level)
+        return Cell(
+            key = item.key,
+            label = item.label,
+            icon = CellIcon.Symbol(actionIcon(action)),
+            active = action is Action.SetToggle && state == action.state,
+            degraded = !inPlace,
+            tap = if (inPlace) Tap.RunAction(action, item.label) else Tap.Open(Target.Setup(level)),
+        )
+    }
+
+    /** The symbol an action draws with: its toggle's, or one for what it does to an app. */
+    fun actionIcon(action: Action): String =
+        when (action) {
+            is Action.SetToggle -> Toggles.byId(action.toggleId)?.icon ?: "toggle_on"
+            is Action.ForApp ->
+                when (action.action) {
+                    AppAction.ForceStop -> "block"
+                    AppAction.ClearCache -> "cleaning_services"
+                    AppAction.ClearData -> "delete_sweep"
+                    AppAction.Disable -> "hide_source"
+                    AppAction.Enable -> "check_circle"
+                    AppAction.Uninstall -> "delete"
+                }
+            is Action.Permission -> if (action.grant) "verified_user" else "remove_moderator"
+            is Action.RunCommand -> "terminal"
+            is Action.OpenApp,
+            is Action.OpenShortcut -> "open_in_new"
+            is Action.OpenLink -> "link"
+            is Action.OpenSettings -> "settings"
+            is Action.Notify -> "notifications"
+            is Action.Wait -> "timer"
+            is Action.RunAutomation -> "bolt"
         }
 
     private fun commandCell(

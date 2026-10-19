@@ -52,6 +52,12 @@ object Problems {
         post(context, "command:${command.id}", command.name, text, intent ?: return)
     }
 
+    /** An action tapped in the background that didn't work, with what went wrong. */
+    fun reportStep(context: Context, label: String, detail: String?) {
+        val intent = Intent(context, MainActivity::class.java)
+        post(context, "action:$label", label, detail ?: "It didn’t work.", intent)
+    }
+
     private fun post(context: Context, tag: String, title: String, text: String, intent: Intent) {
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(

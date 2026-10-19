@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.droidective.android.automation.ActionTaps
+import com.droidective.android.automation.Automations
 import com.droidective.android.droidective
 import com.droidective.android.surface.CommandTaps
 import com.droidective.android.surface.Launch
@@ -114,6 +116,17 @@ private fun FolderPanel(id: String, name: String, on: Long, off: Long, onOpened:
                                         Surfaces.refreshBehind(context)
                                     message = CommandOutput.describe(command.name, result)
                                 }
+                            is Tap.RunAutomation -> {
+                                Automations.runNow(context, tap.automationId, FOLDER_CAUSE)
+                                message = "Running “${cell.label}”"
+                            }
+                            is Tap.RunAction ->
+                                scope.launch {
+                                    val step = ActionTaps.run(context, tap.action, tap.label)
+                                    message =
+                                        if (step.ok) "${tap.label}: done"
+                                        else "${tap.label}: ${step.detail ?: "it didn’t work"}"
+                                }
                             is Tap.Open -> {
                                 Launch.intentFor(context, tap.target)?.let(context::openSafely)
                                 onOpened()
@@ -152,3 +165,5 @@ fun Scrim(onDismiss: () -> Unit, content: @Composable () -> Unit) {
         }
     }
 }
+
+private const val FOLDER_CAUSE = "From a folder"

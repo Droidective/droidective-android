@@ -21,7 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,6 +57,8 @@ import kotlinx.coroutines.withContext
 private enum class PickerTab(val title: String) {
     Toggles("Toggles"),
     Apps("Apps"),
+    Actions("Actions"),
+    Tools("Tools"),
     Custom("Custom"),
 }
 
@@ -79,9 +81,22 @@ private val settingsScreens =
 
 private fun key() = UUID.randomUUID().toString()
 
-/** Add Toggle: Toggles, Apps and Custom, with search, the way MicroToggles lays it out. */
+/**
+ * Add: Toggles, Apps, Actions, Tools and Custom, with search, the way MicroToggles lays it out.
+ *
+ * @param slotsOnly leaves out Actions and Tools, for the automation editor, which adds actions its
+ *   own way and can't open a tool.
+ */
 @Composable
-fun ItemPicker(kind: LayoutKind, onPick: (Item) -> Unit, onDismiss: () -> Unit) {
+fun ItemPicker(
+    kind: LayoutKind,
+    onPick: (Item) -> Unit,
+    onDismiss: () -> Unit,
+    slotsOnly: Boolean = false,
+) {
+    val tabs =
+        if (slotsOnly) PickerTab.entries - setOf(PickerTab.Actions, PickerTab.Tools)
+        else PickerTab.entries
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var query by rememberSaveable { mutableStateOf("") }
     Dialog(
@@ -102,8 +117,8 @@ fun ItemPicker(kind: LayoutKind, onPick: (Item) -> Unit, onDismiss: () -> Unit) 
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 )
-                PrimaryTabRow(selectedTabIndex = tab) {
-                    PickerTab.entries.forEachIndexed { index, it ->
+                PrimaryScrollableTabRow(selectedTabIndex = tab, edgePadding = 16.dp) {
+                    tabs.forEachIndexed { index, it ->
                         Tab(
                             selected = tab == index,
                             onClick = { tab = index },
@@ -111,9 +126,11 @@ fun ItemPicker(kind: LayoutKind, onPick: (Item) -> Unit, onDismiss: () -> Unit) 
                         )
                     }
                 }
-                when (PickerTab.entries[tab]) {
+                when (tabs[tab]) {
                     PickerTab.Toggles -> ToggleList(query, onPick)
                     PickerTab.Apps -> AppList(query, onPick)
+                    PickerTab.Actions -> ActionList(query, onPick)
+                    PickerTab.Tools -> ToolList(query, onPick)
                     PickerTab.Custom -> CustomList(kind, query, onPick)
                 }
             }
@@ -291,7 +308,7 @@ private fun CustomList(kind: LayoutKind, query: String, onPick: (Item) -> Unit) 
 }
 
 @Composable
-private fun Header(text: String) {
+internal fun Header(text: String) {
     Text(
         text.uppercase(),
         style = MaterialTheme.typography.labelMedium,
@@ -301,7 +318,7 @@ private fun Header(text: String) {
 }
 
 @Composable
-private fun PickRow(label: String, icon: String, onClick: () -> Unit) {
+internal fun PickRow(label: String, icon: String, onClick: () -> Unit) {
     ListItem(
         headlineContent = { Text(label) },
         leadingContent = { Icon(painterResource(Symbols.byName.getValue(icon).outlined), null) },

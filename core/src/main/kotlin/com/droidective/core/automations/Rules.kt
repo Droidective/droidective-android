@@ -1,5 +1,6 @@
 package com.droidective.core.automations
 
+import com.droidective.core.AccessLevel
 import com.droidective.core.apps.AppActions
 import com.droidective.core.commands.DeepLinkRepository
 import com.droidective.core.toggles.Probe
@@ -192,6 +193,26 @@ val Action.canBeAButton: Boolean
 /** Clear data, uninstall and revoke: they confirm when added, and the card marks them. */
 val Action.isDestructive: Boolean
     get() = (this is Action.ForApp && action.destructive) || (this is Action.Permission && !grant)
+
+/**
+ * The lowest level [this] runs at in place: a toggle's own level; the shell for a saved command and
+ * for what `am` and `pm` do to an app; App for opening something, posting, waiting or running
+ * another automation, whose own actions say what they need when it runs.
+ */
+fun Action.level(toggles: (String) -> ToggleDef? = Toggles::byId): AccessLevel =
+    when (this) {
+        is Action.SetToggle -> toggles(toggleId)?.level ?: AccessLevel.App
+        is Action.RunCommand,
+        is Action.ForApp,
+        is Action.Permission -> AccessLevel.Shell
+        is Action.OpenApp,
+        is Action.OpenLink,
+        is Action.OpenShortcut,
+        is Action.OpenSettings,
+        is Action.Notify,
+        is Action.Wait,
+        is Action.RunAutomation -> AccessLevel.App
+    }
 
 /**
  * Which automations led to this run. A chain stops after [MAX_CHAIN] and never runs an automation

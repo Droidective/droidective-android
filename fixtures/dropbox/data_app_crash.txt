@@ -1,0 +1,421 @@
+Drop box contents: 78 entries
+Max entries: 1000
+Low priority rate limit period: 2000 ms
+Low priority tags: {data_app_wtf, keymaster, system_server_wtf, system_app_strictmode, system_app_wtf, system_server_strictmode, data_app_strictmode, netstats}
+Searching for: data_app_crash
+
+========================================
+2026-10-18 22:59:28 data_app_crash (text, 2691 bytes)
+SystemUptimeMs: 41374
+Process: com.droidective.android
+PID: 3954
+UID: 10213
+Frozen: false
+Flags: 0x20e8be46
+Package: com.droidective.android v1 (0.1.0)
+Foreground: Yes
+Process-Runtime: 1787
+Timestamp: 2026-10-18 22:59:28.841+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+java.lang.SecurityException: Settings key: <reduce_bright_colors_activated> is not readable. From S+, settings keys annotated with @hide are restricted to system_server and system apps only, unless they are annotated with @Readable.
+	at android.provider.Settings$NameValueCache.getStringForUser(Settings.java:3649)
+	at android.provider.Settings$Secure.getStringForUser(Settings.java:7219)
+	at android.provider.Settings$Secure.getString(Settings.java:7185)
+	at com.droidective.platform.AndroidSettingsStore.get(AndroidSettingsStore.kt:18)
+	at com.droidective.core.toggles.ToggleRunner.read(ToggleRunner.kt:70)
+	at com.droidective.android.surface.ToggleTaps.stateOf(ToggleTaps.kt:20)
+	at com.droidective.android.ui.TogglesScreenKt.TogglesScreen$readAll(TogglesScreen.kt:71)
+	at com.droidective.android.ui.TogglesScreenKt.access$TogglesScreen$readAll(TogglesScreen.kt:1)
+	at com.droidective.android.ui.TogglesScreenKt$TogglesScreen$1$1.invokeSuspend(TogglesScreen.kt:75)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at androidx.compose.ui.platform.AndroidUiDispatcher.performTrampolineDispatch(AndroidUiDispatcher.android.kt:79)
+	at androidx.compose.ui.platform.AndroidUiDispatcher.access$performTrampolineDispatch(AndroidUiDispatcher.android.kt:41)
+	at androidx.compose.ui.platform.AndroidUiDispatcher$dispatchCallback$1.run(AndroidUiDispatcher.android.kt:57)
+	at android.os.Handler.handleCallback(Handler.java:995)
+	at android.os.Handler.dispatchMessage(Handler.java:103)
+	at android.os.Looper.loopOnce(Looper.java:248)
+	at android.os.Looper.loop(Looper.java:338)
+	at android.app.ActivityThread.main(ActivityThread.java:9067)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+	Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [androidx.compose.ui.platform.MotionDurationScaleImpl@18feeed, androidx.compose.runtime.BroadcastFrameClock@d632122, androidx.compose.runtime.LaunchedEffectImpl@b6d5db4, StandaloneCoroutine{Cancelling}@999a7b3, AndroidUiDispatcher@ef72170]
+
+========================================
+2026-10-18 23:07:49 data_app_crash (text, 1170 bytes)
+SystemUptimeMs: 541814
+Process: com.droidective.android
+PID: 9073
+UID: 10213
+Frozen: false
+Flags: 0x20c8be46
+Package: com.droidective.android v1 (0.1.0)
+Foreground: No
+Process-Runtime: 83111
+Timestamp: 2026-10-18 23:07:49.269+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+android.app.RemoteServiceException$CrashedByAdbException: shell-induced crash
+	at android.app.ActivityThread.throwRemoteServiceException(ActivityThread.java:2377)
+	at android.app.ActivityThread.-$$Nest$mthrowRemoteServiceException(Unknown Source:0)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2741)
+	at android.os.Handler.dispatchMessage(Handler.java:110)
+	at android.os.Looper.loopOnce(Looper.java:248)
+	at android.os.Looper.loop(Looper.java:338)
+	at android.app.ActivityThread.main(ActivityThread.java:9067)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+
+========================================
+2026-10-18 23:07:56 data_app_crash (text, 1169 bytes)
+SystemUptimeMs: 549503
+Process: com.droidective.android
+PID: 9677
+UID: 10213
+Frozen: false
+Flags: 0x20c8be46
+Package: com.droidective.android v1 (0.1.0)
+Foreground: No
+Process-Runtime: 7675
+Timestamp: 2026-10-18 23:07:56.959+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+android.app.RemoteServiceException$CrashedByAdbException: shell-induced crash
+	at android.app.ActivityThread.throwRemoteServiceException(ActivityThread.java:2377)
+	at android.app.ActivityThread.-$$Nest$mthrowRemoteServiceException(Unknown Source:0)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2741)
+	at android.os.Handler.dispatchMessage(Handler.java:110)
+	at android.os.Looper.loopOnce(Looper.java:248)
+	at android.os.Looper.loop(Looper.java:338)
+	at android.app.ActivityThread.main(ActivityThread.java:9067)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+
+========================================
+2026-10-18 23:08:10 data_app_crash (text, 1170 bytes)
+SystemUptimeMs: 563474
+Process: com.droidective.android
+PID: 9880
+UID: 10213
+Frozen: false
+Flags: 0x20c8be46
+Package: com.droidective.android v1 (0.1.0)
+Foreground: No
+Process-Runtime: 10747
+Timestamp: 2026-10-18 23:08:10.930+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+android.app.RemoteServiceException$CrashedByAdbException: shell-induced crash
+	at android.app.ActivityThread.throwRemoteServiceException(ActivityThread.java:2377)
+	at android.app.ActivityThread.-$$Nest$mthrowRemoteServiceException(Unknown Source:0)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2741)
+	at android.os.Handler.dispatchMessage(Handler.java:110)
+	at android.os.Looper.loopOnce(Looper.java:248)
+	at android.os.Looper.loop(Looper.java:338)
+	at android.app.ActivityThread.main(ActivityThread.java:9067)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+
+========================================
+2026-10-19 00:06:06 data_app_crash (text, 3644 bytes)
+SystemUptimeMs: 4039128
+Process: com.droidective.android
+PID: 17485
+UID: 10213
+Frozen: false
+Flags: 0x20c8be46
+Package: com.droidective.android v1 (0.1.0)
+Foreground: Yes
+Process-Runtime: 13272
+Timestamp: 2026-10-19 00:06:06.583+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+java.lang.SecurityException: NsdService: Neither user 10213 nor current process has android.permission.INTERNET.
+	at android.os.Parcel.createExceptionOrNull(Parcel.java:3340)
+	at android.os.Parcel.createException(Parcel.java:3324)
+	at android.os.Parcel.readException(Parcel.java:3307)
+	at android.os.Parcel.readException(Parcel.java:3249)
+	at android.net.nsd.INsdManager$Stub$Proxy.connect(INsdManager.java:133)
+	at android.net.nsd.NsdManager.<init>(NsdManager.java:720)
+	at android.net.ConnectivityFrameworkInitializerTiramisu.lambda$registerServiceWrappers$0(ConnectivityFrameworkInitializerTiramisu.java:56)
+	at android.net.ConnectivityFrameworkInitializerTiramisu$$ExternalSyntheticLambda0.createService(D8$$SyntheticClass:0)
+	at android.app.SystemServiceRegistry$149.createService(SystemServiceRegistry.java:2230)
+	at android.app.SystemServiceRegistry$CachedServiceFetcher.getService(SystemServiceRegistry.java:2343)
+	at android.app.SystemServiceRegistry.getSystemService(SystemServiceRegistry.java:1918)
+	at android.app.ContextImpl.getSystemService(ContextImpl.java:2315)
+	at android.view.ContextThemeWrapper.getSystemService(ContextThemeWrapper.java:188)
+	at android.app.Activity.getSystemService(Activity.java:7896)
+	at android.content.Context.getSystemService(Context.java:4630)
+	at com.droidective.platform.AdbPort.find(AdbPort.kt:43)
+	at com.droidective.platform.AdbPort.find$default(AdbPort.kt:42)
+	at com.droidective.platform.AdbPort.address(AdbPort.kt:29)
+	at com.droidective.platform.AdbPort$address$1.invokeSuspend(Unknown Source:15)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at androidx.compose.ui.platform.AndroidUiDispatcher.performTrampolineDispatch(AndroidUiDispatcher.android.kt:79)
+	at androidx.compose.ui.platform.AndroidUiDispatcher.access$performTrampolineDispatch(AndroidUiDispatcher.android.kt:41)
+	at androidx.compose.ui.platform.AndroidUiDispatcher$dispatchCallback$1.run(AndroidUiDispatcher.android.kt:57)
+	at android.os.Handler.handleCallback(Handler.java:995)
+	at android.os.Handler.dispatchMessage(Handler.java:103)
+	at android.os.Looper.loopOnce(Looper.java:248)
+	at android.os.Looper.loop(Looper.java:338)
+	at android.app.ActivityThread.main(ActivityThread.java:9067)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+	Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [androidx.compose.ui.platform.MotionDurationScaleImpl@23a47d6, androidx.compose.runtime.BroadcastFrameClock@a37fa57, StandaloneCoroutine{Cancelling}@e664944, AndroidUiDispatcher@a781a2d]
+Caused by: android.os.RemoteException: Remote stack trace:
+	at android.app.ContextImpl.enforce(ContextImpl.java:2437)
+	at android.app.ContextImpl.enforceCallingOrSelfPermission(ContextImpl.java:2465)
+	at android.net.connectivity.com.android.server.NsdService.connect(NsdService.java:2310)
+	at android.net.nsd.INsdManager$Stub.onTransact(INsdManager.java:96)
+	at android.os.Binder.execTransactInternal(Binder.java:1421)
+
+
+========================================
+2026-10-19 00:14:39 data_app_crash (text, 2807 bytes)
+SystemUptimeMs: 4552430
+Process: com.droidective.android
+PID: 19143
+UID: 10213
+Frozen: false
+Flags: 0x20c8be46
+Package: com.droidective.android v1 (0.1.0)
+Foreground: Yes
+Process-Runtime: 32396
+Timestamp: 2026-10-19 00:14:39.886+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+java.lang.ExceptionInInitializerError
+	at com.droidective.core.toggles.ToggleRunner.writeSettings(ToggleRunner.kt:145)
+	at com.droidective.core.toggles.ToggleRunner.apply(ToggleRunner.kt:113)
+	at com.droidective.android.surface.ToggleTaps.set(ToggleTaps.kt:32)
+	at com.droidective.android.surface.ToggleTaps.advance(ToggleTaps.kt:25)
+	at com.droidective.android.ui.ForegroundTapsKt.runInForeground(ForegroundTaps.kt:28)
+	at com.droidective.android.ui.ToggleControlsKt$tapToggle$1.invokeSuspend(ToggleControls.kt:65)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at androidx.compose.ui.platform.AndroidUiDispatcher.performTrampolineDispatch(AndroidUiDispatcher.android.kt:79)
+	at androidx.compose.ui.platform.AndroidUiDispatcher.access$performTrampolineDispatch(AndroidUiDispatcher.android.kt:41)
+	at androidx.compose.ui.platform.AndroidUiDispatcher$dispatchCallback$1.run(AndroidUiDispatcher.android.kt:57)
+	at android.os.Handler.handleCallback(Handler.java:995)
+	at android.os.Handler.dispatchMessage(Handler.java:103)
+	at android.os.Looper.loopOnce(Looper.java:248)
+	at android.os.Looper.loop(Looper.java:338)
+	at android.app.ActivityThread.main(ActivityThread.java:9067)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+	Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [androidx.compose.ui.platform.MotionDurationScaleImpl@77ce783, androidx.compose.runtime.BroadcastFrameClock@10aad00, StandaloneCoroutine{Cancelling}@41d939, AndroidUiDispatcher@74f0b7e]
+Caused by: java.util.regex.PatternSyntaxException: Syntax error in regexp pattern near index 12
+\{([a-z_]+)}
+	at com.android.icu.util.regex.PatternNative.compileImpl(Native Method)
+	at com.android.icu.util.regex.PatternNative.<init>(PatternNative.java:53)
+	at com.android.icu.util.regex.PatternNative.create(PatternNative.java:49)
+	at java.util.regex.Pattern.compile(Pattern.java:3533)
+	at java.util.regex.Pattern.<init>(Pattern.java:1419)
+	at java.util.regex.Pattern.compile(Pattern.java:921)
+	at kotlin.text.Regex.<init>(Regex.kt:90)
+	at com.droidective.core.toggles.Placeholders.<clinit>(Params.kt:21)
+	... 19 more
+
+========================================
+2026-10-19 09:28:44 data_app_crash (text, 1318 bytes)
+SystemUptimeMs: 37797320
+Process: com.droidective.android
+PID: 31811
+UID: 10215
+Frozen: false
+Flags: 0x20e8be44
+Package: com.droidective.android v1 (0.1.0)
+Foreground: No
+Process-Runtime: 66
+Timestamp: 2026-10-19 09:28:44.783+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+java.lang.IllegalStateException: Not an attached client
+	at android.os.Parcel.createExceptionOrNull(Parcel.java:3348)
+	at android.os.Parcel.createException(Parcel.java:3324)
+	at android.os.Parcel.readException(Parcel.java:3307)
+	at android.os.Parcel.readException(Parcel.java:3249)
+	at j1.e(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:53)
+	at j1.b(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:122)
+	at f1.r(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:36)
+	at tk.i(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:8)
+	at e90.run(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:114)
+	at i30.run(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:118)
+	Suppressed: i80: [vq2{Cancelling}@5a5a6fe, Dispatchers.Default]
+
+========================================
+2026-10-19 09:29:42 data_app_crash (text, 1318 bytes)
+SystemUptimeMs: 37854581
+Process: com.droidective.android
+PID: 32343
+UID: 10215
+Frozen: false
+Flags: 0x20e8be44
+Package: com.droidective.android v1 (0.1.0)
+Foreground: No
+Process-Runtime: 82
+Timestamp: 2026-10-19 09:29:42.037+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+java.lang.IllegalStateException: Not an attached client
+	at android.os.Parcel.createExceptionOrNull(Parcel.java:3348)
+	at android.os.Parcel.createException(Parcel.java:3324)
+	at android.os.Parcel.readException(Parcel.java:3307)
+	at android.os.Parcel.readException(Parcel.java:3249)
+	at j1.e(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:53)
+	at j1.b(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:122)
+	at f1.r(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:36)
+	at tk.i(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:8)
+	at e90.run(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:114)
+	at i30.run(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:118)
+	Suppressed: i80: [vq2{Cancelling}@ef5c314, Dispatchers.Default]
+
+========================================
+2026-10-19 09:32:19 data_app_crash (text, 1318 bytes)
+SystemUptimeMs: 38012197
+Process: com.droidective.android
+PID: 2880
+UID: 10215
+Frozen: false
+Flags: 0x20e8be44
+Package: com.droidective.android v1 (0.1.0)
+Foreground: No
+Process-Runtime: 132
+Timestamp: 2026-10-19 09:32:19.652+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+java.lang.IllegalStateException: Not an attached client
+	at android.os.Parcel.createExceptionOrNull(Parcel.java:3348)
+	at android.os.Parcel.createException(Parcel.java:3324)
+	at android.os.Parcel.readException(Parcel.java:3307)
+	at android.os.Parcel.readException(Parcel.java:3249)
+	at j1.e(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:53)
+	at j1.b(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:122)
+	at f1.r(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:36)
+	at tk.i(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:8)
+	at e90.run(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:114)
+	at i30.run(r8-map-id-8006d1ca22ac8fe1a108cbdf9ade2211b3766eeba5420cbbcb2cbd7772663957:118)
+	Suppressed: i80: [vq2{Cancelling}@af5fc80, Dispatchers.Default]
+
+========================================
+2026-10-19 09:55:38 data_app_crash (text, 1201 bytes)
+SystemUptimeMs: 39411470
+Process: moe.shizuku.privileged.api
+PID: 5455
+UID: 10214
+Frozen: false
+Flags: 0x30c8be44
+Package: moe.shizuku.privileged.api v1086 (13.6.0.r1086.2650830c)
+Foreground: Yes
+Process-Runtime: 39237259
+Timestamp: 2026-10-19 09:55:38.925+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+android.app.RemoteServiceException$CrashedByAdbException: shell-induced crash
+	at android.app.ActivityThread.throwRemoteServiceException(ActivityThread.java:2377)
+	at android.app.ActivityThread.-$$Nest$mthrowRemoteServiceException(Unknown Source:0)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2741)
+	at android.os.Handler.dispatchMessage(Handler.java:110)
+	at android.os.Looper.loopOnce(Looper.java:248)
+	at android.os.Looper.loop(Looper.java:338)
+	at android.app.ActivityThread.main(ActivityThread.java:9067)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+
+========================================
+2026-10-19 09:55:50 data_app_crash (text, 1197 bytes)
+SystemUptimeMs: 39422830
+Process: moe.shizuku.privileged.api
+PID: 11005
+UID: 10214
+Frozen: false
+Flags: 0x30c8be44
+Package: moe.shizuku.privileged.api v1086 (13.6.0.r1086.2650830c)
+Foreground: No
+Process-Runtime: 3791
+Timestamp: 2026-10-19 09:55:50.286+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+android.app.RemoteServiceException$CrashedByAdbException: shell-induced crash
+	at android.app.ActivityThread.throwRemoteServiceException(ActivityThread.java:2377)
+	at android.app.ActivityThread.-$$Nest$mthrowRemoteServiceException(Unknown Source:0)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2741)
+	at android.os.Handler.dispatchMessage(Handler.java:110)
+	at android.os.Looper.loopOnce(Looper.java:248)
+	at android.os.Looper.loop(Looper.java:338)
+	at android.app.ActivityThread.main(ActivityThread.java:9067)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+
+========================================
+2026-10-19 09:57:06 data_app_crash (text, 1197 bytes)
+SystemUptimeMs: 39498839
+Process: moe.shizuku.privileged.api
+PID: 11211
+UID: 10214
+Frozen: false
+Flags: 0x30e8be44
+Package: moe.shizuku.privileged.api v1086 (13.6.0.r1086.2650830c)
+Foreground: No
+Process-Runtime: 4770
+Timestamp: 2026-10-19 09:57:06.295+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+android.app.RemoteServiceException$CrashedByAdbException: shell-induced crash
+	at android.app.ActivityThread.throwRemoteServiceException(ActivityThread.java:2377)
+	at android.app.ActivityThread.-$$Nest$mthrowRemoteServiceException(Unknown Source:0)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2741)
+	at android.os.Handler.dispatchMessage(Handler.java:110)
+	at android.os.Looper.loopOnce(Looper.java:248)
+	at android.os.Looper.loop(Looper.java:338)
+	at android.app.ActivityThread.main(ActivityThread.java:9067)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+

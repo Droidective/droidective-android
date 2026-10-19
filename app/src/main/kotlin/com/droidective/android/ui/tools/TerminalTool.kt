@@ -46,6 +46,7 @@ import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.copy
 import com.droidective.core.shell.Shell
 import com.droidective.core.shell.ShellUnavailableException
+import com.droidective.core.shell.Stoppable
 import com.droidective.core.shell.Terminal
 import com.droidective.core.shell.TerminalHistory
 import com.droidective.platform.shell.AppShell
@@ -96,7 +97,7 @@ fun TerminalTool(tool: ToolContext) {
             try {
                 shell.stream(Terminal.wrap(line, cwd)).collect { printed ->
                     val ending = Terminal.ending(printed)
-                    val started = Terminal.pid(printed)
+                    val started = Stoppable.pid(printed)
                     if (started != null) {
                         pid = started
                     } else if (ending == null) {
@@ -231,7 +232,7 @@ private suspend fun stopCommand(context: android.content.Context, pid: Int) {
     // As the app, the app's own shell can end its own processes.
     val shell: Shell = context.droidective.access.shell() ?: AppShell()
     try {
-        shell.run(Terminal.stop(pid))
+        shell.run(Stoppable.stop(pid))
     } catch (_: ShellUnavailableException) {
         // The shell went away, and the command with it.
     }

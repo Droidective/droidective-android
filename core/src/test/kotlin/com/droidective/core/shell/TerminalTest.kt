@@ -32,9 +32,17 @@ class TerminalTest {
 
     @Test
     fun readsTheWrappersPidAndStopsItsChildrenThenIt() {
-        assertEquals(13771, Terminal.pid("__droidective_pid__ 13771\r"))
-        assertNull(Terminal.pid("uid=0(root)"))
-        assertEquals("kill -TERM \$(pgrep -P 13771) 13771", Terminal.stop(13771).line)
+        assertEquals(13771, Stoppable.pid("__droidective_pid__ 13771\r"))
+        assertNull(Stoppable.pid("uid=0(root)"))
+        assertEquals("kill -TERM \$(pgrep -P 13771) 13771", Stoppable.stop(13771).line)
+    }
+
+    @Test
+    fun aStoppableCommandSaysItsPidThenBecomesTheCommand() {
+        assertEquals(
+            "sh -c 'echo \"__droidective_pid__ \$\$\"\nexec monkey -p '\\''a.b'\\'' 5'",
+            Stoppable.wrap(ShellCommand("monkey -p 'a.b' 5")).line,
+        )
     }
 
     @Test

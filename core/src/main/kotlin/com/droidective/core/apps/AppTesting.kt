@@ -95,24 +95,33 @@ object Monkey {
 
     /**
      * `-v` prints each event and, at the end, how many were injected and what went wrong. System
-     * keys are off: on a phone with no hardware keys Monkey refuses to start with them on.
+     * keys are off: on a phone with no hardware keys Monkey refuses to start with them on. Any-key
+     * events are off, since a random key code can be the phone's brightness, volume or notification
+     * key, and rotation, since it turns the whole screen, not the app.
+     *
+     * Monkey's touches go to the screen, not to the app, so a swipe from the top pulls down the
+     * shade and the taps that follow change Quick Settings: on a OnePlus Pad one minute turned
+     * Bluetooth off and the brightness down to its lowest. Without [swipes] it only taps, which
+     * can't open the shade; with them it scrolls and drags as well, and can.
      */
-    fun command(packageName: String, count: Int, seed: Long? = null): ShellCommand {
+    fun command(
+        packageName: String,
+        count: Int,
+        seed: Long? = null,
+        swipes: Boolean = false,
+    ): ShellCommand {
         require(AppActions.isPackageName(packageName)) { "\"$packageName\" isn’t a package name" }
         require(count in COUNTS) { "$count events is outside ${COUNTS.first}–${COUNTS.last}" }
-        val words =
-            listOfNotNull(
-                "monkey",
-                "-p",
-                shellQuote(packageName),
-                "--throttle",
-                THROTTLE_MILLIS.toString(),
-                "--pct-syskeys",
-                "0",
-                seed?.let { "-s $it" },
-                "-v",
-                count.toString(),
-            )
+        val words = buildList {
+            addAll(listOf("monkey", "-p", shellQuote(packageName)))
+            addAll(listOf("--throttle", THROTTLE_MILLIS.toString()))
+            addAll(listOf("--pct-syskeys", "0", "--pct-anyevent", "0", "--pct-rotation", "0"))
+            if (!swipes) {
+                addAll(listOf("--pct-motion", "0", "--pct-trackball", "0", "--pct-pinchzoom", "0"))
+            }
+            seed?.let { addAll(listOf("-s", it.toString())) }
+            addAll(listOf("-v", count.toString()))
+        }
         return ShellCommand(words.joinToString(" "))
     }
 

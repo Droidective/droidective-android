@@ -54,14 +54,17 @@ class AppTestingTest {
     }
 
     @Test
-    fun monkeyRunsOnlyTheQuotedAppWithSystemKeysOff() {
+    fun monkeyTapsOnlyTheQuotedAppWithSystemKeysAndRotationOff() {
         assertEquals(
-            "monkey -p 'com.example.app' --throttle 50 --pct-syskeys 0 -s 42 -v 500",
+            "monkey -p 'com.example.app' --throttle 50 --pct-syskeys 0 --pct-anyevent 0 " +
+                "--pct-rotation 0 " +
+                "--pct-motion 0 --pct-trackball 0 --pct-pinchzoom 0 -s 42 -v 500",
             Monkey.command("com.example.app", 500, seed = 42).line,
         )
         assertEquals(
-            "monkey -p 'com.example.app' --throttle 50 --pct-syskeys 0 -v 1",
-            Monkey.command("com.example.app", 1).line,
+            "monkey -p 'com.example.app' --throttle 50 --pct-syskeys 0 --pct-anyevent 0 " +
+                "--pct-rotation 0 -v 1",
+            Monkey.command("com.example.app", 1, swipes = true).line,
         )
         assertFailsWith<IllegalArgumentException> { Monkey.command("com.example.app", 0) }
         assertFailsWith<IllegalArgumentException> { Monkey.command("com.example.app", 100_001) }

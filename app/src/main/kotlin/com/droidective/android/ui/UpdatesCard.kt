@@ -12,7 +12,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -77,24 +76,17 @@ fun UpdatesCard() {
                 }
                 if (checking) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Check once a day")
-                    Text(
-                        "Asks GitHub for the latest release. The request carries only this " +
-                            "app’s version.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = automatic,
-                    onCheckedChange = {
-                        automatic = it
-                        Updates.setAutomatic(context, it)
-                    },
-                )
-            }
+            SwitchRow(
+                "Check once a day",
+                checked = automatic,
+                onChange = {
+                    automatic = it
+                    Updates.setAutomatic(context, it)
+                },
+                note =
+                    "Asks GitHub for the latest release. The request carries only this app’s " +
+                        "version.",
+            )
         }
     }
 }

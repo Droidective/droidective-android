@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.droidective.android.DroidectiveApplication
 import com.droidective.android.droidective
@@ -230,6 +232,15 @@ private fun LiveSurfacesRow() {
     var on by remember { mutableStateOf(LiveSurfaces.enabled(context)) }
     val holdsTaps = remember { AppFreezers.holdsWidgetTaps(Build.MANUFACTURER) }
     ListItem(
+        modifier =
+            Modifier.toggleable(
+                value = on,
+                role = Role.Switch,
+                onValueChange = {
+                    LiveSurfaces.setEnabled(context, it)
+                    on = it
+                },
+            ),
         headlineContent = { Text("Keep widgets live") },
         supportingContent = {
             Text(
@@ -247,15 +258,7 @@ private fun LiveSurfacesRow() {
                 }
             )
         },
-        trailingContent = {
-            Switch(
-                checked = on,
-                onCheckedChange = {
-                    LiveSurfaces.setEnabled(context, it)
-                    on = it
-                },
-            )
-        },
+        trailingContent = { Switch(checked = on, onCheckedChange = null) },
     )
 }
 

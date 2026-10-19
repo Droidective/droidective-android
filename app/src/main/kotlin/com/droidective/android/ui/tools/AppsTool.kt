@@ -30,7 +30,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,6 +53,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.droidective.android.ui.SwitchRow
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.openSafely
 import com.droidective.android.widget.AppIcons
@@ -332,20 +332,13 @@ private fun ActionRow(action: AppAction, onClick: () -> Unit) {
 
 @Composable
 private fun PermissionRow(permission: AppPermission, onChange: (Boolean) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(shortName(permission.name))
-            Text(
-                permission.name,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(checked = permission.granted, onCheckedChange = onChange)
-    }
+    SwitchRow(
+        shortName(permission.name),
+        checked = permission.granted,
+        onChange = onChange,
+        modifier = Modifier.padding(horizontal = 4.dp),
+        note = permission.name,
+    )
 }
 
 /** `android.permission.ACCESS_FINE_LOCATION` reads as "Access fine location". */

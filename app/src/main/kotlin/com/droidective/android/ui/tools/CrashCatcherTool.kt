@@ -17,7 +17,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.crashes.CrashAlerts
+import com.droidective.android.ui.SwitchRow
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.automations.AppChooser
 import com.droidective.android.ui.copy
@@ -273,10 +273,7 @@ private fun CrashDetail(
                 Text("Share")
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Alert me when it crashes", modifier = Modifier.weight(1f))
-            Switch(checked = watching, onCheckedChange = { onWatch() })
-        }
+        SwitchRow("Alert me when it crashes", checked = watching, onChange = { onWatch() })
         if (report.details.isNotEmpty()) {
             ToolSection("Report") {
                 SelectionContainer {

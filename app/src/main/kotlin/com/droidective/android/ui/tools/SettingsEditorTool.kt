@@ -8,14 +8,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,13 +28,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.droidective
 import com.droidective.android.surface.Surfaces
+import com.droidective.android.ui.SwitchRow
 import com.droidective.android.ui.copy
 import com.droidective.core.device.SystemValue
 import com.droidective.core.device.SystemValues
@@ -184,28 +182,16 @@ private fun Changes(
 
 @Composable
 private fun HoldFlags(held: Boolean?, onChange: (Boolean) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth()
-            .toggleable(
-                value = held == true,
-                enabled = held != null,
-                role = Role.Switch,
-                onValueChange = onChange,
-            )
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text("Keep flags as set")
-            Text(
-                "Google Play services puts the flags it manages back. This stops it until the " +
-                    "phone restarts.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(checked = held == true, enabled = held != null, onCheckedChange = null)
-    }
+    SwitchRow(
+        "Keep flags as set",
+        checked = held == true,
+        modifier = Modifier.padding(horizontal = 4.dp),
+        note =
+            "Google Play services puts the flags it manages back. This stops it until the phone " +
+                "restarts.",
+        enabled = held != null,
+        onChange = onChange,
+    )
 }
 
 @Composable

@@ -55,6 +55,24 @@ object Parse {
             resumed.find(line)?.let { "${it.groupValues[1]}/${it.groupValues[2]}" }
         }
 
+    /**
+     * The newest generation `cmd phone get-allowed-network-types-for-users` allows: its `|`-joined
+     * radio names hold NR for 5G and LTE for 4G; anything else is 3G or older.
+     */
+    fun networkGeneration(output: String): String? {
+        val types = lines(output).firstOrNull().orEmpty().split('|').map { it.trim() }
+        return when {
+            "NR" in types -> "5g"
+            "LTE" in types || "LTE_CA" in types -> "4g"
+            // An error message isn't a list of radios; only a real list reads as 3G.
+            types.any { it in olderRadios } -> "3g"
+            else -> null
+        }
+    }
+
+    private val olderRadios =
+        setOf("GSM", "GPRS", "EDGE", "UMTS", "HSDPA", "HSUPA", "HSPA", "HSPA+", "TD_SCDMA", "CDMA")
+
     /** `getprop <key>` prints the value or an empty line. */
     fun prop(output: String): String? = lines(output).firstOrNull()?.trim()?.ifEmpty { null }
 

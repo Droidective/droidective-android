@@ -146,6 +146,55 @@ object Toggles {
             write = Write.Api(api, level),
         )
 
+    /**
+     * The network generations the modem may use, through the phone service's own shell command. The
+     * bitmasks are its help text's (NetworkTypeBitMask, NR leftmost); 3G is 4G without the LTE
+     * bits. It names SIM slot 0: without `-s` it looks up the default voice SIM, which an emulator
+     * reports as none (spike 6).
+     */
+    private fun preferredNetwork(): ToggleDef {
+        val masks =
+            mapOf(
+                "5g" to "11001111101111111111",
+                "4g" to "01001111101111111111",
+                "3g" to "00001110101111111111",
+            )
+        return ToggleDef(
+            id = "preferred-network",
+            title = "Preferred network type",
+            group = ToggleGroup.Network,
+            icon = "signal_cellular_alt",
+            states =
+                listOf(ToggleState("5g", "5G"), ToggleState("4g", "4G"), ToggleState("3g", "3G")),
+            read =
+                Probe.Command(
+                    cmd("cmd", "phone", "get-allowed-network-types-for-users", "-s", "0"),
+                    Parse::networkGeneration,
+                    level = AccessLevel.Shell,
+                ),
+            write =
+                Write.Commands(
+                    masks.mapValues { (_, mask) ->
+                        listOf(
+                            cmd(
+                                "cmd",
+                                "phone",
+                                "set-allowed-network-types-for-users",
+                                "-s",
+                                "0",
+                                mask,
+                            )
+                        )
+                    }
+                ),
+            fallback =
+                Fallback(
+                    "android.settings.NETWORK_OPERATOR_SETTINGS",
+                    "Opens mobile network settings",
+                ),
+        )
+    }
+
     private fun pending(
         id: String,
         title: String,
@@ -193,24 +242,7 @@ object Toggles {
                         "Opens the internet panel",
                     ),
             ),
-            pending(
-                "preferred-network",
-                "Preferred network type",
-                ToggleGroup.Network,
-                "signal_cellular_alt",
-                reason = "Telephony allowed network types through Shizuku, to confirm in M0",
-                states =
-                    listOf(
-                        ToggleState("5g", "5G"),
-                        ToggleState("4g", "4G"),
-                        ToggleState("3g", "3G"),
-                    ),
-                fallback =
-                    Fallback(
-                        "android.settings.NETWORK_OPERATOR_SETTINGS",
-                        "Opens mobile network settings",
-                    ),
-            ),
+            preferredNetwork(),
             shellToggle(
                 "airplane-mode",
                 "Airplane mode",
@@ -260,7 +292,8 @@ object Toggles {
                 ToggleGroup.Network,
                 "wifi_tethering",
                 reason =
-                    "TetheringManager through Shizuku, or cmd wifi start-softap with root; M0 spike",
+                    "No shell command on Android 16: cmd wifi has no start-softap and cmd " +
+                        "tethering none (spike 6)",
                 fallback = Fallback("android.settings.TETHER_SETTINGS", "Opens hotspot settings"),
             ),
             shellToggle(
@@ -285,7 +318,8 @@ object Toggles {
                 "Bluetooth tethering",
                 ToggleGroup.Network,
                 "bluetooth_connected",
-                reason = "No shell command confirmed yet; M0 spike",
+                reason =
+                    "No shell command: cmd bluetooth_manager only turns Bluetooth on and off (spike 6)",
                 fallback = Fallback("android.settings.TETHER_SETTINGS", "Opens tethering settings"),
             ),
             api("auto-sync", "Auto-sync", ToggleGroup.Network, "sync", PlatformApi.AutoSync),

@@ -10,7 +10,7 @@ Android version and date, so a later change can be checked against what was meas
 | 3 | Does a six-toggle notification row fit the 48 dp collapsed height on Android 15, 16 and 17? | emulators | **Yes on all three** (below) |
 | 4 | What does Shizuku do after a restart on your phones? | your phone | open |
 | 5 | How stale do widgets get with no foreground service, per OEM? | emulators + your phone | open |
-| 6 | Preferred network type, Bluetooth tethering, hotspot via `TetheringManager`, font size: which work? | emulators + your phone | open |
+| 6 | Preferred network type, Bluetooth tethering, hotspot via `TetheringManager`, font size: which work? | emulators + your phone | **Network type and font size do; hotspot and Bluetooth tethering have no shell command** (below) |
 | 7 | Does joining a Wi-Fi network wake the app through a PendingIntent network callback, and does leaving one? | emulators | **Answered: joining once, leaving never** (below) |
 | 8 | Do restart, Bluetooth and exact-alarm triggers arrive on Xiaomi and Samsung with default battery settings? | your phone | open (emulators: restart and exact alarms do, below) |
 | 9 | Can the app hear about another app's crash, and read it, without a service of its own? | emulators | **Answered: hear it only while running; read it with READ_DROPBOX_DATA and usage access** (below) |
@@ -127,3 +127,18 @@ crash), `run-as <debug app> kill -SEGV` (a native crash) and the ANR that follow
 So crash alerts are a service-woken trigger like apps opening: the automation service registers
 the receiver while an automation watches for crashes, and the Granted level grows to include
 `READ_DROPBOX_DATA` (`READ_LOGS` below Android 15).
+
+### 6. The toggles still "to confirm" (2026-10-19, `dv-api36`, API 36, as the shell user)
+
+- **Preferred network type: yes**, through the phone service's own shell command:
+  `cmd phone set-allowed-network-types-for-users -s 0 <bitmask>`, read back with
+  `get-allowed-network-types-for-users -s 0`. The bitmasks are its help text's
+  (`NetworkTypeBitMask`, NR leftmost): 5G `11001111101111111111`, 4G `01001111101111111111`, and
+  3G is 4G without the LTE bits, `00001110101111111111`. Without `-s` the command looks up the
+  default voice SIM, and on the emulator it fails with "Invalid subscriptionId:-1". The toggle
+  cycled 5G → 4G → 3G → 5G and read each back. Dual-SIM phones may need the data SIM's slot.
+- **Font size: yes**, already: `font_scale` is a public system setting, written at App level.
+- **Hotspot: no shell command.** `cmd wifi` lists no `start-softap` on Android 16, and
+  `cmd tethering` has no shell implementation. It keeps its stand-in, hotspot settings.
+- **Bluetooth tethering: no shell command.** `cmd bluetooth_manager` only turns Bluetooth on and
+  off. It keeps its stand-in, tethering settings.

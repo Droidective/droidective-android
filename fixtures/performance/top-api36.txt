@@ -1,0 +1,29 @@
+Tasks: 370 total,   1 running, 369 sleeping,   0 stopped,   0 zombie
+  Mem:  2531868K total,  2333568K used,   198300K free,     8092K buffers
+ Swap:  1898896K total,  1179576K used,   719320K free,   758036K cached
+400%cpu   4%user   0%nice   0%sys 392%idle   0%iow   4%irq   0%sirq   0%host
+  PID[%CPU] RES NAME
+17545  3.8 4.9M top
+17503  0.0    0 [kworker/u8:0-phy1]
+17148  0.0  78M com.callstack.agentdevice.snapshothelper
+17136  0.0 130M app_process
+17102  0.0    0 [kworker/u9:2-blk_crypto_wq]
+15452  0.0 155M com.droidective.android:shell
+15363  0.0 143M com.droidective.android
+14711  0.0    0 [kworker/u9:1-blk_crypto_wq]
+
+
+
+Tasks: 370 total,   1 running, 369 sleeping,   0 stopped,   0 zombie
+  Mem:  2531868K total,  2333568K used,   198300K free,     8092K buffers
+ Swap:  1898896K total,  1179576K used,   719320K free,   758036K cached
+400%cpu   1%user   0%nice   2%sys 395%idle   0%iow   2%irq   0%sirq   0%host
+  PID[%CPU] RES NAME
+  475  2.0 3.8M android.hardware.sensors-service.multihal
+14568  1.0    0 [kworker/0:3-virtio_vsock]
+  668  1.0 256M system_server
+17545  0.0 5.1M top
+17503  0.0    0 [kworker/u8:0-phy1]
+17148  0.0  78M com.callstack.agentdevice.snapshothelper
+17136  0.0 130M app_process
+17102  0.0    0 [kworker/u9:2-blk_crypto_wq]

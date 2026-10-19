@@ -55,6 +55,7 @@ import com.droidective.android.ui.rememberToggleStates
 import com.droidective.android.ui.tapToggle
 import com.droidective.core.Access
 import com.droidective.core.shell.ShellCommand
+import com.droidective.core.shell.ShellUnavailableException
 import com.droidective.core.toggles.ToggleDef
 import com.droidective.core.toggles.Toggles
 import kotlinx.coroutines.CoroutineScope
@@ -294,4 +295,14 @@ fun rememberToolShell(tool: ToolContext): ToolShell {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     return remember(tool) { ToolShell(context, scope, tool) }
+}
+
+/** What [command] printed, or null when there's no shell or it failed. */
+suspend fun shellOutput(context: Context, command: ShellCommand): String? {
+    val shell = context.droidective.access.shell() ?: return null
+    return try {
+        shell.run(command).takeIf { it.succeeded }?.stdout
+    } catch (_: ShellUnavailableException) {
+        null
+    }
 }

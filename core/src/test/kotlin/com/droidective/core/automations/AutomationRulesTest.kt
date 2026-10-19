@@ -110,6 +110,8 @@ class AutomationRulesTest {
                     Trigger.On(Event.Schedule(23 * 60 + 30, setOf(Day.Monday, Day.Friday))),
                     Trigger.On(Event.Restarted),
                     Trigger.On(Event.AppInstalled("com.example.app")),
+                    Trigger.On(Event.AppCrashed("com.example.app")),
+                    Trigger.On(Event.AppCrashed()),
                     Trigger.On(Event.Unlocked),
                 )
         triggers.forEach { trigger ->
@@ -213,6 +215,20 @@ class AutomationRulesTest {
                 "A notification button can open something or run an automation",
             )
             .forEach { expected -> assertTrue(problems.any { expected in it }, expected) }
+    }
+
+    @Test
+    fun aCrashTriggerNamesARealPackageOrNone() {
+        assertEquals(
+            listOf("“not a package” isn’t a package name"),
+            AutomationRules.problems(
+                automation(trigger = Trigger.On(Event.AppCrashed("not a package")))
+            ),
+        )
+        assertEquals(
+            emptyList(),
+            AutomationRules.problems(automation(trigger = Trigger.On(Event.AppCrashed()))),
+        )
     }
 
     @Test

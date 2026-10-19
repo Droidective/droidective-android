@@ -167,8 +167,12 @@ class AutomationService : Service() {
                     .getSystemService(AudioManager::class.java)
                     .registerAudioDeviceCallback(audio, main)
             }
-            if (watched.crashAlerts.isNotEmpty()) {
-                stopCrashes = CrashLog(service).listen { CrashAlerts.onCrash(service, it) }
+            if (watched.crashAlerts.isNotEmpty() || watched.events.any { it is Event.AppCrashed }) {
+                stopCrashes =
+                    CrashLog(service).listen { report ->
+                        CrashAlerts.onCrash(service, report)
+                        Automations.onEvent(service, Event.AppCrashed(report.packageName))
+                    }
             }
             observeSettings()
             polls = listOfNotNull(pollApps(), pollToggles())

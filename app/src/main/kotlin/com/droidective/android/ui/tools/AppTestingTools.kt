@@ -19,6 +19,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,15 +40,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
+import com.droidective.android.monkey.MonkeyPlan
+import com.droidective.android.monkey.MonkeyRun
+import com.droidective.android.monkey.MonkeyRuns
 import com.droidective.android.ui.automations.AppChooser
+import com.droidective.android.ui.notificationsShow
+import com.droidective.android.ui.openNotificationSettings
 import com.droidective.android.ui.openSafely
 import com.droidective.core.apps.AppLocales
 import com.droidective.core.apps.Monkey
-import com.droidective.core.apps.MonkeyReport
 import com.droidective.core.shell.Parse
 import com.droidective.core.shell.ShellUnavailableException
 import kotlin.random.Random
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /** The app a testing tool is pointed at, with the button that changes it. */
@@ -202,15 +206,6 @@ private fun OpenLanguageSettings(context: Context) {
     }
 }
 
-/** Where a Monkey run is. */
-private sealed interface MonkeyRun {
-    data class Running(val events: Int, val of: Int, val seed: Long) : MonkeyRun
-
-    data class Done(val report: MonkeyReport, val seed: Long) : MonkeyRun
-
-    data class Failed(val message: String) : MonkeyRun
-}
-
 /**
  * The Mac's Monkey Test: random taps, swipes and typing in one app until it crashes or the count
  * runs out, with the seed shown so a crash can be run again exactly.
@@ -221,31 +216,17 @@ fun MonkeyTool(tool: ToolContext) {
     val access by context.droidective.access.access.collectAsStateWithLifecycle()
     var packageName by rememberSaveable { mutableStateOf<String?>(null) }
     var countText by rememberSaveable { mutableStateOf(DEFAULT_COUNT.toString()) }
-    var run by remember { mutableStateOf<MonkeyRun?>(null) }
-    var job by remember { mutableStateOf<Job?>(null) }
+    val run by MonkeyRuns.state.collectAsStateWithLifecycle()
     var confirming by remember { mutableStateOf<Long?>(null) }
     var choosing by remember { mutableStateOf(false) }
+    var swipes by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val count = countText.toIntOrNull()?.takeIf { it in Monkey.COUNTS }
 
     fun start(seed: Long) {
         val pkg = packageName ?: return
         val events = count ?: return
-        job = scope.launch {
-            run = MonkeyRun.Running(0, events, seed)
-            try {
-                run =
-                    monkey(context, pkg, events, seed) { sent ->
-                        run = MonkeyRun.Running(sent, events, seed)
-                    }
-            } finally {
-                // Stopped: what it got to, and the seed, so the run can be repeated.
-                (run as? MonkeyRun.Running)?.let {
-                    run = MonkeyRun.Failed("Stopped after ${it.events} events · seed ${it.seed}")
-                }
-                job = null
-            }
-        }
+        MonkeyRuns.start(context, MonkeyPlan(pkg, events, seed, swipes))
     }
 
     ToolScaffold("Monkey Test", tool) {
@@ -275,7 +256,26 @@ fun MonkeyTool(tool: ToolContext) {
                     )
                 }
             }
-            if (job == null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Swipes too")
+                    Text(
+                        if (swipes) {
+                            "Scrolls and drags reach the whole screen: a swipe from the top " +
+                                "opens Quick Settings, and the next taps can switch Bluetooth " +
+                                "off or turn the brightness down."
+                        } else {
+                            "Taps only, which can't open the shade or Quick Settings."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color =
+                            if (swipes) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = swipes, onCheckedChange = { swipes = it })
+            }
+            if (run !is MonkeyRun.Running) {
                 Button(
                     enabled = count != null,
                     onClick = { confirming = Random.nextLong(1, SEED_MAX) },
@@ -283,18 +283,33 @@ fun MonkeyTool(tool: ToolContext) {
                     Text("Start")
                 }
             } else {
-                OutlinedButton(onClick = { job?.cancel() }) { Text("Stop") }
+                OutlinedButton(onClick = { MonkeyRuns.stop(context) }) { Text("Stop") }
+            }
+            if (!notificationsShow(context)) {
+                ToolNote(
+                    "While Monkey runs it keeps every other app from opening, this one included, " +
+                        "and its notification has the Stop button. Notifications are off for " +
+                        "Droidective, so allow them first."
+                )
+                OutlinedButton(onClick = { openNotificationSettings(context) }) {
+                    Text("Allow notifications")
+                }
             }
         }
         when (val now = run) {
             null ->
                 ToolNote("It starts the app and sends it random events, $THROTTLE between each.")
             is MonkeyRun.Running -> {
-                LinearProgressIndicator(
-                    progress = { now.events / now.of.toFloat() },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                ToolNote("${now.events} of ${now.of} events · seed ${now.seed}")
+                if (now.events > 0) {
+                    LinearProgressIndicator(
+                        progress = { now.events / now.plan.count.toFloat() },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    ToolNote("${now.events} of ${now.plan.count} events · seed ${now.plan.seed}")
+                } else {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    ToolNote("${now.plan.count} events · seed ${now.plan.seed}")
+                }
             }
             is MonkeyRun.Failed -> ToolNote(now.message)
             is MonkeyRun.Done -> MonkeyResult(now, onReplay = { confirming = now.seed })
@@ -309,8 +324,9 @@ fun MonkeyTool(tool: ToolContext) {
             },
             text = {
                 Text(
-                    "It taps, swipes and types at random, and can change or delete anything the " +
-                        "app lets a person change. Run it on a test build or a test account."
+                    (if (swipes) "It taps and swipes" else "It taps") +
+                        " at random, and can change or delete anything the app lets a person " +
+                        "change. Run it on a test build or a test account."
                 )
             },
             confirmButton = {
@@ -330,7 +346,6 @@ fun MonkeyTool(tool: ToolContext) {
     if (choosing) {
         AppChooser("Which app", onDismiss = { choosing = false }) {
             packageName = it.packageName
-            run = null
             choosing = false
         }
     }
@@ -360,31 +375,6 @@ private fun MonkeyResult(done: MonkeyRun.Done, onReplay: () -> Unit) {
 }
 
 /** Streams a run, counting the events it sends, and reads its report at the end. */
-private suspend fun monkey(
-    context: Context,
-    packageName: String,
-    count: Int,
-    seed: Long,
-    onProgress: (Int) -> Unit,
-): MonkeyRun {
-    val shell =
-        context.droidective.access.shell() ?: return MonkeyRun.Failed("Shell isn't running.")
-    val output = StringBuilder()
-    var sent = 0
-    try {
-        shell.stream(Monkey.command(packageName, count, seed)).collect { line ->
-            output.appendLine(line)
-            if (line.startsWith(":Sending")) {
-                sent++
-                if (sent % PROGRESS_EVERY == 0) onProgress(sent)
-            }
-        }
-    } catch (e: ShellUnavailableException) {
-        return MonkeyRun.Failed(e.message ?: "The shell stopped responding.")
-    }
-    return MonkeyRun.Done(Monkey.report(output.toString()), seed)
-}
-
 private suspend fun runShell(
     context: Context,
     command: com.droidective.core.shell.ShellCommand,

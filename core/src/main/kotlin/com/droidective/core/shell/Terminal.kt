@@ -12,33 +12,20 @@ object Terminal {
     /** Where a new terminal starts: the folder every shell can read and write. */
     const val HOME = "/data/local/tmp"
 
-    /** The markers the wrapper prints first and last; they never reach the screen. */
+    /** The marker the wrapper prints last; it never reaches the screen. */
     private const val MARK = "__droidective_end__"
-    private const val PID_MARK = "__droidective_pid__"
 
     /**
-     * The command that says its process id, runs [line] in [cwd], then says how it ended. A newline
-     * before the report keeps a trailing comment or `&` in [line] from swallowing it.
+     * The command that says its process id ([Stoppable]), runs [line] in [cwd], then says how it
+     * ended. A newline before the report keeps a trailing comment or `&` in [line] from swallowing
+     * it.
      */
     fun wrap(line: String, cwd: String): ShellCommand {
         val script =
-            "echo \"$PID_MARK \$\$\"\ncd ${shellQuote(cwd)} 2>/dev/null\n$line\n" +
+            "${Stoppable.SAY_PID}\ncd ${shellQuote(cwd)} 2>/dev/null\n$line\n" +
                 "echo \"$MARK \$? \$(pwd)\""
         return ShellCommand.of("sh", "-c", shellQuote(script))
     }
-
-    private val pid = Regex("^$PID_MARK (\\d+)$")
-
-    /** The wrapper's process id, if this is the line that says it. */
-    fun pid(output: String): Int? = pid.find(output.trimEnd('\r'))?.groupValues?.get(1)?.toInt()
-
-    /**
-     * Stops the command the wrapper at [pid] is running, and the wrapper. Ending the stream isn't
-     * enough as root: su's daemon runs the command apart from the su that started it, so a command
-     * that prints nothing, such as `sleep`, kept running after the stream closed. The children come
-     * from `pgrep -P`: toybox's `pkill -TERM -P` matched nothing with a child running.
-     */
-    fun stop(pid: Int): ShellCommand = ShellCommand("kill -TERM \$(pgrep -P $pid) $pid")
 
     private val ending = Regex("^$MARK (\\d+) (.*)$")
 

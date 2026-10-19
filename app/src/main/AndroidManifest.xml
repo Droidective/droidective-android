@@ -115,6 +115,9 @@
         <receiver
             android:name=".surface.NotificationTapReceiver"
             android:exported="false" />
+        <receiver
+            android:name=".monkey.MonkeyStopReceiver"
+            android:exported="false" />
 
         <!-- Restarts, updates and clock changes. Protected broadcasts only the system can send. -->
         <receiver

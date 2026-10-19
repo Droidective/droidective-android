@@ -1,6 +1,5 @@
 package com.droidective.android.ui
 
-import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.droidective.android.BuildConfig
 import com.droidective.android.update.UpdateStatus
 import com.droidective.android.update.Updates
+import com.droidective.core.ago
 import kotlinx.coroutines.launch
 
 /** This version, whether a newer one is on GitHub, and the daily check's switch. */
@@ -108,16 +108,4 @@ private fun describe(status: UpdateStatus): String =
         is UpdateStatus.Failed -> "The last check failed: ${status.reason}"
     }
 
-/** "just now", "5 minutes ago", "3 hours ago", "2 days ago": always lower case mid-sentence. */
-private fun ago(at: Long, now: Long = System.currentTimeMillis()): String {
-    val elapsed = now - at
-    return when {
-        elapsed < DateUtils.MINUTE_IN_MILLIS -> "just now"
-        elapsed < DateUtils.DAY_IN_MILLIS ->
-            DateUtils.getRelativeTimeSpanString(at, now, DateUtils.MINUTE_IN_MILLIS).toString()
-        else ->
-            (elapsed / DateUtils.DAY_IN_MILLIS).let {
-                if (it == 1L) "a day ago" else "$it days ago"
-            }
-    }
-}
+private fun ago(at: Long) = ago(at, System.currentTimeMillis())

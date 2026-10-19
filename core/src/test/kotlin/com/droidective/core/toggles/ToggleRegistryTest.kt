@@ -10,15 +10,15 @@ class ToggleRegistryTest {
     private val all = Toggles.all
 
     @Test
-    fun hasTheFiftyTogglesThePlanLists() {
-        assertEquals(52, all.size)
+    fun hasTheTogglesThePlanListsAndReactNativesKeys() {
+        assertEquals(54, all.size)
         assertEquals(
             mapOf(
                 ToggleGroup.Network to 15,
                 ToggleGroup.Sound to 3,
                 ToggleGroup.Display to 11,
                 ToggleGroup.Device to 6,
-                ToggleGroup.Developer to 17,
+                ToggleGroup.Developer to 19,
             ),
             all.groupingBy { it.group }.eachCount(),
         )
@@ -91,6 +91,9 @@ class ToggleRegistryTest {
                 "display-density",
                 "hidden-api",
                 "selinux",
+                // React Native's dev support keys: nothing in Settings does what they do.
+                "reload-js",
+                "open-dev-menu",
             )
         val missing =
             all.filter { it.level >= AccessLevel.Shell && it.fallback == null }

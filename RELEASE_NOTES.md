@@ -1,0 +1,26 @@
+# Release notes
+
+Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
+release, and a tag without one fails the release.
+
+## 0.1.0
+
+The first release: Droidective's developer toggles and tools on the phone itself.
+
+- **Widgets.** Home-screen bars with as many toggles as you like, folders that open more, a
+  notification bar one pull down from every screen, twelve Quick Settings tile slots, and
+  home-screen shortcuts. Every surface holds the same items: 52 toggles, apps, other apps'
+  shortcuts, custom commands, deep links and automations.
+- **Developer tools.** Developer Settings, Simulate, Demo Mode, System Restrictions, HTTP Proxy,
+  Private DNS, Wireless ADB, Wi-Fi, Network Speed, IP addresses, Apps (force stop, clear data,
+  permissions, app info), Custom Commands, Deep Links, Device Info and Root Status.
+- **Automations.** When an event happens, run actions once; while a state holds, keep toggles set
+  and put each one back when it ends. Triggers include schedules, restarts, Bluetooth devices,
+  Wi-Fi networks, apps opening, charging, the screen, battery level, headphones, a toggle
+  changing, and a run from the Mac.
+- **Access.** Each toggle names the level it needs: ordinary app permissions; WRITE_SECURE_SETTINGS,
+  which Droidective's Phone setup on the Mac grants in one click; Shizuku; or root.
+- **Updates.** The app checks GitHub once a day and tells you when a new release is out. You can
+  turn that off in Setup.
+
+Needs Android 11 or later.

@@ -39,10 +39,13 @@ jobs:
           :app:assembleDebug
           :app:assembleRelease
       # The release build above is unsigned; it's here so R8 runs on every change, not first on a
-      # release tag. The notes check fails a version bump that has no RELEASE_NOTES.md section.
+      # release tag. check-r8-keeps.sh reads what R8 removed from it: a stripped constructor that
+      # Glance builds by reflection is how every widget tap broke in 0.1.0 and 0.1.1. The notes
+      # check fails a version bump that has no RELEASE_NOTES.md section.
       - name: Release scripts
         run: |
           shellcheck scripts/*.sh scripts/spikes/*.sh
+          scripts/check-r8-keeps.sh
           scripts/release-notes.sh "v$(sed -n 's/^droidective\.versionName=//p' gradle.properties)" >/dev/null
       - name: Keep the reports when something fails
         if: failure()

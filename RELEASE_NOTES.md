@@ -13,8 +13,10 @@ The first release: Droidective's developer toggles and tools on the phone itself
   shortcuts, custom commands, deep links and automations.
 - **Developer tools.** Developer Settings, Logcat, Simulate, Demo Mode, System Restrictions,
   HTTP Proxy, Private DNS, Wireless ADB, Wi-Fi, Network Speed, IP addresses, Apps (force stop,
-  clear data, permissions, app info), Current Activity (with a Quick Settings tile), Memory
-  Usage, Crash Catcher, Custom Commands, Deep Links, Device Info and Root Status.
+  clear data, permissions, app info), Install App, Current Activity (with a Quick Settings tile),
+  Memory Usage, Crash Catcher, Custom Commands, Deep Links, Device Info and Root Status.
+- **Install App.** APK, APKS, XAPK and APKM files, installing only the splits this phone needs
+  (its processor, screen density and languages) through Android's installer.
 - **Crash Catcher.** Recent crashes, native crashes and ANRs on the phone, each with its full
   report to copy or share, and a notification when an app you watch crashes.
 - **Automations.** When an event happens, run actions once; while a state holds, keep toggles set

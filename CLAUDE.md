@@ -28,14 +28,15 @@ writes** (`Write.level`), so it can't disagree with the implementation.
 | Level | Means | Survives restart |
 |---|---|---|
 | App | normal permissions + special access (Modify system settings, DND access) | yes |
-| Granted | WRITE_SECURE_SETTINGS + DUMP, from `pm grant` (Mac Phone setup, adb, or self-grant while Shell is up) | yes |
+| Granted | WRITE_SECURE_SETTINGS + DUMP, from `pm grant` (Mac Phone setup, adb, or self-grant while Shell is up); `Grants.commands` also grants Crash Catcher's permission | yes |
 | Shell | uid 2000 through Shizuku, or root | no for Shizuku |
 | Root | su (Magisk/KernelSU) | yes |
 
 Facts that decided levels (AOSP 17 source, not tested on every OEM):
 - `show_touches` and `pointer_location` are **private** System settings: WRITE_SECURE_SETTINGS does
   *not* unlock them. They're `SettingScope.SystemPrivate` → Shell.
-- `cmd wifi start-softap` is root-only; the hotspot needs `TetheringManager` through Shizuku.
+- Android 16's `cmd wifi` has no `start-softap` and `cmd tethering` has no shell implementation,
+  so the hotspot and Bluetooth tethering keep their stand-ins (spike 6).
 - A READ_LOGS grant still shows a consent prompt per read on Android 13+ and is refused in the
   background; logcat goes through the shell, which is exempt.
 - Ongoing notifications are dismissible on Android 14+, foreground service or not. Play accepts a
@@ -164,6 +165,15 @@ Crash reports come from Android's DropBox (`platform/…/CrashLog.kt`, parsed by
 (`app/…/crashes/CrashAlerts.kt`) ride the automation service, which runs while any app is
 watched. Reading needs `READ_DROPBOX_DATA` (`READ_LOGS` below Android 15), granted with the
 Granted level by `Grants.commands`, plus usage access.
+
+## Install App
+
+Bundles install through PackageInstaller sessions, read from the picked file in passes, never
+copied. Which splits go in is `InstallPlan` over `SplitApkSelector` (the Mac's rules, case for
+case). bundletool's `.apks` builds a variant per range of Android versions, its files suffixed
+`_<n+1>`: choosing by file name alone installs duplicate splits, so `ApksToc` reads `toc.pb` and
+picks the variant, and the suffix is stripped by the known number (a blind `_<digits>` strip turns
+`x86_64` into `x86`). `fixtures/apks/` is a real table.
 
 ## Releases
 

@@ -85,6 +85,23 @@ class ToggleRunnerTest {
     }
 
     @Test
+    fun preferredNetworkSetsSlotZerosMaskAndReadsItBack() = runTest {
+        access = Access(granted = true, shell = ShellProvider.Shizuku)
+        // Recorded from the API 36 emulator after the 4G mask.
+        shell.respond(
+            "cmd phone get-allowed-network-types-for-users -s 0",
+            "GPRS|EDGE|UMTS|CDMA|CDMA - EvDo rev. 0|CDMA - EvDo rev. A|CDMA - 1xRTT|HSDPA|" +
+                "HSUPA|HSPA|CDMA - EvDo rev. B|LTE|CDMA - eHRPD|HSPA+|GSM|LTE_CA\n",
+        )
+        val outcome = runner.apply(toggle("preferred-network"), "4g")
+        assertEquals(Outcome.Applied("4g", confirmed = true), outcome)
+        assertEquals(
+            "cmd phone set-allowed-network-types-for-users -s 0 01001111101111111111",
+            shell.invocations.first(),
+        )
+    }
+
+    @Test
     fun missingShellUsesTheFallback() = runTest {
         access = Access.Nothing
         val outcome = runner.apply(toggle("wifi"), "on")

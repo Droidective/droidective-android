@@ -1,7 +1,59 @@
 # Droidective for Android
 
-Droidective's developer toggles and tools on the phone itself: home-screen widgets,
-Quick Settings tiles, shortcuts and automations, with Shizuku or root for the toggles
-Android keeps from ordinary apps.
+Droidective's developer toggles and tools on the phone itself: home-screen widgets, Quick
+Settings tiles, a notification bar, shortcuts and automations, with Shizuku or root for the
+toggles Android keeps from ordinary apps. The macOS app lives in
+[Droidective/Droidective](https://github.com/Droidective/Droidective).
 
-The macOS app lives in [Droidective/Droidective](https://github.com/Droidective/Droidective).
+## What it does
+
+- **Widgets everywhere.** Home-screen bars, folders, a notification bar, Quick Settings tiles and
+  shortcuts, all built from the same items: 52 toggles (network, sound, display, device and
+  developer), apps, other apps' shortcuts, your own shell commands, deep links and automations.
+- **Developer tools.** Developer Settings, Logcat, Crash Catcher, Install App (APK, APKS, XAPK
+  and APKM, with only this phone's splits), Memory Usage, Current Activity, Simulate, Demo Mode,
+  HTTP Proxy, Private DNS, Wireless ADB, Wi-Fi, Network Speed, Apps, Device Info and more.
+- **Automations.** When something happens, run actions once; while something holds, keep
+  toggles set and put each one back when it ends. Schedules, restarts, Bluetooth, Wi-Fi, apps
+  opening, charging, crashes, a run from the Mac, and more.
+
+`RELEASE_NOTES.md` has the full list for each release.
+
+## Install
+
+Droidective is released as a signed APK on this repo's
+[Releases](https://github.com/Droidective/droidective-android/releases) page, not on Google Play.
+Download the APK on the phone and open it, or install it from a computer with
+`adb install droidective-android-<version>.apk`. It needs Android 11 or later, and checks for new
+releases once a day (Setup ▸ Updates turns that off).
+
+## Access
+
+Android keeps many settings from ordinary apps, so every toggle names the level it needs, and
+does the closest thing it can without it, usually opening the right system screen:
+
+| Level | What it is | How to get it |
+|---|---|---|
+| App | Ordinary permissions and special access, such as Modify system settings | Android's own prompts |
+| Granted | `WRITE_SECURE_SETTINGS` and `DUMP`, plus the crash-report permission | Phone setup in Droidective for Mac, or the `adb shell pm grant` lines Setup shows |
+| Shell | The shell user's access, through [Shizuku](https://shizuku.rikka.app/) | Start Shizuku from its app or from the Mac |
+| Root | `su`, through Magisk or KernelSU | Turn on Use root in Setup |
+
+The Setup tab shows where the phone stands and the next step for each level.
+
+## Building
+
+Kotlin 2.4 and Jetpack Compose, three modules: `core` (plain Kotlin, every rule and parser),
+`platform` (the Android side) and `app` (screens, widgets, tiles). With JDK 17 or later and the
+Android SDK:
+
+```sh
+./gradlew :core:test :platform:testDebugUnitTest :app:testDebugUnitTest
+./gradlew :app:assembleDebug
+```
+
+`CLAUDE.md` describes the architecture and conventions; `docs/releasing.md` how a release is made.
+
+## License
+
+MIT, see `LICENSE`.

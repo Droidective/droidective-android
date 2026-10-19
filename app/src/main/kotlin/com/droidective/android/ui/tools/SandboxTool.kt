@@ -42,7 +42,6 @@ import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.automations.AppChooser
-import com.droidective.core.ShellProvider
 import com.droidective.core.apps.Preference
 import com.droidective.core.apps.PreferencesFile
 import com.droidective.core.apps.Sandbox
@@ -92,7 +91,8 @@ fun SandboxTool(tool: ToolContext) {
     val context = LocalContext.current
     val app = context.droidective
     val access by app.access.access.collectAsStateWithLifecycle()
-    val rooted = access.shell == ShellProvider.Su
+    // Shizuku started by root is root too: either reaches any app's folder.
+    val rooted = access.shell?.isRoot == true
     var packageName by rememberSaveable { mutableStateOf<String?>(null) }
     val mode = remember(packageName, rooted) { accessFor(context, packageName, rooted) }
     var path by rememberSaveable { mutableStateOf("") }

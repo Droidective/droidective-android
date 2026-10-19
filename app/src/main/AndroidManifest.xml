@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Install App: Android's installer, which asks the person before each install. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Only for "Bluetooth discoverable", which asks Android to show its own dialog. -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <!-- Package visibility (QUERY_ALL_PACKAGES) comes from the platform module's manifest. -->
@@ -282,6 +284,11 @@
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
         </service>
+        <!-- PackageInstaller's answer about a session; sent through an explicit PendingIntent. -->
+        <receiver
+            android:name=".install.InstallResultReceiver"
+            android:exported="false" />
+
         <service
             android:name=".surface.CurrentActivityTile"
             android:exported="true"

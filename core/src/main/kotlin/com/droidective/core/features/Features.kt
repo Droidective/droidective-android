@@ -162,6 +162,15 @@ object Features {
                 AccessLevel.App,
             ),
             FeatureDef(
+                "install-app",
+                "Install App",
+                "APK, APKS, XAPK and APKM, with only the splits this phone needs",
+                listOf("install", "apk", "apks", "xapk", "apkm", "split", "bundle", "sideload"),
+                FeatureCategory.Apps,
+                "download",
+                AccessLevel.App,
+            ),
+            FeatureDef(
                 "current-activity",
                 "Current Activity",
                 "Which activity is on screen, from a Quick Settings tile",

@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,11 +48,13 @@ import com.droidective.android.DroidectiveApplication
 import com.droidective.android.droidective
 import com.droidective.android.editor.ItemPicker
 import com.droidective.android.editor.LayoutEditor
+import com.droidective.android.surface.LiveSurfaces
 import com.droidective.android.surface.Surfaces
 import com.droidective.android.surface.TileSlots
 import com.droidective.android.widget.ToggleBarReceiver
 import com.droidective.android.widget.ToggleBarWidget
 import com.droidective.core.ago
+import com.droidective.core.device.AppFreezers
 import com.droidective.core.layout.Cell
 import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
@@ -114,6 +117,7 @@ fun WidgetsScreen(app: DroidectiveApplication) {
                 modifier = Modifier.padding(top = 16.dp),
             )
         }
+        item { LiveSurfacesRow() }
 
         item { SectionHeader("Home-screen bars") }
         items(layouts.filter { it.kind == LayoutKind.Bar }, key = { it.id }) { layout ->
@@ -199,6 +203,42 @@ fun WidgetsScreen(app: DroidectiveApplication) {
             onDismiss = { pickingSlot = null },
         )
     }
+}
+
+/** The switch for [LiveSurfaces]: a service that keeps widget taps instant and widgets current. */
+@Composable
+private fun LiveSurfacesRow() {
+    val context = LocalContext.current
+    var on by remember { mutableStateOf(LiveSurfaces.enabled(context)) }
+    val holdsTaps = remember { AppFreezers.holdsWidgetTaps(Build.MANUFACTURER) }
+    ListItem(
+        headlineContent = { Text("Keep widgets live") },
+        supportingContent = {
+            Text(
+                buildString {
+                    append(
+                        "Widgets, tiles and notification bars follow changes made anywhere, " +
+                            "and a quiet notification stays up while any is placed."
+                    )
+                    if (holdsTaps) {
+                        append(
+                            " This phone freezes apps in the background and can hold a " +
+                                "widget tap for half a minute; keeping widgets live stops that."
+                        )
+                    }
+                }
+            )
+        },
+        trailingContent = {
+            Switch(
+                checked = on,
+                onCheckedChange = {
+                    LiveSurfaces.setEnabled(context, it)
+                    on = it
+                },
+            )
+        },
+    )
 }
 
 @Composable

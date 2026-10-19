@@ -2,6 +2,7 @@ package com.droidective.android.surface
 
 import android.content.Context
 import androidx.glance.appwidget.updateAll
+import com.droidective.android.automation.AutomationService
 import com.droidective.android.droidective
 import com.droidective.android.widget.ToggleBarWidget
 import com.droidective.core.layout.Cell
@@ -53,7 +54,17 @@ object Surfaces {
         app.scope.launch { refresh(app) }
     }
 
+    /**
+     * Redraws every surface, then starts or stops the automation service to match what's placed: a
+     * surface added or removed changes whether [LiveSurfaces] needs it.
+     */
     suspend fun refresh(context: Context) {
+        redraw(context)
+        AutomationService.sync(context)
+    }
+
+    /** Redraws every surface with what each toggle reads now. */
+    suspend fun redraw(context: Context) {
         ticks.tryEmit(Unit)
         ToggleBarWidget().updateAll(context)
         NotificationBar.refresh(context)

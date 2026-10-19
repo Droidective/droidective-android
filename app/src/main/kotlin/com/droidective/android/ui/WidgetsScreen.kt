@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
 import android.os.Build
-import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -50,6 +49,7 @@ import com.droidective.android.surface.Surfaces
 import com.droidective.android.surface.TileSlots
 import com.droidective.android.widget.ToggleBarReceiver
 import com.droidective.android.widget.ToggleBarWidget
+import com.droidective.core.ago
 import com.droidective.core.layout.Cell
 import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
@@ -210,7 +210,7 @@ private fun LayoutCard(layout: Layout, onEdit: () -> Unit, onDelete: () -> Unit)
                 Column(Modifier.weight(1f)) {
                     Text(layout.name, style = MaterialTheme.typography.titleSmall)
                     Text(
-                        "Last edited ${DateUtils.getRelativeTimeSpanString(layout.editedAt)}",
+                        "Last edited ${ago(layout.editedAt, System.currentTimeMillis())}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

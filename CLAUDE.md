@@ -28,14 +28,15 @@ writes** (`Write.level`), so it can't disagree with the implementation.
 | Level | Means | Survives restart |
 |---|---|---|
 | App | normal permissions + special access (Modify system settings, DND access) | yes |
-| Granted | WRITE_SECURE_SETTINGS + DUMP, from `pm grant` (Mac Phone setup, adb, or self-grant while Shell is up) | yes |
+| Granted | WRITE_SECURE_SETTINGS + DUMP, from `pm grant` (Mac Phone setup, adb, or self-grant while Shell is up); `Grants.commands` also grants Crash Catcher's permission | yes |
 | Shell | uid 2000 through Shizuku, or root | no for Shizuku |
 | Root | su (Magisk/KernelSU) | yes |
 
 Facts that decided levels (AOSP 17 source, not tested on every OEM):
 - `show_touches` and `pointer_location` are **private** System settings: WRITE_SECURE_SETTINGS does
   *not* unlock them. They're `SettingScope.SystemPrivate` → Shell.
-- `cmd wifi start-softap` is root-only; the hotspot needs `TetheringManager` through Shizuku.
+- Android 16's `cmd wifi` has no `start-softap` and `cmd tethering` has no shell implementation,
+  so the hotspot and Bluetooth tethering keep their stand-ins (spike 6).
 - A READ_LOGS grant still shows a consent prompt per read on Android 13+ and is refused in the
   background; logcat goes through the shell, which is exempt.
 - Ongoing notifications are dismissible on Android 14+, foreground service or not. Play accepts a

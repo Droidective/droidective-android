@@ -45,6 +45,7 @@ import androidx.glance.layout.size
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import com.droidective.android.automation.AutomationService
 import com.droidective.android.droidective
 import com.droidective.android.surface.CommandTaps
 import com.droidective.android.surface.Launch
@@ -114,6 +115,7 @@ class ToggleBarWidget : GlanceAppWidget() {
                 )
             layouts.save(layout)
             layouts.bind(widgetId, layout.id)
+            AutomationService.sync(context)
             return layout
         }
     }
@@ -285,6 +287,7 @@ class ToggleBarReceiver : GlanceAppWidgetReceiver() {
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         super.onDeleted(context, appWidgetIds)
         appWidgetIds.forEach { context.droidective.layouts.unbind(it) }
+        AutomationService.sync(context)
     }
 }
 

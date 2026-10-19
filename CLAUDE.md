@@ -45,6 +45,11 @@ Facts that decided levels (AOSP 17 source, not tested on every OEM):
   access come only from the app granting itself with root (`Grants`).
 - Ongoing notifications are dismissible on Android 14+, foreground service or not. Play accepts a
   foreground service only while it's needed, so the notification bar has no service behind it.
+- OxygenOS and ColorOS freeze a backgrounded app and hold its broadcasts, widget taps included
+  (spike 1). **Keep widgets live** (`LiveSurfaces`) runs the automation service while a widget,
+  tile or notification bar is placed; it's on by default only where `AppFreezers` says taps are
+  held. While it runs, `SurfaceListener` redraws surfaces when their settings, broadcasts or the
+  torch change.
 
 **A missing level changes what a tap does; it never fails silently.** Shell toggles name a
 `Fallback` (a system screen) or are on the short allow-list in `ToggleRegistryTest`.

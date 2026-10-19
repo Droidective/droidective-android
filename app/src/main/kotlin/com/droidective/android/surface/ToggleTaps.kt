@@ -6,6 +6,9 @@ import com.droidective.android.droidective
 import com.droidective.core.toggles.Outcome
 import com.droidective.core.toggles.Probe
 import com.droidective.core.toggles.ToggleDef
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * The one path every surface's tap takes: read, move to the next state, remember it, redraw
@@ -20,9 +23,19 @@ object ToggleTaps {
         context.droidective.toggles.read(toggle)
             ?: context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(toggle.id, null)
 
+    /**
+     * One tap after another per toggle: two taps that read the same state would both move it to the
+     * same next one, and the second would then read as Android refusing the change.
+     */
+    private val locks = ConcurrentHashMap<String, Mutex>()
+
     suspend fun advance(context: Context, toggle: ToggleDef): Outcome {
         context.droidective.access.settled()
-        return set(context, toggle, toggle.next(stateOf(context, toggle)).id)
+        return locks
+            .getOrPut(toggle.id) { Mutex() }
+            .withLock {
+                write(context, toggle, toggle.next(stateOf(context, toggle)).id, refresh = true)
+            }
     }
 
     /**
@@ -34,6 +47,14 @@ object ToggleTaps {
         toggle: ToggleDef,
         state: String,
         refresh: Boolean = true,
+    ): Outcome =
+        locks.getOrPut(toggle.id) { Mutex() }.withLock { write(context, toggle, state, refresh) }
+
+    private suspend fun write(
+        context: Context,
+        toggle: ToggleDef,
+        state: String,
+        refresh: Boolean,
     ): Outcome {
         val app = context.droidective
         app.access.settled()

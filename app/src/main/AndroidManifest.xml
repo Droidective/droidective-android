@@ -123,7 +123,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Runs the automations the person set up: watches the triggers they chose (an app opening, charging, the screen, the battery, headphones, Wi-Fi, a setting changing) and acts when one fires. Runs only while such an automation is on." />
+                android:value="Runs the automations the person set up: watches the triggers they chose (an app opening, charging, the screen, the battery, headphones, Wi-Fi, a setting changing) and acts when one fires; watches the apps they asked Crash Catcher to alert about; and, when they turn on Keep widgets live, keeps their home-screen widgets, tiles and notification bars answering taps at once and showing current states. Runs only while one of these is on." />
         </service>
         <!-- A Bluetooth device connecting or disconnecting. Protected broadcasts from the system;
              the receiver only re-reads which devices are connected. -->

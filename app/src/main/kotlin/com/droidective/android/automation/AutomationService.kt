@@ -30,12 +30,14 @@ import com.droidective.android.MainActivity
 import com.droidective.android.R
 import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
+import com.droidective.android.surface.LiveSurfaces
 import com.droidective.android.surface.uri
 import com.droidective.core.automations.Event
 import com.droidective.core.automations.Matcher
 import com.droidective.core.automations.State
 import com.droidective.core.automations.Trigger
 import com.droidective.core.automations.Wake
+import com.droidective.core.layout.SurfaceWatch
 import com.droidective.core.toggles.Probe
 import com.droidective.core.toggles.Toggles
 import com.droidective.platform.CrashLog
@@ -51,7 +53,9 @@ import kotlinx.coroutines.launch
 /**
  * The automation service: runs only while an enabled automation watches something Android won't
  * start the app for (an app opening, charging, the screen, the battery level, headphones, Wi-Fi, a
- * toggle changing, an install, an unlock). Its notification names what it's watching.
+ * toggle changing, an install, an unlock), while Crash Catcher watches an app, or while placed
+ * widgets, tiles and notification bars are kept live ([LiveSurfaces]). Its notification names what
+ * it's doing.
  */
 class AutomationService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -66,6 +70,7 @@ class AutomationService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        // Every startForegroundService needs a startForeground, even for a service already up.
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
@@ -76,8 +81,11 @@ class AutomationService : Service() {
                 0
             },
         )
-        listening?.stop()
-        listening = Listening(watched).also { it.start() }
+        // Surfaces ask again after every tap; listening that's already right stays up.
+        if (listening?.watched != watched) {
+            listening?.stop()
+            listening = Listening(watched).also { it.start() }
+        }
         return START_STICKY
     }
 
@@ -87,17 +95,19 @@ class AutomationService : Service() {
         super.onDestroy()
     }
 
-    /** What the enabled automations, and Crash Catcher's alerts, need this service for. */
+    /** What the enabled automations, Crash Catcher's alerts and live surfaces need this for. */
     private data class Watched(
         val states: Set<State>,
         val events: Set<Event>,
         val crashAlerts: Set<String>,
+        val surfaces: SurfaceWatch?,
     ) {
-        fun isEmpty() = states.isEmpty() && events.isEmpty() && crashAlerts.isEmpty()
+        fun isEmpty() =
+            states.isEmpty() && events.isEmpty() && crashAlerts.isEmpty() && surfaces == null
     }
 
     /** The receivers, callbacks and polls for one set of watched things; stopped as a whole. */
-    private inner class Listening(private val watched: Watched) {
+    private inner class Listening(val watched: Watched) {
         private val receiver =
             object : BroadcastReceiver() {
                 override fun onReceive(context: Context, intent: Intent) = onBroadcast(intent)
@@ -124,6 +134,7 @@ class AutomationService : Service() {
             }
         private var polls: List<Job> = emptyList()
         private var stopCrashes: (() -> Unit)? = null
+        private val surfaces = watched.surfaces?.let { SurfaceListener(this@AutomationService, it) }
 
         fun start() {
             val service = this@AutomationService
@@ -175,6 +186,7 @@ class AutomationService : Service() {
             }
             observeSettings()
             polls = listOfNotNull(pollApps(), pollToggles())
+            surfaces?.start()
             check()
         }
 
@@ -191,6 +203,7 @@ class AutomationService : Service() {
             service.contentResolver.unregisterContentObserver(settings)
             polls.forEach { it.cancel() }
             stopCrashes?.invoke()
+            surfaces?.stop()
         }
 
         private fun onBroadcast(intent: Intent) {
@@ -265,7 +278,8 @@ class AutomationService : Service() {
         val names =
             watched.states.map { it.describe(holds = true) } +
                 watched.events.map { it.describe() } +
-                watched.crashAlerts.map { "When ${CrashAlerts.label(this, it)} crashes" }
+                watched.crashAlerts.map { "When ${CrashAlerts.label(this, it)} crashes" } +
+                listOfNotNull(watched.surfaces?.let { "Widgets and tiles answer at once" })
         val open =
             PendingIntent.getActivity(
                 this,
@@ -276,10 +290,11 @@ class AutomationService : Service() {
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.sym_bolt)
             .setContentTitle(
-                if (watched.states.isEmpty() && watched.events.isEmpty()) {
-                    "Crash Catcher is watching"
-                } else {
-                    "Automations are watching"
+                when {
+                    watched.states.isNotEmpty() || watched.events.isNotEmpty() ->
+                        "Automations are watching"
+                    watched.crashAlerts.isNotEmpty() -> "Crash Catcher is watching"
+                    else -> "Keeping widgets live"
                 }
             )
             .setContentText(names.joinToString(", "))
@@ -304,19 +319,25 @@ class AutomationService : Service() {
                     .mapNotNull { (it.trigger as? Trigger.On)?.event }
                     .filter { it.wakes == Wake.Service }
                     .toSet()
-            return Watched(states, events, CrashAlerts.watched(context))
+            return Watched(
+                states,
+                events,
+                CrashAlerts.watched(context),
+                LiveSurfaces.watched(context),
+            )
         }
 
         /**
-         * Starts the service when an enabled automation or a crash alert needs it, and stops it
-         * when nothing does. From the background Android 12+ may refuse the start; the boot and
-         * update broadcasts are allowed to, and opening the app starts it again.
+         * Starts the service when an enabled automation, a crash alert or a live surface needs it,
+         * and stops it when nothing does. From the background Android 12+ may refuse the start; the
+         * boot and update broadcasts are allowed to, and opening the app starts it again.
          */
         fun sync(context: Context) {
             val intent = Intent(context, AutomationService::class.java)
             val needed =
                 Matcher.needsService(context.droidective.automations.all()) ||
-                    CrashAlerts.watched(context).isNotEmpty()
+                    CrashAlerts.watched(context).isNotEmpty() ||
+                    LiveSurfaces.watched(context) != null
             if (!needed) {
                 context.stopService(intent)
                 return

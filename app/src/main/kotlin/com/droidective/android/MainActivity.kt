@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.lifecycleScope
 import com.droidective.android.automation.AutomationService
+import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.surface.Launch
 import com.droidective.android.surface.Surfaces
 import com.droidective.android.ui.AppScreen
@@ -49,12 +50,14 @@ class MainActivity : ComponentActivity() {
         when (intent?.getStringExtra(Launch.EXTRA_DESTINATION)) {
             Launch.DESTINATION_SETUP -> Request(Destination.Setup)
             Launch.DESTINATION_TILES -> Request(Destination.Widgets)
-            Launch.DESTINATION_TOOL ->
+            Launch.DESTINATION_TOOL -> {
+                CrashAlerts.refFrom(intent)?.let { CrashAlerts.focus.value = it }
                 // Any app can start this activity, so only a real tool id opens anything.
                 intent
                     .getStringExtra(Launch.EXTRA_TOOL)
                     ?.takeIf { Features.byId(it) != null }
                     ?.let { Request(Destination.Tools, tool = it) }
+            }
             else -> null
         }
 }

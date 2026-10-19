@@ -11,12 +11,14 @@ enum class CrashKind(val title: String) {
  * One crash, native crash or ANR, read from the system's DropBox, where Android files each one with
  * a `Key: Value` header and the stack, tombstone or thread dump after a blank line.
  *
+ * @property tag and [timeMillis] find the entry in DropBox again.
  * @property headline the line that says what happened: the exception, the signal or abort message,
  *   or the ANR's reason.
  * @property details everything after the header, as far as the entry was read.
  */
 data class CrashReport(
     val kind: CrashKind,
+    val tag: String,
     val timeMillis: Long,
     val packageName: String,
     val versionName: String?,
@@ -65,6 +67,7 @@ data class CrashReport(
             val body = lines.drop(blank + 1).dropWhile { it.isBlank() }
             return CrashReport(
                 kind = kind,
+                tag = tag,
                 timeMillis = timeMillis,
                 packageName = pkg?.groupValues?.get(1) ?: process.substringBefore(':'),
                 versionName = pkg?.groupValues?.get(3),

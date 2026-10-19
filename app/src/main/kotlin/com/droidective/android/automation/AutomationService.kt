@@ -29,6 +29,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.droidective.android.MainActivity
 import com.droidective.android.R
+import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
 import com.droidective.core.automations.Event
 import com.droidective.core.automations.Matcher
@@ -38,6 +39,7 @@ import com.droidective.core.automations.Wake
 import com.droidective.core.toggles.Probe
 import com.droidective.core.toggles.SettingScope
 import com.droidective.core.toggles.Toggles
+import com.droidective.platform.CrashLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -61,7 +63,7 @@ class AutomationService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val watched = watchedHere(this)
-        if (watched.states.isEmpty() && watched.events.isEmpty()) {
+        if (watched.isEmpty()) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -86,8 +88,14 @@ class AutomationService : Service() {
         super.onDestroy()
     }
 
-    /** What the enabled automations need this service for. */
-    private data class Watched(val states: Set<State>, val events: Set<Event>)
+    /** What the enabled automations, and Crash Catcher's alerts, need this service for. */
+    private data class Watched(
+        val states: Set<State>,
+        val events: Set<Event>,
+        val crashAlerts: Set<String>,
+    ) {
+        fun isEmpty() = states.isEmpty() && events.isEmpty() && crashAlerts.isEmpty()
+    }
 
     /** The receivers, callbacks and polls for one set of watched things; stopped as a whole. */
     private inner class Listening(private val watched: Watched) {
@@ -116,6 +124,7 @@ class AutomationService : Service() {
                 override fun onAudioDevicesRemoved(removed: Array<out AudioDeviceInfo>) = check()
             }
         private var polls: List<Job> = emptyList()
+        private var stopCrashes: (() -> Unit)? = null
 
         fun start() {
             val service = this@AutomationService
@@ -158,6 +167,9 @@ class AutomationService : Service() {
                     .getSystemService(AudioManager::class.java)
                     .registerAudioDeviceCallback(audio, main)
             }
+            if (watched.crashAlerts.isNotEmpty()) {
+                stopCrashes = CrashLog(service).listen { CrashAlerts.onCrash(service, it) }
+            }
             observeSettings()
             polls = listOfNotNull(pollApps(), pollToggles())
             check()
@@ -175,6 +187,7 @@ class AutomationService : Service() {
             service.getSystemService(AudioManager::class.java).unregisterAudioDeviceCallback(audio)
             service.contentResolver.unregisterContentObserver(settings)
             polls.forEach { it.cancel() }
+            stopCrashes?.invoke()
         }
 
         private fun onBroadcast(intent: Intent) {
@@ -256,7 +269,9 @@ class AutomationService : Service() {
                 .apply { description = "Shown while automations watch the phone" }
         )
         val names =
-            watched.states.map { it.describe(holds = true) } + watched.events.map { it.describe() }
+            watched.states.map { it.describe(holds = true) } +
+                watched.events.map { it.describe() } +
+                watched.crashAlerts.map { "When ${CrashAlerts.label(this, it)} crashes" }
         val open =
             PendingIntent.getActivity(
                 this,
@@ -266,7 +281,13 @@ class AutomationService : Service() {
             )
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.sym_bolt)
-            .setContentTitle("Automations are watching")
+            .setContentTitle(
+                if (watched.states.isEmpty() && watched.events.isEmpty()) {
+                    "Crash Catcher is watching"
+                } else {
+                    "Automations are watching"
+                }
+            )
             .setContentText(names.joinToString(", "))
             .setStyle(Notification.BigTextStyle().bigText(names.joinToString("\n")))
             .setContentIntent(open)
@@ -289,17 +310,20 @@ class AutomationService : Service() {
                     .mapNotNull { (it.trigger as? Trigger.On)?.event }
                     .filter { it.wakes == Wake.Service }
                     .toSet()
-            return Watched(states, events)
+            return Watched(states, events, CrashAlerts.watched(context))
         }
 
         /**
-         * Starts the service when an enabled automation needs it and stops it when none does. From
-         * the background Android 12+ may refuse the start; the boot and update broadcasts are
-         * allowed to, and opening the app starts it again.
+         * Starts the service when an enabled automation or a crash alert needs it, and stops it
+         * when nothing does. From the background Android 12+ may refuse the start; the boot and
+         * update broadcasts are allowed to, and opening the app starts it again.
          */
         fun sync(context: Context) {
             val intent = Intent(context, AutomationService::class.java)
-            if (!Matcher.needsService(context.droidective.automations.all())) {
+            val needed =
+                Matcher.needsService(context.droidective.automations.all()) ||
+                    CrashAlerts.watched(context).isNotEmpty()
+            if (!needed) {
                 context.stopService(intent)
                 return
             }

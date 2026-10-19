@@ -38,6 +38,7 @@ object Symbols {
                 Symbol(R.drawable.sym_brightness_auto, R.drawable.sym_brightness_auto_fill),
             "brightness_low" to
                 Symbol(R.drawable.sym_brightness_low, R.drawable.sym_brightness_low_fill),
+            "bug_report" to Symbol(R.drawable.sym_bug_report, R.drawable.sym_bug_report_fill),
             "build" to Symbol(R.drawable.sym_build, R.drawable.sym_build_fill),
             "check_circle" to Symbol(R.drawable.sym_check_circle, R.drawable.sym_check_circle_fill),
             "close" to Symbol(R.drawable.sym_close, R.drawable.sym_close_fill),

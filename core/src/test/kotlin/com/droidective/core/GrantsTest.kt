@@ -9,13 +9,25 @@ import kotlin.test.assertTrue
 
 class GrantsTest {
     @Test
-    fun grantsBothPermissionsToTheQuotedPackage() {
+    fun grantsTheGrantedLevelAndCrashReportsToTheQuotedPackage() {
         assertEquals(
             listOf(
                 "pm grant 'com.droidective.android' android.permission.WRITE_SECURE_SETTINGS",
                 "pm grant 'com.droidective.android' android.permission.DUMP",
+                "pm grant 'com.droidective.android' android.permission.READ_DROPBOX_DATA",
             ),
-            Grants.commands("com.droidective.android").map { it.line },
+            Grants.commands("com.droidective.android", sdk = 37).map { it.line },
+        )
+    }
+
+    @Test
+    fun crashReportsNeedReadLogsBeforeAndroid15() {
+        assertEquals(Grants.READ_LOGS, Grants.crashReports(30))
+        assertEquals(Grants.READ_LOGS, Grants.crashReports(34))
+        assertEquals(Grants.READ_DROPBOX_DATA, Grants.crashReports(35))
+        assertEquals(
+            "pm grant 'com.droidective.android' android.permission.READ_LOGS",
+            Grants.commands("com.droidective.android", sdk = 34).last().line,
         )
     }
 

@@ -88,3 +88,4 @@ schedule
 download
 upload
 more_vert
+bug_report

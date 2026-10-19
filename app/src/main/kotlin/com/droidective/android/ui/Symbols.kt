@@ -10,11 +10,14 @@ data class Symbol(@param:DrawableRes val outlined: Int, @param:DrawableRes val f
 object Symbols {
     val byName: Map<String, Symbol> =
         mapOf(
+            "account_tree" to Symbol(R.drawable.sym_account_tree, R.drawable.sym_account_tree_fill),
             "adb" to Symbol(R.drawable.sym_adb, R.drawable.sym_adb_fill),
             "add" to Symbol(R.drawable.sym_add, R.drawable.sym_add_fill),
             "airplanemode_active" to
                 Symbol(R.drawable.sym_airplanemode_active, R.drawable.sym_airplanemode_active_fill),
+            "alarm" to Symbol(R.drawable.sym_alarm, R.drawable.sym_alarm_fill),
             "animation" to Symbol(R.drawable.sym_animation, R.drawable.sym_animation_fill),
+            "api" to Symbol(R.drawable.sym_api, R.drawable.sym_api_fill),
             "apps" to Symbol(R.drawable.sym_apps, R.drawable.sym_apps_fill),
             "arrow_back" to Symbol(R.drawable.sym_arrow_back, R.drawable.sym_arrow_back_fill),
             "arrow_downward" to
@@ -24,94 +27,186 @@ object Symbols {
             "bar_chart" to Symbol(R.drawable.sym_bar_chart, R.drawable.sym_bar_chart_fill),
             "battery_5_bar" to
                 Symbol(R.drawable.sym_battery_5_bar, R.drawable.sym_battery_5_bar_fill),
+            "battery_full" to Symbol(R.drawable.sym_battery_full, R.drawable.sym_battery_full_fill),
             "battery_saver" to
                 Symbol(R.drawable.sym_battery_saver, R.drawable.sym_battery_saver_fill),
+            "bedtime" to Symbol(R.drawable.sym_bedtime, R.drawable.sym_bedtime_fill),
             "block" to Symbol(R.drawable.sym_block, R.drawable.sym_block_fill),
             "bluetooth" to Symbol(R.drawable.sym_bluetooth, R.drawable.sym_bluetooth_fill),
             "bluetooth_connected" to
                 Symbol(R.drawable.sym_bluetooth_connected, R.drawable.sym_bluetooth_connected_fill),
+            "bluetooth_disabled" to
+                Symbol(R.drawable.sym_bluetooth_disabled, R.drawable.sym_bluetooth_disabled_fill),
             "bluetooth_searching" to
                 Symbol(R.drawable.sym_bluetooth_searching, R.drawable.sym_bluetooth_searching_fill),
             "bolt" to Symbol(R.drawable.sym_bolt, R.drawable.sym_bolt_fill),
+            "bookmark" to Symbol(R.drawable.sym_bookmark, R.drawable.sym_bookmark_fill),
             "border_outer" to Symbol(R.drawable.sym_border_outer, R.drawable.sym_border_outer_fill),
             "brightness_6" to Symbol(R.drawable.sym_brightness_6, R.drawable.sym_brightness_6_fill),
             "brightness_auto" to
                 Symbol(R.drawable.sym_brightness_auto, R.drawable.sym_brightness_auto_fill),
             "brightness_low" to
                 Symbol(R.drawable.sym_brightness_low, R.drawable.sym_brightness_low_fill),
+            "brush" to Symbol(R.drawable.sym_brush, R.drawable.sym_brush_fill),
             "bug_report" to Symbol(R.drawable.sym_bug_report, R.drawable.sym_bug_report_fill),
             "build" to Symbol(R.drawable.sym_build, R.drawable.sym_build_fill),
+            "cached" to Symbol(R.drawable.sym_cached, R.drawable.sym_cached_fill),
+            "call" to Symbol(R.drawable.sym_call, R.drawable.sym_call_fill),
+            "cast" to Symbol(R.drawable.sym_cast, R.drawable.sym_cast_fill),
+            "cast_connected" to
+                Symbol(R.drawable.sym_cast_connected, R.drawable.sym_cast_connected_fill),
+            "chat" to Symbol(R.drawable.sym_chat, R.drawable.sym_chat_fill),
             "check_circle" to Symbol(R.drawable.sym_check_circle, R.drawable.sym_check_circle_fill),
             "cleaning_services" to
                 Symbol(R.drawable.sym_cleaning_services, R.drawable.sym_cleaning_services_fill),
             "close" to Symbol(R.drawable.sym_close, R.drawable.sym_close_fill),
+            "cloud" to Symbol(R.drawable.sym_cloud, R.drawable.sym_cloud_fill),
+            "cloud_off" to Symbol(R.drawable.sym_cloud_off, R.drawable.sym_cloud_off_fill),
             "cloud_sync" to Symbol(R.drawable.sym_cloud_sync, R.drawable.sym_cloud_sync_fill),
+            "code" to Symbol(R.drawable.sym_code, R.drawable.sym_code_fill),
             "coffee" to Symbol(R.drawable.sym_coffee, R.drawable.sym_coffee_fill),
             "construction" to Symbol(R.drawable.sym_construction, R.drawable.sym_construction_fill),
             "content_copy" to Symbol(R.drawable.sym_content_copy, R.drawable.sym_content_copy_fill),
+            "crop" to Symbol(R.drawable.sym_crop, R.drawable.sym_crop_fill),
             "dark_mode" to Symbol(R.drawable.sym_dark_mode, R.drawable.sym_dark_mode_fill),
+            "dashboard" to Symbol(R.drawable.sym_dashboard, R.drawable.sym_dashboard_fill),
+            "data_object" to Symbol(R.drawable.sym_data_object, R.drawable.sym_data_object_fill),
             "data_saver_on" to
                 Symbol(R.drawable.sym_data_saver_on, R.drawable.sym_data_saver_on_fill),
             "delete" to Symbol(R.drawable.sym_delete, R.drawable.sym_delete_fill),
             "delete_sweep" to Symbol(R.drawable.sym_delete_sweep, R.drawable.sym_delete_sweep_fill),
             "density_medium" to
                 Symbol(R.drawable.sym_density_medium, R.drawable.sym_density_medium_fill),
+            "developer_board" to
+                Symbol(R.drawable.sym_developer_board, R.drawable.sym_developer_board_fill),
+            "developer_mode" to
+                Symbol(R.drawable.sym_developer_mode, R.drawable.sym_developer_mode_fill),
+            "devices" to Symbol(R.drawable.sym_devices, R.drawable.sym_devices_fill),
             "dns" to Symbol(R.drawable.sym_dns, R.drawable.sym_dns_fill),
             "do_not_disturb_on" to
                 Symbol(R.drawable.sym_do_not_disturb_on, R.drawable.sym_do_not_disturb_on_fill),
             "download" to Symbol(R.drawable.sym_download, R.drawable.sym_download_fill),
+            "eco" to Symbol(R.drawable.sym_eco, R.drawable.sym_eco_fill),
             "edit" to Symbol(R.drawable.sym_edit, R.drawable.sym_edit_fill),
+            "engineering" to Symbol(R.drawable.sym_engineering, R.drawable.sym_engineering_fill),
             "error" to Symbol(R.drawable.sym_error, R.drawable.sym_error_fill),
+            "event" to Symbol(R.drawable.sym_event, R.drawable.sym_event_fill),
+            "extension" to Symbol(R.drawable.sym_extension, R.drawable.sym_extension_fill),
+            "favorite" to Symbol(R.drawable.sym_favorite, R.drawable.sym_favorite_fill),
+            "filter_alt" to Symbol(R.drawable.sym_filter_alt, R.drawable.sym_filter_alt_fill),
             "filter_b_and_w" to
                 Symbol(R.drawable.sym_filter_b_and_w, R.drawable.sym_filter_b_and_w_fill),
+            "fingerprint" to Symbol(R.drawable.sym_fingerprint, R.drawable.sym_fingerprint_fill),
+            "flag" to Symbol(R.drawable.sym_flag, R.drawable.sym_flag_fill),
+            "flash_on" to Symbol(R.drawable.sym_flash_on, R.drawable.sym_flash_on_fill),
             "flashlight_on" to
                 Symbol(R.drawable.sym_flashlight_on, R.drawable.sym_flashlight_on_fill),
             "folder" to Symbol(R.drawable.sym_folder, R.drawable.sym_folder_fill),
             "format_size" to Symbol(R.drawable.sym_format_size, R.drawable.sym_format_size_fill),
+            "fullscreen" to Symbol(R.drawable.sym_fullscreen, R.drawable.sym_fullscreen_fill),
+            "gamepad" to Symbol(R.drawable.sym_gamepad, R.drawable.sym_gamepad_fill),
+            "grid_view" to Symbol(R.drawable.sym_grid_view, R.drawable.sym_grid_view_fill),
+            "handyman" to Symbol(R.drawable.sym_handyman, R.drawable.sym_handyman_fill),
+            "headphones" to Symbol(R.drawable.sym_headphones, R.drawable.sym_headphones_fill),
             "hide_source" to Symbol(R.drawable.sym_hide_source, R.drawable.sym_hide_source_fill),
             "history" to Symbol(R.drawable.sym_history, R.drawable.sym_history_fill),
+            "home" to Symbol(R.drawable.sym_home, R.drawable.sym_home_fill),
+            "hourglass_empty" to
+                Symbol(R.drawable.sym_hourglass_empty, R.drawable.sym_hourglass_empty_fill),
             "info" to Symbol(R.drawable.sym_info, R.drawable.sym_info_fill),
+            "key" to Symbol(R.drawable.sym_key, R.drawable.sym_key_fill),
             "keyboard" to Symbol(R.drawable.sym_keyboard, R.drawable.sym_keyboard_fill),
+            "label" to Symbol(R.drawable.sym_label, R.drawable.sym_label_fill),
             "lan" to Symbol(R.drawable.sym_lan, R.drawable.sym_lan_fill),
+            "language" to Symbol(R.drawable.sym_language, R.drawable.sym_language_fill),
             "layers" to Symbol(R.drawable.sym_layers, R.drawable.sym_layers_fill),
+            "light_mode" to Symbol(R.drawable.sym_light_mode, R.drawable.sym_light_mode_fill),
+            "lightbulb" to Symbol(R.drawable.sym_lightbulb, R.drawable.sym_lightbulb_fill),
             "link" to Symbol(R.drawable.sym_link, R.drawable.sym_link_fill),
+            "location_off" to Symbol(R.drawable.sym_location_off, R.drawable.sym_location_off_fill),
             "location_on" to Symbol(R.drawable.sym_location_on, R.drawable.sym_location_on_fill),
             "lock" to Symbol(R.drawable.sym_lock, R.drawable.sym_lock_fill),
             "lock_open" to Symbol(R.drawable.sym_lock_open, R.drawable.sym_lock_open_fill),
+            "magic_button" to Symbol(R.drawable.sym_magic_button, R.drawable.sym_magic_button_fill),
+            "mail" to Symbol(R.drawable.sym_mail, R.drawable.sym_mail_fill),
+            "map" to Symbol(R.drawable.sym_map, R.drawable.sym_map_fill),
             "memory" to Symbol(R.drawable.sym_memory, R.drawable.sym_memory_fill),
+            "mic" to Symbol(R.drawable.sym_mic, R.drawable.sym_mic_fill),
+            "mic_off" to Symbol(R.drawable.sym_mic_off, R.drawable.sym_mic_off_fill),
+            "monitor_heart" to
+                Symbol(R.drawable.sym_monitor_heart, R.drawable.sym_monitor_heart_fill),
             "more_vert" to Symbol(R.drawable.sym_more_vert, R.drawable.sym_more_vert_fill),
+            "music_note" to Symbol(R.drawable.sym_music_note, R.drawable.sym_music_note_fill),
             "my_location" to Symbol(R.drawable.sym_my_location, R.drawable.sym_my_location_fill),
+            "network_check" to
+                Symbol(R.drawable.sym_network_check, R.drawable.sym_network_check_fill),
             "nfc" to Symbol(R.drawable.sym_nfc, R.drawable.sym_nfc_fill),
             "nightlight" to Symbol(R.drawable.sym_nightlight, R.drawable.sym_nightlight_fill),
             "notifications" to
                 Symbol(R.drawable.sym_notifications, R.drawable.sym_notifications_fill),
+            "notifications_off" to
+                Symbol(R.drawable.sym_notifications_off, R.drawable.sym_notifications_off_fill),
             "open_in_new" to Symbol(R.drawable.sym_open_in_new, R.drawable.sym_open_in_new_fill),
             "palette" to Symbol(R.drawable.sym_palette, R.drawable.sym_palette_fill),
             "pause" to Symbol(R.drawable.sym_pause, R.drawable.sym_pause_fill),
+            "pets" to Symbol(R.drawable.sym_pets, R.drawable.sym_pets_fill),
+            "phone_android" to
+                Symbol(R.drawable.sym_phone_android, R.drawable.sym_phone_android_fill),
+            "photo_camera" to Symbol(R.drawable.sym_photo_camera, R.drawable.sym_photo_camera_fill),
             "play_arrow" to Symbol(R.drawable.sym_play_arrow, R.drawable.sym_play_arrow_fill),
+            "play_circle" to Symbol(R.drawable.sym_play_circle, R.drawable.sym_play_circle_fill),
             "policy" to Symbol(R.drawable.sym_policy, R.drawable.sym_policy_fill),
             "power" to Symbol(R.drawable.sym_power, R.drawable.sym_power_fill),
+            "power_settings_new" to
+                Symbol(R.drawable.sym_power_settings_new, R.drawable.sym_power_settings_new_fill),
+            "public" to Symbol(R.drawable.sym_public, R.drawable.sym_public_fill),
+            "qr_code_scanner" to
+                Symbol(R.drawable.sym_qr_code_scanner, R.drawable.sym_qr_code_scanner_fill),
             "receipt_long" to Symbol(R.drawable.sym_receipt_long, R.drawable.sym_receipt_long_fill),
             "refresh" to Symbol(R.drawable.sym_refresh, R.drawable.sym_refresh_fill),
             "remove_moderator" to
                 Symbol(R.drawable.sym_remove_moderator, R.drawable.sym_remove_moderator_fill),
+            "replay" to Symbol(R.drawable.sym_replay, R.drawable.sym_replay_fill),
+            "restart_alt" to Symbol(R.drawable.sym_restart_alt, R.drawable.sym_restart_alt_fill),
+            "rocket_launch" to
+                Symbol(R.drawable.sym_rocket_launch, R.drawable.sym_rocket_launch_fill),
             "schedule" to Symbol(R.drawable.sym_schedule, R.drawable.sym_schedule_fill),
+            "science" to Symbol(R.drawable.sym_science, R.drawable.sym_science_fill),
             "screen_rotation" to
                 Symbol(R.drawable.sym_screen_rotation, R.drawable.sym_screen_rotation_fill),
             "screenshot" to Symbol(R.drawable.sym_screenshot, R.drawable.sym_screenshot_fill),
+            "screenshot_monitor" to
+                Symbol(R.drawable.sym_screenshot_monitor, R.drawable.sym_screenshot_monitor_fill),
             "search" to Symbol(R.drawable.sym_search, R.drawable.sym_search_fill),
             "security" to Symbol(R.drawable.sym_security, R.drawable.sym_security_fill),
+            "send" to Symbol(R.drawable.sym_send, R.drawable.sym_send_fill),
             "settings" to Symbol(R.drawable.sym_settings, R.drawable.sym_settings_fill),
+            "share" to Symbol(R.drawable.sym_share, R.drawable.sym_share_fill),
             "shield" to Symbol(R.drawable.sym_shield, R.drawable.sym_shield_fill),
+            "shopping_cart" to
+                Symbol(R.drawable.sym_shopping_cart, R.drawable.sym_shopping_cart_fill),
             "signal_cellular_alt" to
                 Symbol(R.drawable.sym_signal_cellular_alt, R.drawable.sym_signal_cellular_alt_fill),
+            "smart_toy" to Symbol(R.drawable.sym_smart_toy, R.drawable.sym_smart_toy_fill),
+            "sms" to Symbol(R.drawable.sym_sms, R.drawable.sym_sms_fill),
             "speed" to Symbol(R.drawable.sym_speed, R.drawable.sym_speed_fill),
+            "sports_esports" to
+                Symbol(R.drawable.sym_sports_esports, R.drawable.sym_sports_esports_fill),
+            "star" to Symbol(R.drawable.sym_star, R.drawable.sym_star_fill),
+            "stop_circle" to Symbol(R.drawable.sym_stop_circle, R.drawable.sym_stop_circle_fill),
+            "storage" to Symbol(R.drawable.sym_storage, R.drawable.sym_storage_fill),
+            "swap_horiz" to Symbol(R.drawable.sym_swap_horiz, R.drawable.sym_swap_horiz_fill),
             "swap_vert" to Symbol(R.drawable.sym_swap_vert, R.drawable.sym_swap_vert_fill),
             "sync" to Symbol(R.drawable.sym_sync, R.drawable.sym_sync_fill),
+            "tablet_android" to
+                Symbol(R.drawable.sym_tablet_android, R.drawable.sym_tablet_android_fill),
             "terminal" to Symbol(R.drawable.sym_terminal, R.drawable.sym_terminal_fill),
+            "thermostat" to Symbol(R.drawable.sym_thermostat, R.drawable.sym_thermostat_fill),
             "timer" to Symbol(R.drawable.sym_timer, R.drawable.sym_timer_fill),
             "toggle_on" to Symbol(R.drawable.sym_toggle_on, R.drawable.sym_toggle_on_fill),
             "touch_app" to Symbol(R.drawable.sym_touch_app, R.drawable.sym_touch_app_fill),
+            "translate" to Symbol(R.drawable.sym_translate, R.drawable.sym_translate_fill),
+            "troubleshoot" to Symbol(R.drawable.sym_troubleshoot, R.drawable.sym_troubleshoot_fill),
             "tune" to Symbol(R.drawable.sym_tune, R.drawable.sym_tune_fill),
             "upload" to Symbol(R.drawable.sym_upload, R.drawable.sym_upload_fill),
             "usb" to Symbol(R.drawable.sym_usb, R.drawable.sym_usb_fill),
@@ -123,13 +218,19 @@ object Symbols {
                     R.drawable.sym_vertical_align_bottom_fill,
                 ),
             "vibration" to Symbol(R.drawable.sym_vibration, R.drawable.sym_vibration_fill),
+            "visibility" to Symbol(R.drawable.sym_visibility, R.drawable.sym_visibility_fill),
             "visibility_off" to
                 Symbol(R.drawable.sym_visibility_off, R.drawable.sym_visibility_off_fill),
+            "volume_off" to Symbol(R.drawable.sym_volume_off, R.drawable.sym_volume_off_fill),
             "volume_up" to Symbol(R.drawable.sym_volume_up, R.drawable.sym_volume_up_fill),
+            "vpn_key" to Symbol(R.drawable.sym_vpn_key, R.drawable.sym_vpn_key_fill),
             "warning" to Symbol(R.drawable.sym_warning, R.drawable.sym_warning_fill),
+            "water_drop" to Symbol(R.drawable.sym_water_drop, R.drawable.sym_water_drop_fill),
             "widgets" to Symbol(R.drawable.sym_widgets, R.drawable.sym_widgets_fill),
             "wifi" to Symbol(R.drawable.sym_wifi, R.drawable.sym_wifi_fill),
+            "wifi_off" to Symbol(R.drawable.sym_wifi_off, R.drawable.sym_wifi_off_fill),
             "wifi_tethering" to
                 Symbol(R.drawable.sym_wifi_tethering, R.drawable.sym_wifi_tethering_fill),
+            "work" to Symbol(R.drawable.sym_work, R.drawable.sym_work_fill),
         )
 }

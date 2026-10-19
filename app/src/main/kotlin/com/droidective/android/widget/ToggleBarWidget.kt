@@ -1,27 +1,17 @@
 package com.droidective.android.widget
 
+import android.content.ComponentName
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.scale
-import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
-import androidx.glance.GlanceModifier
-import androidx.glance.Image
-import androidx.glance.ImageProvider
-import androidx.glance.LocalContext
-import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
-import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
@@ -29,75 +19,82 @@ import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
-import androidx.glance.background
-import androidx.glance.layout.Alignment
-import androidx.glance.layout.Box
-import androidx.glance.layout.Column
-import androidx.glance.layout.Row
-import androidx.glance.layout.Spacer
-import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.fillMaxWidth
-import androidx.glance.layout.height
-import androidx.glance.layout.padding
-import androidx.glance.layout.size
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
 import com.droidective.android.automation.AutomationService
 import com.droidective.android.droidective
 import com.droidective.android.surface.BackgroundTaps
 import com.droidective.android.surface.Launch
 import com.droidective.android.surface.SlotActions
 import com.droidective.android.surface.Surfaces
-import com.droidective.android.ui.Symbols
 import com.droidective.core.layout.Cell
-import com.droidective.core.layout.CellIcon
+import com.droidective.core.layout.Display
 import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
 import com.droidective.core.layout.LayoutKind
 import com.droidective.core.layout.Style
 import com.droidective.core.layout.Tap
 import java.util.UUID
-import kotlin.math.max
 
 /** What one home-screen bar draws. */
 data class BarModel(val style: Style, val cells: List<Cell>)
 
-/** A home-screen bar: any layout of toggles, apps and shortcuts, MicroToggles style. */
-class ToggleBarWidget : GlanceAppWidget() {
+/**
+ * What a newly placed widget starts as, by the kind picked from the launcher's widget list: a bar,
+ * a single button, or a list. After that each is just a layout, and any can be restyled as any.
+ */
+enum class Starter(
+    val title: String,
+    val short: String,
+    val toggles: List<String>,
+    val style: Style,
+) {
+    Bar(
+        "Home-screen bar",
+        "Bar",
+        listOf("wifi", "bluetooth", "flashlight", "auto-rotate", "do-not-disturb", "layout-bounds"),
+        Style(),
+    ),
+    Button(
+        "Button",
+        "Button",
+        listOf("flashlight"),
+        Style(iconSize = 36, labels = true, cornerRadius = 24),
+    ),
+    List(
+        "List",
+        "List",
+        listOf("wifi", "bluetooth", "do-not-disturb", "layout-bounds", "show-touches"),
+        Style(display = Display.List, stateText = true, cornerRadius = 20, padding = 8),
+    ),
+}
+
+/** A home-screen widget: any layout of toggles, apps, actions and tools, MicroToggles style. */
+class ToggleBarWidget(private val starter: Starter = Starter.Bar) : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val widgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
-        val first = load(context, widgetId)
+        val first = load(context, widgetId, starter)
         provideContent {
             val model by
-                produceState(first) { Surfaces.changes.collect { value = load(context, widgetId) } }
+                produceState(first) {
+                    Surfaces.changes.collect { value = load(context, widgetId, starter) }
+                }
             Bar(model)
         }
     }
 
     companion object {
-        /** The bar a newly added widget starts with, before it's configured. */
-        val starterToggles =
-            listOf(
-                "wifi",
-                "bluetooth",
-                "flashlight",
-                "auto-rotate",
-                "do-not-disturb",
-                "layout-bounds",
-            )
+        /** The toggles a new notification bar starts with. */
+        val starterToggles = Starter.Bar.toggles
 
-        suspend fun load(context: Context, widgetId: Int): BarModel {
-            val layout = ensureLayout(context, widgetId)
+        suspend fun load(context: Context, widgetId: Int, starter: Starter): BarModel {
+            val layout = ensureLayout(context, widgetId, starter)
             return BarModel(layout.style, Surfaces.cells(context, layout))
         }
 
-        /** The widget's layout, creating the starter bar the first time it's drawn. */
-        fun ensureLayout(context: Context, widgetId: Int): Layout {
+        /** The widget's layout, creating its starter the first time it's drawn. */
+        fun ensureLayout(context: Context, widgetId: Int, starter: Starter): Layout {
             val layouts = context.droidective.layouts
             layouts.layoutFor(widgetId)?.let {
                 return it
@@ -106,8 +103,9 @@ class ToggleBarWidget : GlanceAppWidget() {
                 Layout(
                     id = "bar-$widgetId",
                     kind = LayoutKind.Bar,
-                    name = "Home-screen bar",
-                    items = starterToggles.map { Item.Toggle(UUID.randomUUID().toString(), it) },
+                    name = starter.title,
+                    items = starter.toggles.map { Item.Toggle(UUID.randomUUID().toString(), it) },
+                    style = starter.style,
                     editedAt = System.currentTimeMillis(),
                 )
             layouts.save(layout)
@@ -118,115 +116,8 @@ class ToggleBarWidget : GlanceAppWidget() {
     }
 }
 
-private const val CELL_MIN_WIDTH_DP = 52f
-private const val ICON_DP = 28
-
-@Composable
-private fun Bar(model: BarModel) {
-    val size = LocalSize.current
-    val columns =
-        max(
-            1,
-            minOf(
-                model.cells.size,
-                (size.width.value / CELL_MIN_WIDTH_DP).toInt().coerceAtLeast(1),
-            ),
-        )
-    val rows = model.cells.chunked(columns)
-    Box(
-        modifier =
-            GlanceModifier.fillMaxSize()
-                .background(ColorProvider(Color(model.style.background)))
-                .cornerRadius(8.dp)
-                .padding(4.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (model.cells.isEmpty()) {
-            Text(
-                "Long-press to add toggles",
-                style =
-                    TextStyle(color = ColorProvider(Color(model.style.iconOff)), fontSize = 12.sp),
-            )
-        } else {
-            Column(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                rows.forEach { row ->
-                    Row(
-                        GlanceModifier.fillMaxWidth().defaultWeight(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        row.forEach { cell ->
-                            CellView(cell, model.style, GlanceModifier.defaultWeight())
-                        }
-                        // Keep the last row's cells the same width as the rows above.
-                        repeat(columns - row.size) { Spacer(GlanceModifier.defaultWeight()) }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CellView(cell: Cell, style: Style, modifier: GlanceModifier) {
-    val context = LocalContext.current
-    val tint = Color(if (cell.active) style.iconOn else style.iconOff)
-    val action = actionFor(context, cell)
-    Column(
-        modifier = (action?.let { modifier.clickable(it) } ?: modifier).padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(contentAlignment = Alignment.TopEnd) {
-            CellImage(cell, tint)
-            if (cell.degraded) {
-                Box(
-                    GlanceModifier.size(8.dp)
-                        .cornerRadius(4.dp)
-                        .background(ColorProvider(Color(STAND_IN_DOT)))
-                ) {}
-            }
-        }
-        if (style.labels) {
-            Spacer(GlanceModifier.height(2.dp))
-            Text(
-                cell.label,
-                maxLines = 1,
-                style = TextStyle(color = ColorProvider(Color(style.iconOff)), fontSize = 10.sp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun CellImage(cell: Cell, tint: Color) {
-    val context = LocalContext.current
-    when (val icon = cell.icon) {
-        is CellIcon.Symbol -> {
-            val symbol = Symbols.byName[icon.name] ?: Symbols.byName.getValue("toggle_on")
-            Image(
-                provider = ImageProvider(if (cell.active) symbol.filled else symbol.outlined),
-                contentDescription = cell.label,
-                colorFilter = ColorFilter.tint(ColorProvider(tint)),
-                modifier = GlanceModifier.size(ICON_DP.dp),
-            )
-        }
-        is CellIcon.AppIcon ->
-            Image(
-                provider = ImageProvider(AppIcons.bitmap(context, icon.packageName)),
-                contentDescription = cell.label,
-                modifier = GlanceModifier.size(ICON_DP.dp),
-            )
-        is CellIcon.File ->
-            Image(
-                provider = ImageProvider(AppIcons.file(context, icon.path)),
-                contentDescription = cell.label,
-                modifier = GlanceModifier.size(ICON_DP.dp),
-            )
-    }
-}
-
 /** Null when the target can't be opened safely; the cell then draws but does nothing. */
-private fun actionFor(context: Context, cell: Cell): Action? =
+internal fun actionFor(context: Context, cell: Cell): Action? =
     when (val tap = cell.tap) {
         is Tap.RunToggle ->
             actionRunCallback<RunToggleAction>(
@@ -252,9 +143,6 @@ private fun actionFor(context: Context, cell: Cell): Action? =
                 actionStartActivity(OpenActivity.wrap(context, it))
             }
     }
-
-/** The amber of the Shell level: this toggle is running on its stand-in. */
-private const val STAND_IN_DOT = 0xFFF0B552
 
 /** Runs a toggle tapped on a widget, in the background. */
 class RunToggleAction : ActionCallback {
@@ -321,40 +209,79 @@ class RunActionAction : ActionCallback {
     }
 }
 
-class ToggleBarReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = ToggleBarWidget()
+/** One kind of home-screen widget in the launcher's list. Removing one forgets its binding. */
+abstract class WidgetReceiver(starter: Starter) : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = ToggleBarWidget(starter)
 
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         super.onDeleted(context, appWidgetIds)
         appWidgetIds.forEach { context.droidective.layouts.unbind(it) }
         AutomationService.sync(context)
     }
+
+    companion object {
+        /** Every kind, as the launcher knows them. */
+        val kinds =
+            mapOf(
+                ToggleBarReceiver::class.java to Starter.Bar,
+                ButtonWidgetReceiver::class.java to Starter.Button,
+                ListWidgetReceiver::class.java to Starter.List,
+            )
+
+        /** Every placed Droidective widget, of any kind. */
+        fun placedIds(context: Context): Set<Int> {
+            val manager = android.appwidget.AppWidgetManager.getInstance(context)
+            return kinds.keys
+                .flatMap { manager.getAppWidgetIds(ComponentName(context, it)).toList() }
+                .toSet()
+        }
+
+        /** What [widgetId] started as, from the receiver the launcher placed it with. */
+        fun starterFor(context: Context, widgetId: Int): Starter {
+            val provider =
+                android.appwidget.AppWidgetManager.getInstance(context)
+                    .getAppWidgetInfo(widgetId)
+                    ?.provider
+                    ?.className
+            return kinds.entries.firstOrNull { it.key.name == provider }?.value ?: Starter.Bar
+        }
+    }
 }
+
+class ToggleBarReceiver : WidgetReceiver(Starter.Bar)
+
+class ButtonWidgetReceiver : WidgetReceiver(Starter.Button)
+
+class ListWidgetReceiver : WidgetReceiver(Starter.List)
 
 /** App and shortcut icons, sized for a widget slot and cached, so widget updates stay small. */
 object AppIcons {
     private val cache = android.util.LruCache<String, Bitmap>(64)
 
-    fun bitmap(context: Context, packageName: String): Bitmap =
-        cache.get(packageName)
+    fun bitmap(context: Context, packageName: String, sizeDp: Int = DEFAULT_DP): Bitmap {
+        val px = (sizeDp * context.resources.displayMetrics.density).toInt()
+        return cache.get("$packageName@$px")
             ?: run {
-                val px = (ICON_DP * context.resources.displayMetrics.density).toInt()
                 val drawable =
                     try {
                         context.packageManager.getApplicationIcon(packageName)
                     } catch (_: android.content.pm.PackageManager.NameNotFoundException) {
                         context.packageManager.defaultActivityIcon
                     }
-                drawable.toBitmap(px, px).also { cache.put(packageName, it) }
+                drawable.toBitmap(px, px).also { cache.put("$packageName@$px", it) }
             }
+    }
 
-    fun file(context: Context, path: String): Bitmap =
-        cache.get(path)
+    fun file(context: Context, path: String, sizeDp: Int = DEFAULT_DP): Bitmap {
+        val px = (sizeDp * context.resources.displayMetrics.density).toInt()
+        return cache.get("$path@$px")
             ?: run {
-                val px = (ICON_DP * context.resources.displayMetrics.density).toInt()
                 val decoded = BitmapFactory.decodeFile(java.io.File(context.filesDir, path).path)
                 (decoded?.scale(px, px)
                         ?: context.packageManager.defaultActivityIcon.toBitmap(px, px))
-                    .also { cache.put(path, it) }
+                    .also { cache.put("$path@$px", it) }
             }
+    }
+
+    private const val DEFAULT_DP = 28
 }

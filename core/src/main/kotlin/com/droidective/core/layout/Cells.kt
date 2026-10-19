@@ -65,6 +65,8 @@ sealed interface CellIcon {
  *
  * @property active draw in the "on" colour.
  * @property degraded the toggle's level is missing, so the tap does its stand-in instead.
+ * @property state the state as a person reads it, such as "On" or "0.5×", when there is one.
+ * @property color the slot's own "on" colour, from its [Look], or null for the layout's.
  */
 data class Cell(
     val key: String,
@@ -73,10 +75,30 @@ data class Cell(
     val active: Boolean,
     val degraded: Boolean,
     val tap: Tap,
-)
+    val state: String? = null,
+    val color: Long? = null,
+) {
+    /**
+     * The colour the icon draws in, given the layout's [on] and [off]: the slot's own colour while
+     * it's on, and always for a slot with no state (an app, a tool, an action), which would
+     * otherwise never show it.
+     */
+    fun tint(on: Long, off: Long): Long =
+        color?.takeIf { active || state == null } ?: if (active) on else off
+}
 
 /** Decides how each item draws and what a tap on it does, given the current access. */
 object Cells {
+    /** [cell] with the slot's own label, symbol and colour where its [look] sets one. */
+    fun styled(cell: Cell, look: Look?): Cell {
+        if (look == null) return cell
+        return cell.copy(
+            label = look.label?.takeIf { it.isNotBlank() } ?: cell.label,
+            icon = look.icon?.let(CellIcon::Symbol) ?: cell.icon,
+            color = look.color,
+        )
+    }
+
     /**
      * @param state the toggle's current state id when [item] is a toggle, or when it's an action
      *   that sets one; "on" or "off" for a command item.
@@ -231,6 +253,7 @@ object Cells {
             key = key,
             label = command.name,
             icon = CellIcon.Symbol("terminal"),
+            state = state?.takeIf { command.isToggle }?.let { if (it == "on") "On" else "Off" },
             active = command.isToggle && state == "on",
             degraded = !inPlace,
             tap =
@@ -256,6 +279,7 @@ object Cells {
             key = key,
             label = toggle.title,
             icon = CellIcon.Symbol(toggle.icon),
+            state = toggle.states.firstOrNull { it.id == state }?.label,
             active = toggle.isActive(state),
             degraded = !inPlace,
             tap = tap,

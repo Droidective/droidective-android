@@ -84,7 +84,7 @@ object NotificationBar {
                         slot,
                         if (cell.active) symbol.filled else symbol.outlined,
                     )
-                    views.setInt(slot, "setColorFilter", (if (cell.active) on else off).toInt())
+                    views.setInt(slot, "setColorFilter", cell.tint(on, off).toInt())
                 }
                 is CellIcon.AppIcon ->
                     views.setImageViewBitmap(slot, AppIcons.bitmap(context, icon.packageName))

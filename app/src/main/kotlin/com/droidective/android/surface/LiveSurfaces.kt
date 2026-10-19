@@ -1,9 +1,7 @@
 package com.droidective.android.surface
 
 import android.app.NotificationManager
-import android.appwidget.AppWidgetManager
 import android.bluetooth.BluetoothAdapter
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
@@ -17,7 +15,7 @@ import android.provider.Settings
 import androidx.core.content.edit
 import com.droidective.android.automation.AutomationService
 import com.droidective.android.droidective
-import com.droidective.android.widget.ToggleBarReceiver
+import com.droidective.android.widget.WidgetReceiver
 import com.droidective.core.device.AppFreezers
 import com.droidective.core.layout.LayoutKind
 import com.droidective.core.layout.SurfaceWatch
@@ -49,10 +47,7 @@ object LiveSurfaces {
     fun watched(context: Context): SurfaceWatch? {
         if (!enabled(context)) return null
         val app = context.droidective
-        val widgets =
-            AppWidgetManager.getInstance(context)
-                .getAppWidgetIds(ComponentName(context, ToggleBarReceiver::class.java))
-                .toSet()
+        val widgets = WidgetReceiver.placedIds(context)
         val shown =
             app.layouts.all().filter { layout ->
                 when (layout.kind) {

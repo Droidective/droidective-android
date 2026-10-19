@@ -46,7 +46,12 @@ fun CellButton(
                 .padding(8.dp),
     ) {
         Box(contentAlignment = Alignment.TopEnd) {
-            CellIconView(cell, if (cell.active) onColor else offColor, Modifier.size(28.dp))
+            val tint = cell.color?.takeIf { cell.active || cell.state == null }?.let(::Color)
+            CellIconView(
+                cell,
+                tint ?: if (cell.active) onColor else offColor,
+                Modifier.size(28.dp),
+            )
             if (cell.degraded) {
                 Box(
                     Modifier.size(8.dp).clip(CircleShape).background(LocalLevelColors.current.shell)

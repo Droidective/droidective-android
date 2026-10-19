@@ -4,7 +4,8 @@ import com.droidective.core.shell.ShellCommand
 
 /** The Screenshot item: the shell's `screencap`, saved where Photos finds it. */
 object Screenshot {
-    const val DIR = "/sdcard/Pictures/Screenshots"
+    // The shell user's path, written into a shell line: Environment would give this app's view.
+    @Suppress("SdCardPath") const val DIR = "/sdcard/Pictures/Screenshots"
 
     /**
      * Collapses the shade first, since a tile tap leaves it open and it would be in the picture,

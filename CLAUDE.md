@@ -149,6 +149,15 @@ minutes a month), so CI runs format, unit tests, lint and both builds; **emulato
 Mac before merge**. Emulators: API 30, 34, 36, 37 `google_apis` arm64 images (rootable with
 `adb root`).
 
+## Releases
+
+Signed APKs on GitHub, from a `vX.Y.Z` tag: `docs/releasing.md` has the key setup and the steps.
+The version lives in `gradle.properties` (`droidective.versionName`/`versionCode`); the release
+key arrives only through `DROIDECTIVE_KEYSTORE*` variables, and `scripts/build-release.sh`
+refuses an APK not signed by the certificate in `release-cert.sha256`. The app's update check
+(`core/…/update/`, `app/…/update/Updates.kt`) reads `releases/latest` once a day and only ever
+opens pages inside this repo's releases: nothing is downloaded or installed by the app.
+
 ## Git
 
 Feature branches and PRs; pushing to `main` is blocked by a hook. In this repo I merge my own PRs

@@ -13,13 +13,28 @@ android {
         applicationId = "com.droidective.android"
         minSdk = 30
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = providers.gradleProperty("droidective.versionCode").get().toInt()
+        versionName = providers.gradleProperty("droidective.versionName").get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // The release key never enters the repo. The release workflow (or a release build on your
+    // machine) hands it over in these variables; without them a release build comes out unsigned.
+    val keystore = providers.environmentVariable("DROIDECTIVE_KEYSTORE").orNull
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = file(keystore)
+                storePassword = providers.environmentVariable("DROIDECTIVE_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("DROIDECTIVE_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("DROIDECTIVE_KEY_PASSWORD").get()
+            }
+        }
     }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

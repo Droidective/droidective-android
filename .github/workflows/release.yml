@@ -1,0 +1,55 @@
+name: Release
+
+# A `vX.Y.Z` tag builds the APK, signs it with the release key, checks the signature against
+# release-cert.sha256, and publishes a GitHub release with the APK, its SHA-256 and the notes from
+# RELEASE_NOTES.md. docs/releasing.md has the one-time setup and the steps.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, sign and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+      # No Gradle cache: a release is built from nothing a pull request could have written.
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-disabled: true
+      - name: Build, sign and check
+        env:
+          TAG: ${{ github.ref_name }}
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          DROIDECTIVE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          DROIDECTIVE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          DROIDECTIVE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          export DROIDECTIVE_KEYSTORE="$RUNNER_TEMP/release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode >"$DROIDECTIVE_KEYSTORE"
+          scripts/build-release.sh "$TAG"
+      - name: Publish
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$TAG" build/release/*.apk build/release/*.sha256 \
+            --verify-tag \
+            --title "Droidective for Android ${TAG#v}" \
+            --notes-file build/release/notes.md

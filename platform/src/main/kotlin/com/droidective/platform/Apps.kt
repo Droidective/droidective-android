@@ -13,11 +13,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** One installed app, as the Apps list shows it. */
+/** @property debuggable a debug build, whose files `run-as` can reach without root. */
 data class AppEntry(
     val packageName: String,
     val label: String,
     val system: Boolean,
     val enabled: Boolean,
+    val debuggable: Boolean = false,
 )
 
 /** A runtime permission an app asked for, and whether it holds it. */
@@ -121,6 +123,7 @@ object AppCatalog {
             label = loadLabel(pm).toString(),
             system = flags and ApplicationInfo.FLAG_SYSTEM != 0,
             enabled = enabled,
+            debuggable = flags and ApplicationInfo.FLAG_DEBUGGABLE != 0,
         )
 }
 

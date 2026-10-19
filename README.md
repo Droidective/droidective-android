@@ -7,12 +7,16 @@ toggles Android keeps from ordinary apps. The macOS app lives in
 
 ## What it does
 
-- **Widgets everywhere.** Home-screen bars, folders, a notification bar, Quick Settings tiles and
-  shortcuts, all built from the same items: 52 toggles (network, sound, display, device and
-  developer), apps, other apps' shortcuts, your own shell commands, deep links and automations.
-- **Developer tools.** Developer Settings, Logcat, Crash Catcher, Install App (APK, APKS, XAPK
-  and APKM, with only this phone's splits), Memory Usage, Current Activity, Simulate, Demo Mode,
-  HTTP Proxy, Private DNS, Wireless ADB, Wi-Fi, Network Speed, Apps, Device Info and more.
+- **Widgets everywhere.** Home-screen bars, buttons and lists, folders, a notification bar, Quick
+  Settings tiles and shortcuts, all built from the same items: 52 toggles (network, sound,
+  display, device and developer), single actions (a toggle set to one state, an app force-stopped,
+  a permission granted), apps, other apps' shortcuts, your own shell commands, deep links,
+  automations and tools. Every widget can be styled: grid or list, sizes, chips, labels, states,
+  colours, and each slot's own label, icon and colour.
+- **Developer tools.** Developer Settings, Logcat, Crash Catcher, Sandbox Browser (an app's
+  files, preferences and databases), Install App (APK, APKS, XAPK and APKM, with only this
+  phone's splits), Memory Usage, Current Activity, Simulate, Demo Mode, HTTP Proxy, Private DNS,
+  Wireless ADB, Wi-Fi, Network Speed, Apps, Device Info and more.
 - **Automations.** When something happens, run actions once; while something holds, keep
   toggles set and put each one back when it ends. Schedules, restarts, Bluetooth, Wi-Fi, apps
   opening, charging, crashes, a run from the Mac, and more.

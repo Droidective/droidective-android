@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <boolean name="onboarded" value="true" />
+    <int name="launches" value="42" />
+    <float name="volume" value="0.5" />
+    <set name="watched">
+        <string>com.example.one</string>
+        <string>com.example.two</string>
+    </set>
+    <set name="empty" />
+    <string name="json">{&quot;a&quot;:1,&quot;b&quot;:&lt;2&gt;}</string>
+    <string name="blank"></string>
+</map>

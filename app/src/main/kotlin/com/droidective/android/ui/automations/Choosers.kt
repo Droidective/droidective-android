@@ -66,19 +66,30 @@ fun <T> ChoiceDialog(
     )
 }
 
-/** The installed apps people use, searchable; system apps are behind the search. */
+/**
+ * The installed apps people use, searchable; system apps are behind the search.
+ *
+ * @param only narrows the list, such as to debug builds; [empty] says why nothing's left.
+ */
 @Composable
-fun AppChooser(title: String, onDismiss: () -> Unit, onPick: (AppEntry) -> Unit) {
+fun AppChooser(
+    title: String,
+    onDismiss: () -> Unit,
+    only: (AppEntry) -> Boolean = { true },
+    empty: String? = null,
+    onPick: (AppEntry) -> Unit,
+) {
     val context = LocalContext.current
-    var apps by remember { mutableStateOf<List<AppEntry>>(emptyList()) }
+    var apps by remember { mutableStateOf<List<AppEntry>?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
-    LaunchedEffect(Unit) { apps = AppCatalog.list(context) }
-    val visible = apps.filter { app ->
-        if (query.isBlank()) !app.system
-        else
-            app.label.contains(query, ignoreCase = true) ||
-                app.packageName.contains(query, ignoreCase = true)
-    }
+    LaunchedEffect(Unit) { apps = AppCatalog.list(context).filter(only) }
+    val visible =
+        apps.orEmpty().filter { app ->
+            if (query.isBlank()) !app.system
+            else
+                app.label.contains(query, ignoreCase = true) ||
+                    app.packageName.contains(query, ignoreCase = true)
+        }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -91,6 +102,9 @@ fun AppChooser(title: String, onDismiss: () -> Unit, onPick: (AppEntry) -> Unit)
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (apps?.isEmpty() == true && empty != null) {
+                    Text(empty, style = MaterialTheme.typography.bodyMedium)
+                }
                 LazyColumn(Modifier.heightIn(max = 380.dp)) {
                     items(visible, key = { it.packageName }) { app ->
                         Column(

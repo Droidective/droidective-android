@@ -8,7 +8,7 @@ toggles Android keeps from ordinary apps. The macOS app lives in
 ## What it does
 
 - **Widgets everywhere.** Home-screen bars, buttons and lists, folders, a notification bar, Quick
-  Settings tiles and shortcuts, all built from the same items: 52 toggles (network, sound,
+  Settings tiles and shortcuts, all built from the same items: 54 toggles (network, sound,
   display, device and developer), single actions (a toggle set to one state, an app force-stopped,
   a permission granted), apps, other apps' shortcuts, your own shell commands, deep links,
   automations and tools. Every widget can be styled: grid or list, sizes, chips, labels, states,

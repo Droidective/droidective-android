@@ -80,7 +80,7 @@ class SandboxTest {
     @Test
     fun aCopyRedirectsOutsideRunAsAndQuotesBothEnds() {
         assertEquals(
-            "run-as 'com.example.app' cat 'databases/app.db' > '/sdcard/Android/data/x/it'\\''s.db'",
+            "run-as 'com.example.app' cat 'databases/app.db' | cat > '/sdcard/Android/data/x/it'\\''s.db'",
             Sandbox.copy(
                     "com.example.app",
                     "databases/app.db",
@@ -88,6 +88,14 @@ class SandboxTest {
                     "/sdcard/Android/data/x/it's.db",
                 )
                 .line,
+        )
+    }
+
+    @Test
+    fun rootCopiesStraightToTheDestination() {
+        assertEquals(
+            "cat '/data/user/0/com.example.app/databases/app.db' > '/sdcard/x.db'",
+            Sandbox.copy("com.example.app", "databases/app.db", root, "/sdcard/x.db").line,
         )
     }
 

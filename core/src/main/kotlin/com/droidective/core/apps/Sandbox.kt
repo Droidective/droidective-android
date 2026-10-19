@@ -65,8 +65,11 @@ object Sandbox {
 
     /**
      * Copies a file to [destination], a path the app can read, for what text can't carry: a
-     * database opened with SQLite, or a file saved or shared. `run-as` runs as the app being
-     * browsed, so the redirect is the shell user's, outside it.
+     * database opened with SQLite, or a file saved or shared.
+     *
+     * Through `run-as` the copy goes through a pipe: `run-as … cat > file` hands the shell's open
+     * file to the browsed app's `cat`, and on an API 36 emulator every write to a file in shared
+     * storage then failed silently, leaving it empty. The shell user's own `cat` writes it.
      */
     fun copy(
         packageName: String,
@@ -75,7 +78,8 @@ object Sandbox {
         destination: String,
     ): ShellCommand {
         val read = command(packageName, access, "cat", path)
-        return ShellCommand("${read.line} > ${shellQuote(destination)}")
+        val pipe = if (access == SandboxAccess.RunAs) " | cat" else ""
+        return ShellCommand("${read.line}$pipe > ${shellQuote(destination)}")
     }
 
     /**

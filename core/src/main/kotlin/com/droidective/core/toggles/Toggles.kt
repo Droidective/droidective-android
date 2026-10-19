@@ -1,6 +1,7 @@
 package com.droidective.core.toggles
 
 import com.droidective.core.AccessLevel
+import com.droidective.core.apps.ReactNative
 import com.droidective.core.shell.Parse
 import com.droidective.core.shell.ShellCommand
 
@@ -19,6 +20,31 @@ object Toggles {
     private fun cmd(vararg words: String) = ShellCommand.of(*words)
 
     private fun action(label: String) = listOf(ToggleState("run", label))
+
+    /**
+     * React Native's dev support keys, for a tile or the notification bar: they close the shade
+     * first, so the keys reach the app under it. From the app's own screens there's no RN app in
+     * front; the React Native tool brings one there first.
+     */
+    private fun reactNative(
+        id: String,
+        title: String,
+        icon: String,
+        label: String,
+        keys: ShellCommand,
+    ) =
+        ToggleDef(
+            id = id,
+            title = title,
+            group = ToggleGroup.Developer,
+            icon = icon,
+            states = action(label),
+            read = Probe.None,
+            write =
+                Write.Commands(
+                    mapOf("run" to listOf(ReactNative.collapseShade, ReactNative.settle, keys))
+                ),
+        )
 
     private fun exact(byState: Map<String, String>): (String?) -> String? = { stored ->
         byState.entries.firstOrNull { Parse.sameSettingValue(it.value, stored) }?.key
@@ -754,6 +780,14 @@ object Toggles {
                 "1",
                 "0",
                 readLevel = AccessLevel.Shell,
+            ),
+            reactNative("reload-js", "Reload JS", "refresh", "Reload", ReactNative.reload),
+            reactNative(
+                "open-dev-menu",
+                "Dev menu",
+                "developer_mode",
+                "Open the dev menu",
+                ReactNative.devMenu,
             ),
             setting(
                 "keep-activities",

@@ -463,6 +463,8 @@ private suspend fun open(
     val header = runShell(context, Sandbox.header(packageName, path, mode))
     if (Sandbox.isDatabaseHeader(header.stdout)) {
         val copy = copyOut(context, packageName, path, mode, siblings)
+        // A copy that silently wrote nothing would open as an empty database, which it isn't.
+        if (withContext(Dispatchers.IO) { copy.length() } == 0L) error("The copy came out empty.")
         return Opened.Database(path, copy, SandboxDatabase.tables(copy))
     }
     val read = runShell(context, Sandbox.read(packageName, path, mode))

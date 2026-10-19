@@ -36,5 +36,12 @@ object Grants {
     fun usageAccessCommand(packageName: String): ShellCommand =
         ShellCommand.of("appops", "set", shellQuote(packageName), "GET_USAGE_STATS", "allow")
 
+    /**
+     * Display over other apps, another app-op: what the Performance overlay draws with, and what
+     * lets an automation open a screen from the background.
+     */
+    fun overlayCommand(packageName: String): ShellCommand =
+        ShellCommand.of("appops", "set", shellQuote(packageName), "SYSTEM_ALERT_WINDOW", "allow")
+
     private const val ANDROID_15 = 35
 }

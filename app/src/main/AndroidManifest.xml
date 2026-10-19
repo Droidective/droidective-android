@@ -150,6 +150,14 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Runs the automations the person set up: watches the triggers they chose (an app opening, charging, the screen, the battery, headphones, Wi-Fi, a setting changing) and acts when one fires; watches the apps they asked Crash Catcher to alert about; and, when they turn on Keep widgets live, keeps their home-screen widgets, tiles and notification bars answering taps at once and showing current states. Runs only while one of these is on." />
         </service>
+        <service
+            android:name=".performance.PerformanceOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Draws the Performance overlay the person turned on: a small window over other apps showing CPU load, the frames the app in front draws, memory and temperature, updated once a second while the screen is on. Runs only until they turn it off from the app or its notification." />
+        </service>
         <!-- A Bluetooth device connecting or disconnecting. Protected broadcasts from the system;
              the receiver only re-reads which devices are connected. -->
         <receiver

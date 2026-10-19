@@ -29,6 +29,14 @@ class GrantsTest {
     }
 
     @Test
+    fun displayOverOtherAppsIsAnAppOpToo() {
+        assertEquals(
+            "appops set 'com.droidective.android' SYSTEM_ALERT_WINDOW allow",
+            Grants.overlayCommand("com.droidective.android").line,
+        )
+    }
+
+    @Test
     fun crashReportsNeedReadLogsBeforeAndroid15() {
         assertEquals(Grants.READ_LOGS, Grants.crashReports(30))
         assertEquals(Grants.READ_LOGS, Grants.crashReports(34))

@@ -1,6 +1,8 @@
 package com.droidective.android.ui.tools
 
+import android.content.Intent
 import android.os.SystemClock
+import android.provider.Settings
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,10 +35,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
+import com.droidective.android.performance.PerformanceOverlayService
+import com.droidective.android.ui.SwitchRow
 import com.droidective.android.ui.automations.AppChooser
+import com.droidective.android.ui.openSafely
+import com.droidective.core.Grants
 import com.droidective.core.apps.MemInfo
 import com.droidective.core.device.FrameStats
 import com.droidective.core.device.Performance
@@ -45,6 +53,7 @@ import com.droidective.core.device.Thermal
 import com.droidective.core.device.TopProcess
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -86,6 +95,7 @@ fun PerformanceTool(tool: ToolContext) {
             OutlinedButton(onClick = tool.onOpenSetup) { Text("Open Setup") }
             return@ToolScaffold
         }
+        OverlaySwitch(tool)
         val now = reading
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard("CPU", now?.cpuPercent?.let(::percent), Modifier.weight(1f))
@@ -136,6 +146,44 @@ fun PerformanceTool(tool: ToolContext) {
             fpsHistory.clear()
             reading = null
             choosing = false
+        }
+    }
+}
+
+/**
+ * Puts the numbers over every other app. Display over other apps is an app-op a shell can allow, so
+ * with Shell it's one tap; without, Android's own page for it.
+ */
+@Composable
+private fun OverlaySwitch(tool: ToolContext) {
+    val context = LocalContext.current
+    val on by PerformanceOverlayService.isRunning.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    SwitchRow(
+        "Show over other apps",
+        checked = on,
+        modifier = Modifier.padding(horizontal = 4.dp),
+        note = "CPU, the app in front's frames, memory and temperature, wherever you are.",
+    ) { show ->
+        if (!show) {
+            PerformanceOverlayService.stop(context)
+            return@SwitchRow
+        }
+        scope.launch {
+            if (!Settings.canDrawOverlays(context)) {
+                shellOutput(context, Grants.overlayCommand(context.packageName))
+            }
+            if (Settings.canDrawOverlays(context)) {
+                PerformanceOverlayService.start(context)
+            } else {
+                tool.say("Allow Display over other apps, then turn this on again.")
+                context.openSafely(
+                    Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        "package:${context.packageName}".toUri(),
+                    )
+                )
+            }
         }
     }
 }

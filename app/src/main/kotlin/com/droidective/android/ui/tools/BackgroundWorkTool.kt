@@ -200,16 +200,6 @@ private fun Jobs(
     }
 }
 
-/** The command's output, or null when there's no shell or it failed. */
-private suspend fun shellOutput(context: Context, command: ShellCommand): String? {
-    val shell = context.droidective.access.shell() ?: return null
-    return try {
-        shell.run(command).takeIf { it.succeeded }?.stdout
-    } catch (_: ShellUnavailableException) {
-        null
-    }
-}
-
 /** Runs [commands] in order; null when they all worked, else what the failing one said. */
 private suspend fun runAll(context: Context, commands: List<ShellCommand>): String? {
     val shell = context.droidective.access.shell() ?: return "Shell isn't running."

@@ -41,6 +41,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
     mapOf(
         "dev-settings" to { DeveloperSettingsTool(it) },
         "logcat" to { LogcatTool(it) },
+        "performance" to { PerformanceTool(it) },
         "react-native" to { ReactNativeTool(it) },
         "simulate" to { SimulateTool(it) },
         "demo-mode" to { DemoModeTool(it) },

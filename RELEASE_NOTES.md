@@ -3,6 +3,11 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.1.1
+
+- The Tools, Widgets and Setup tabs no longer draw under the status bar. The Tools search field
+  sat under the clock, and the Widgets and Setup lists scrolled beneath it.
+
 ## 0.1.0
 
 The first release: Droidective's developer toggles and tools on the phone itself.

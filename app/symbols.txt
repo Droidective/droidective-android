@@ -93,3 +93,8 @@ memory
 receipt_long
 pause
 vertical_align_bottom
+# Widget actions: what an action slot draws (Cells.actionIcon).
+block
+cleaning_services
+hide_source
+remove_moderator

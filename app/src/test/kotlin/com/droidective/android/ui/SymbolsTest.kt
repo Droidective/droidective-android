@@ -1,5 +1,9 @@
 package com.droidective.android.ui
 
+import com.droidective.core.apps.AppAction
+import com.droidective.core.automations.Action
+import com.droidective.core.features.Features
+import com.droidective.core.layout.Cells
 import com.droidective.core.toggles.Toggles
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,5 +38,26 @@ class SymbolsTest {
                 "check_circle",
             )
         assertEquals(emptyList(), used.filterNot(Symbols.byName::containsKey))
+    }
+
+    @Test
+    fun everyActionAndToolSlotDrawsAnIconThatExists() {
+        val actions =
+            AppAction.entries.map { Action.ForApp("com.example", it) } +
+                listOf(
+                    Action.Permission("com.example", "android.permission.CAMERA", grant = true),
+                    Action.Permission("com.example", "android.permission.CAMERA", grant = false),
+                    Action.RunCommand("c"),
+                    Action.OpenApp("com.example", "Example"),
+                    Action.OpenLink("https://example.com"),
+                    Action.OpenShortcut("Chat", "intent:#Intent;end"),
+                    Action.OpenSettings("Wi-Fi", "android.settings.WIFI_SETTINGS"),
+                    Action.Notify("Hello"),
+                    Action.Wait(1),
+                    Action.RunAutomation("a"),
+                    Action.SetToggle("no-such-toggle", "on"),
+                )
+        val icons = actions.map(Cells::actionIcon) + Features.all.map { it.icon } + "bolt"
+        assertEquals(emptyList(), icons.filterNot(Symbols.byName::containsKey))
     }
 }

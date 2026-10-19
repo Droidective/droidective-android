@@ -55,6 +55,7 @@ import com.droidective.android.widget.ToggleBarReceiver
 import com.droidective.android.widget.ToggleBarWidget
 import com.droidective.core.ago
 import com.droidective.core.device.AppFreezers
+import com.droidective.core.features.Features
 import com.droidective.core.layout.Cell
 import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
@@ -314,6 +315,10 @@ private fun TileSlotRow(
             is Item.Folder -> "Folder"
             is Item.Command ->
                 context.droidective.commands.get(item.commandId)?.name ?: "Removed command"
+            is Item.Automation ->
+                context.droidective.automations.get(item.automationId)?.name ?: "Removed automation"
+            is Item.Action -> item.label
+            is Item.Tool -> Features.byId(item.featureId)?.title ?: "Removed tool"
         }
     ListItem(
         headlineContent = { Text("Droidective $slot") },

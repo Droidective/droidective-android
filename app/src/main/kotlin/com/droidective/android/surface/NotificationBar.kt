@@ -16,8 +16,6 @@ import com.droidective.core.layout.Cell
 import com.droidective.core.layout.CellIcon
 import com.droidective.core.layout.LayoutKind
 import com.droidective.core.layout.Tap
-import com.droidective.core.toggles.Outcome
-import com.droidective.core.toggles.Toggles
 import kotlinx.coroutines.launch
 
 /**
@@ -98,25 +96,29 @@ object NotificationBar {
         return views
     }
 
-    /** Toggles go to a receiver; screens open straight from the tap, never through a trampoline. */
+    /**
+     * What runs in place goes to a receiver; screens open straight from the tap, never through a
+     * trampoline.
+     */
     private fun pendingFor(context: Context, cell: Cell): PendingIntent? =
         when (val tap = cell.tap) {
             is Tap.RunToggle ->
-                PendingIntent.getBroadcast(
-                    context,
-                    tap.toggleId.hashCode(),
-                    Intent(context, NotificationTapReceiver::class.java)
-                        .putExtra(NotificationTapReceiver.EXTRA_TOGGLE_ID, tap.toggleId),
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                )
+                broadcast(context, "toggle:${tap.toggleId}") {
+                    putExtra(NotificationTapReceiver.EXTRA_TOGGLE_ID, tap.toggleId)
+                }
             is Tap.RunCommand ->
-                PendingIntent.getBroadcast(
-                    context,
-                    "command:${tap.commandId}".hashCode(),
-                    Intent(context, NotificationTapReceiver::class.java)
-                        .putExtra(NotificationTapReceiver.EXTRA_COMMAND_ID, tap.commandId),
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                )
+                broadcast(context, "command:${tap.commandId}") {
+                    putExtra(NotificationTapReceiver.EXTRA_COMMAND_ID, tap.commandId)
+                }
+            is Tap.RunAutomation ->
+                broadcast(context, "automation:${tap.automationId}") {
+                    putExtra(NotificationTapReceiver.EXTRA_AUTOMATION_ID, tap.automationId)
+                }
+            is Tap.RunAction ->
+                broadcast(context, "action:${cell.key}") {
+                    putExtra(NotificationTapReceiver.EXTRA_ACTION, SlotActions.encode(tap.action))
+                    putExtra(NotificationTapReceiver.EXTRA_LABEL, tap.label)
+                }
             is Tap.Open ->
                 Launch.intentFor(context, tap.target)?.let { intent ->
                     PendingIntent.getActivity(
@@ -127,32 +129,50 @@ object NotificationBar {
                     )
                 }
         }
+
+    /** A tap for [NotificationTapReceiver]; [id] keeps each slot's PendingIntent its own. */
+    private fun broadcast(context: Context, id: String, extras: Intent.() -> Unit): PendingIntent =
+        PendingIntent.getBroadcast(
+            context,
+            id.hashCode(),
+            Intent(context, NotificationTapReceiver::class.java).apply(extras),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
 }
 
-/** Runs a toggle tapped in the notification bar. Not exported: only our PendingIntents reach it. */
+/** Runs what's tapped in the notification bar. Not exported: only our PendingIntents reach it. */
 class NotificationTapReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val toggle = intent.getStringExtra(EXTRA_TOGGLE_ID)?.let { Toggles.byId(it) }
-        val command =
-            intent.getStringExtra(EXTRA_COMMAND_ID)?.let { context.droidective.commands.get(it) }
-        if (toggle == null && command == null) return
+        val tap = tapFrom(intent) ?: return
         val pending = goAsync()
         context.droidective.scope.launch {
             try {
-                if (toggle != null) {
-                    val outcome = ToggleTaps.advance(context, toggle)
-                    if (outcome !is Outcome.Applied) Problems.report(context, toggle, outcome)
-                }
-                if (command != null)
-                    Problems.reportCommand(context, command, CommandTaps.run(context, command))
+                BackgroundTaps.run(context, tap)
             } finally {
                 pending.finish()
             }
         }
     }
 
+    private fun tapFrom(intent: Intent): Tap? {
+        intent.getStringExtra(EXTRA_TOGGLE_ID)?.let {
+            return Tap.RunToggle(it)
+        }
+        intent.getStringExtra(EXTRA_COMMAND_ID)?.let {
+            return Tap.RunCommand(it)
+        }
+        intent.getStringExtra(EXTRA_AUTOMATION_ID)?.let {
+            return Tap.RunAutomation(it)
+        }
+        val action = intent.getStringExtra(EXTRA_ACTION)?.let(SlotActions::decode) ?: return null
+        return Tap.RunAction(action, intent.getStringExtra(EXTRA_LABEL).orEmpty())
+    }
+
     companion object {
         const val EXTRA_TOGGLE_ID = "com.droidective.android.extra.TOGGLE_ID"
         const val EXTRA_COMMAND_ID = "com.droidective.android.extra.COMMAND_ID"
+        const val EXTRA_AUTOMATION_ID = "com.droidective.android.extra.AUTOMATION_ID"
+        const val EXTRA_ACTION = "com.droidective.android.extra.ACTION"
+        const val EXTRA_LABEL = "com.droidective.android.extra.LABEL"
     }
 }

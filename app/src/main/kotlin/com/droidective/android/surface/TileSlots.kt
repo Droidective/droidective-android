@@ -11,7 +11,6 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import com.droidective.android.MainActivity
 import com.droidective.android.R
-import com.droidective.android.droidective
 import com.droidective.android.ui.Symbols
 import com.droidective.core.device.Rate
 import com.droidective.core.device.RateMeter
@@ -23,8 +22,6 @@ import com.droidective.core.layout.LayoutKind
 import com.droidective.core.layout.Tap
 import com.droidective.core.layout.Target
 import com.droidective.core.store.JsonFileStore
-import com.droidective.core.toggles.Outcome
-import com.droidective.core.toggles.Toggles
 import com.droidective.platform.TrafficCounters
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -116,23 +113,11 @@ abstract class ItemTileService : TileService() {
         run.launch {
             val cell = cell(item) ?: return@launch
             when (val tap = cell.tap) {
-                is Tap.RunToggle -> {
-                    val toggle = Toggles.byId(tap.toggleId) ?: return@launch
-                    val outcome = ToggleTaps.advance(this@ItemTileService, toggle)
-                    if (outcome !is Outcome.Applied)
-                        Problems.report(this@ItemTileService, toggle, outcome)
-                    draw()
-                }
-                is Tap.RunCommand -> {
-                    val command = droidective.commands.get(tap.commandId) ?: return@launch
-                    Problems.reportCommand(
-                        this@ItemTileService,
-                        command,
-                        CommandTaps.run(this@ItemTileService, command),
-                    )
-                    draw()
-                }
                 is Tap.Open -> Launch.intentFor(this@ItemTileService, tap.target)?.let(::open)
+                else -> {
+                    BackgroundTaps.run(this@ItemTileService, tap)
+                    draw()
+                }
             }
         }
     }

@@ -194,6 +194,7 @@ private fun ActionDialogs(
         EditorDialog.ItemPick ->
             ItemPicker(
                 LayoutKind.Folder,
+                slotsOnly = true,
                 onDismiss = close,
                 onPick = { item ->
                     actionFor(item)?.let(add)
@@ -287,8 +288,11 @@ private fun actionFor(item: Item): Action? =
         is Item.DeepLink -> Action.OpenLink(item.uri)
         is Item.SettingsScreen -> Action.OpenSettings(item.label, item.action)
         is Item.Command -> Action.RunCommand(item.commandId)
+        is Item.Automation -> Action.RunAutomation(item.automationId)
+        is Item.Action -> item.action
         is Item.Toggle,
-        is Item.Folder -> null
+        is Item.Folder,
+        is Item.Tool -> null
     }
 
 @Composable

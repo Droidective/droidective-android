@@ -165,6 +165,15 @@ Crash reports come from Android's DropBox (`platform/…/CrashLog.kt`, parsed by
 watched. Reading needs `READ_DROPBOX_DATA` (`READ_LOGS` below Android 15), granted with the
 Granted level by `Grants.commands`, plus usage access.
 
+## Install App
+
+Bundles install through PackageInstaller sessions, read from the picked file in passes, never
+copied. Which splits go in is `InstallPlan` over `SplitApkSelector` (the Mac's rules, case for
+case). bundletool's `.apks` builds a variant per range of Android versions, its files suffixed
+`_<n+1>`: choosing by file name alone installs duplicate splits, so `ApksToc` reads `toc.pb` and
+picks the variant, and the suffix is stripped by the known number (a blind `_<digits>` strip turns
+`x86_64` into `x86`). `fixtures/apks/` is a real table.
+
 ## Releases
 
 Signed APKs on GitHub, from a `vX.Y.Z` tag: `docs/releasing.md` has the key setup and the steps.

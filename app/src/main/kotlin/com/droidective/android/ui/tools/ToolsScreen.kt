@@ -49,6 +49,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "network-speed" to { NetworkSpeedTool(it) },
         "get-ip" to { GetIpTool(it) },
         "apps" to { AppsTool(it) },
+        "install-app" to { InstallAppTool(it) },
         "current-activity" to { CurrentActivityTool(it) },
         "meminfo" to { MemoryTool(it) },
         "crash-catcher" to { CrashCatcherTool(it) },

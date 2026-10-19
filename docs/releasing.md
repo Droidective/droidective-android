@@ -47,10 +47,12 @@ Made on 2026-10-19 (RSA 4096, valid to 2126, certificate SHA-256 in `release-cer
   600), alias `droidective`.
 - The password: that Mac's login Keychain, item "Droidective Android release key password". A
   second copy of the keystore, base64, is the item "Droidective Android release keystore (base64)".
+- A copy of the keystore with a README, in `~/Desktop/Droidective Android release key/` on that
+  Mac. The password isn't in it; the README says how to read it from the Keychain.
 - GitHub: the four repository secrets above.
 
-Both copies are on one Mac, so keep a third somewhere else (a password manager or an offline
-drive). To build a release locally:
+Every copy outside GitHub is on one Mac, so move one somewhere else (a password manager or an
+offline drive), with the password. To build a release locally:
 
 ```sh
 export DROIDECTIVE_KEYSTORE=~/.droidective/release/droidective-release.jks

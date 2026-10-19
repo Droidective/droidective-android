@@ -15,7 +15,6 @@ android {
         targetSdk = 37
         versionCode = providers.gradleProperty("droidective.versionCode").get().toInt()
         versionName = providers.gradleProperty("droidective.versionName").get()
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     // The release key never enters the repo. The release workflow (or a release build on your

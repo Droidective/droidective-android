@@ -152,10 +152,10 @@ runs actions.
 ```
 
 Warnings are errors everywhere: Kotlin `allWarningsAsErrors`, Android Lint `warningsAsErrors`.
-The repo is private until the first release, and the org is on GitHub's free plan (2,000 Actions
-minutes a month), so CI runs format, unit tests, lint and both builds; **emulator tests run on the
-Mac before merge**. Emulators: API 30, 34, 36, 37 `google_apis` arm64 images (rootable with
-`adb root`).
+CI runs format, unit tests, lint, both builds and the release scripts' checks. There is no
+instrumented test suite: anything that needs a device is checked by hand on the Mac's emulators
+before merge, against API 30, 34, 36 and 37 `google_apis` arm64 images (rootable with `adb root`).
+Real-phone checks still to run are listed in `docs/spikes.md`.
 
 ## Crash Catcher
 

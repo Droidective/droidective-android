@@ -3,6 +3,7 @@ package com.droidective.platform
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.RemoteException
 import android.util.Log
 import androidx.core.content.edit
@@ -159,7 +160,10 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
         val attaching =
             shizukuNow == ShizukuStatus.Attaching ||
                 (shizukuNow == ShizukuStatus.Ready && shizukuProvider == null)
-        val granted = hasGrants() || (provider != null && grantSelf(provider))
+        // With Shell, grant whatever's missing: a grant from an older Phone setup may lack the
+        // crash-report permission even when the Granted level is there.
+        if (provider != null && !hasAllGrants()) grantSelf(provider)
+        val granted = hasGrants()
         state.value = Access(granted = granted, shell = provider)
         // A cold widget tap waits for access to settle; an attaching Shizuku settles on the
         // refresh its binder-received listener makes, not this one.
@@ -195,14 +199,20 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
             else -> RootUse.Asking
         }
 
-    private suspend fun grantSelf(provider: ShellProvider): Boolean {
+    private suspend fun grantSelf(provider: ShellProvider) {
         val shell = if (provider == ShellProvider.Su) rootShell else shizuku
-        return try {
-            Grants.commands(context.packageName).all { shell.run(it).succeeded } && hasGrants()
-        } catch (_: ShellUnavailableException) {
-            false
+        try {
+            // Each grant on its own: one Android refuses mustn't stop the rest.
+            Grants.commands(context.packageName, Build.VERSION.SDK_INT).forEach { shell.run(it) }
+        } catch (e: ShellUnavailableException) {
+            Log.i(LOG_TAG, "Couldn't grant the app its permissions: ${e.message}")
         }
     }
+
+    private fun hasAllGrants(): Boolean =
+        Grants.permissions(Build.VERSION.SDK_INT).all {
+            context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
+        }
 
     private fun hasGrants(): Boolean =
         context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) ==

@@ -3,6 +3,9 @@ plugins {
     alias(libs.plugins.ktfmt)
 }
 
+// Real device output: the crash-report tests read the DropBox entries recorded here.
+val fixtures: Directory = rootProject.layout.projectDirectory.dir("fixtures")
+
 android {
     namespace = "com.droidective.platform"
     compileSdk = 37
@@ -38,6 +41,8 @@ android {
                 "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
                 "--add-opens=java.base/java.io=ALL-UNNAMED",
             )
+            it.inputs.dir(fixtures)
+            it.systemProperty("fixtures.dir", fixtures.asFile.absolutePath)
         }
     }
 }

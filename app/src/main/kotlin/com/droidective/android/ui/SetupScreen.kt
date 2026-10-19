@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -96,8 +97,8 @@ fun SetupScreen(app: DroidectiveApplication) {
             if (!access.granted) {
                 Text(
                     "Connect the phone to a Mac running Droidective and use Phone setup, or run " +
-                        "this once from any computer with adb. Setting up Shell below also " +
-                        "grants it.",
+                        "these once from any computer with adb; the last one lets Crash " +
+                        "Catcher read crash reports. Setting up Shell below also grants them.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 val command = grantCommand(context.packageName)
@@ -244,7 +245,9 @@ private fun Code(text: String) {
 
 /** The adb command lines a computer runs to give this app the Granted level. */
 fun grantCommand(packageName: String): String =
-    Grants.commands(packageName).joinToString("\n") { "adb shell ${it.line}" }
+    Grants.commands(packageName, Build.VERSION.SDK_INT).joinToString("\n") {
+        "adb shell ${it.line}"
+    }
 
 /** Puts [text] on the clipboard; Android 13 and later confirm it themselves. */
 fun Context.copy(label: String, text: String) {

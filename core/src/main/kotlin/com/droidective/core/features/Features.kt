@@ -153,6 +153,23 @@ object Features {
                 AccessLevel.App,
             ),
             FeatureDef(
+                "crash-catcher",
+                "Crash Catcher",
+                "Crashes and ANRs, with alerts for the apps you watch",
+                listOf(
+                    "crash",
+                    "anr",
+                    "not responding",
+                    "exception",
+                    "stack trace",
+                    "tombstone",
+                    "native crash",
+                ),
+                FeatureCategory.Apps,
+                "bug_report",
+                AccessLevel.Granted,
+            ),
+            FeatureDef(
                 "custom-commands",
                 "Custom Commands",
                 "Your own shell commands, as buttons and toggles",

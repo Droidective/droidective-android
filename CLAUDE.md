@@ -149,6 +149,15 @@ minutes a month), so CI runs format, unit tests, lint and both builds; **emulato
 Mac before merge**. Emulators: API 30, 34, 36, 37 `google_apis` arm64 images (rootable with
 `adb root`).
 
+## Crash Catcher
+
+Crash reports come from Android's DropBox (`platform/…/CrashLog.kt`, parsed by
+`core/…/crashes/CrashReport.kt` against `fixtures/dropbox/`). Spike 9 settled the shape:
+`DROPBOX_ENTRY_ADDED` reaches only a receiver registered at runtime, so alerts for watched apps
+(`app/…/crashes/CrashAlerts.kt`) ride the automation service, which runs while any app is
+watched. Reading needs `READ_DROPBOX_DATA` (`READ_LOGS` below Android 15), granted with the
+Granted level by `Grants.commands`, plus usage access.
+
 ## Releases
 
 Signed APKs on GitHub, from a `vX.Y.Z` tag: `docs/releasing.md` has the key setup and the steps.

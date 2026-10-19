@@ -9,6 +9,15 @@
     <uses-permission
         android:name="android.permission.DUMP"
         tools:ignore="ProtectedPermissions" />
+    <!-- Crash Catcher reads crash reports from DropBox: Android 15 files them under
+         READ_DROPBOX_DATA, earlier versions under READ_LOGS. Granted alongside the two above. -->
+    <uses-permission
+        android:name="android.permission.READ_DROPBOX_DATA"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.READ_LOGS"
+        android:maxSdkVersion="34"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- App level: granted at install, or special access the user turns on in Settings. -->
     <uses-permission

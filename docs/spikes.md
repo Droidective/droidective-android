@@ -18,14 +18,31 @@ Android version and date, so a later change can be checked against what was meas
 Brand-specific spikes (2, 4, 5, 8) run only on a phone you plug in, and every toggle a spike
 changes is put back afterwards.
 
+## Still to run on real phones
+
+Waiting for the phones to be plugged in (noted 2026-10-19). On each brand (Samsung, Xiaomi,
+OnePlus if there is one), with Droidective installed and Shizuku allowed:
+
+- **1, the phone's column**: `scripts/spikes/cold-tap.sh <serial>` with a bar holding Wi-Fi on
+  the home screen. Under a second per round is the bar; the first tap after Shizuku starts is
+  slower (below).
+- **2**: Granted writes (animation scale, Don't keep activities, stay awake) from the app, read
+  back with `adb shell settings get global <key>`, then put back.
+- **4**: restart the phone and note whether Shizuku comes back on its own, and how long its
+  wireless-debugging start takes.
+- **5**: a bar with Wi-Fi and Bluetooth, toggled from Quick Settings instead, then how long the
+  bar takes to show the change with no automation running.
+- **8**: "When the phone restarts", a Bluetooth trigger and a schedule two minutes out, each with
+  a Notify action, on the phone's default battery settings.
+
+
 ## Results
 
 ### 1. Cold widget tap → Shizuku → Wi-Fi (2026-10-18, `dv-api36`, google_apis arm64 emulator)
 
 Process killed with `am kill` after it went to the cached state (the low-memory killer's case),
 then a tap on the bar's Wi-Fi cell. Timed from the tap to WifiService's own `setWifiEnabled` log
-line, both on the device clock (`cold_tap.sh` in the session scratchpad; to move into `scripts/`
-when the emulator suite lands).
+line, both on the device clock (`scripts/spikes/cold-tap.sh`).
 
 | round | app process before tap | tap → `setWifiEnabled` | caller |
 |---|---|---|---|

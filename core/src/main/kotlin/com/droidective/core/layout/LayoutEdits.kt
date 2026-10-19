@@ -23,7 +23,18 @@ object LayoutEdits {
         }
 
     fun remove(layout: Layout, key: String, now: Long): Layout =
-        layout.copy(items = layout.items.filterNot { it.key == key }, editedAt = now)
+        layout.copy(
+            items = layout.items.filterNot { it.key == key },
+            looks = layout.looks - key,
+            editedAt = now,
+        )
+
+    /** Gives the slot [key] its own [look]; an empty look puts the defaults back. */
+    fun relook(layout: Layout, key: String, look: Look, now: Long): Layout =
+        layout.copy(
+            looks = if (look.isEmpty) layout.looks - key else layout.looks + (key to look),
+            editedAt = now,
+        )
 
     /**
      * Moves the item at [from] so it ends up at index [to] of the result. Out-of-range indices are
@@ -38,5 +49,5 @@ object LayoutEdits {
     }
 
     fun restyle(layout: Layout, style: Style, now: Long): Layout =
-        layout.copy(style = style, editedAt = now)
+        layout.copy(style = style.clamped(), editedAt = now)
 }

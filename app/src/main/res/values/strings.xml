@@ -2,7 +2,11 @@
 <resources>
     <string name="app_name">Droidective</string>
     <string name="widget_bar_label">Toggle bar</string>
-    <string name="widget_bar_description">A row of toggles, apps and shortcuts you choose</string>
+    <string name="widget_bar_description">A row of toggles, apps, actions and tools you choose</string>
+    <string name="widget_button_label">Droidective button</string>
+    <string name="widget_button_description">One toggle, action, app or tool, one tap away</string>
+    <string name="widget_list_label">Droidective list</string>
+    <string name="widget_list_description">Toggles and actions in a list that shows each state</string>
     <string name="tile_slot_1">Droidective 1</string>
     <string name="tile_slot_2">Droidective 2</string>
     <string name="tile_slot_3">Droidective 3</string>

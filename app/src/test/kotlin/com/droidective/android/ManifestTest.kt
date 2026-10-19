@@ -37,8 +37,10 @@ class ManifestTest {
             "com.droidective.android.MainActivity",
             // The launcher starts it when a bar is added or reconfigured.
             "com.droidective.android.widget.BarConfigureActivity",
-            // The launcher sends it APPWIDGET_UPDATE.
+            // The launcher sends each widget kind APPWIDGET_UPDATE.
             "com.droidective.android.widget.ToggleBarReceiver",
+            "com.droidective.android.widget.ButtonWidgetReceiver",
+            "com.droidective.android.widget.ListWidgetReceiver",
             // Boot, update and clock broadcasts, which only the system can send.
             "com.droidective.android.automation.AutomationSystemReceiver",
             // Run from the Mac: WRITE_SECURE_SETTINGS, and a shell check in code.

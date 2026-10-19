@@ -32,7 +32,13 @@ class BarConfigureActivity : ComponentActivity() {
         val result = Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
         // Backing out still keeps the widget: it starts with the starter bar.
         setResult(RESULT_OK, result)
-        val layoutId = ToggleBarWidget.ensureLayout(this, widgetId).id
+        val layoutId =
+            ToggleBarWidget.ensureLayout(
+                    this,
+                    widgetId,
+                    WidgetReceiver.starterFor(this, widgetId),
+                )
+                .id
         setContent {
             DroidectiveTheme {
                 Surface(Modifier.safeDrawingPadding()) {

@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -51,8 +52,9 @@ import com.droidective.android.editor.LayoutEditor
 import com.droidective.android.surface.LiveSurfaces
 import com.droidective.android.surface.Surfaces
 import com.droidective.android.surface.TileSlots
-import com.droidective.android.widget.ToggleBarReceiver
+import com.droidective.android.widget.Starter
 import com.droidective.android.widget.ToggleBarWidget
+import com.droidective.android.widget.WidgetReceiver
 import com.droidective.core.ago
 import com.droidective.core.device.AppFreezers
 import com.droidective.core.features.Features
@@ -78,7 +80,10 @@ fun WidgetsScreen(app: DroidectiveApplication) {
         }
 
     editing?.let { id ->
-        LayoutEditor(id) { editing = null }
+        // Under the status bar otherwise: the tab's own list pads for it, and this replaces it.
+        Box(Modifier.windowInsetsPadding(ScaffoldDefaults.contentWindowInsets)) {
+            LayoutEditor(id) { editing = null }
+        }
         return
     }
 
@@ -120,7 +125,7 @@ fun WidgetsScreen(app: DroidectiveApplication) {
         }
         item { LiveSurfacesRow() }
 
-        item { SectionHeader("Home-screen bars") }
+        item { SectionHeader("Home-screen widgets") }
         items(layouts.filter { it.kind == LayoutKind.Bar }, key = { it.id }) { layout ->
             LayoutCard(
                 layout,
@@ -129,8 +134,20 @@ fun WidgetsScreen(app: DroidectiveApplication) {
             )
         }
         item {
-            OutlinedButton(onClick = { pinBar(context) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Add a bar to the home screen")
+            Text(
+                "Add to the home screen",
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Starter.entries.forEach { starter ->
+                    OutlinedButton(
+                        onClick = { pinWidget(context, starter) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(starter.short)
+                    }
+                }
             }
         }
 
@@ -347,14 +364,12 @@ private fun delete(
     scope.launch { Surfaces.refresh(context) }
 }
 
-private fun pinBar(context: Context) {
+/** Asks the launcher to place a widget of [starter]'s kind; it shows its own confirmation. */
+private fun pinWidget(context: Context, starter: Starter) {
     val manager = AppWidgetManager.getInstance(context)
+    val receiver = WidgetReceiver.kinds.entries.first { it.value == starter }.key
     if (manager.isRequestPinAppWidgetSupported) {
-        manager.requestPinAppWidget(
-            ComponentName(context, ToggleBarReceiver::class.java),
-            null,
-            null,
-        )
+        manager.requestPinAppWidget(ComponentName(context, receiver), null, null)
     }
 }
 

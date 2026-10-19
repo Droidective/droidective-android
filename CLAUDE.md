@@ -84,6 +84,14 @@ permission granted), or one of the app's tools.
   it's tapped.
 - **New `ActionCallback`s need nothing else**: the R8 keep rule covers every implementation, and
   `scripts/check-r8-keeps.sh` checks a release build kept their constructors.
+- **How a layout draws is all in `Style`** (colours, grid or list, columns, icon size, corners,
+  padding, chips, labels, state text, wallpaper colours) **plus `Layout.looks`**, each slot's own
+  label, symbol and colour. A field added to `Style` defaults to how layouts drew before it,
+  which `WidgetLookTest` checks against a 0.1.x file. `WidgetGrid` is the arithmetic the widget
+  and the editor's preview share.
+- **The launcher lists three kinds** (`Starter`: Bar, Button, List), one receiver each. They differ
+  only in what a new one starts as; any can be restyled into any other. A new kind needs a
+  receiver, an `appwidget-provider` file and a `ManifestTest` entry.
 
 ## Automations
 

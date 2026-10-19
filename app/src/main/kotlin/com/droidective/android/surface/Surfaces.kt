@@ -42,13 +42,14 @@ object Surfaces {
                     else -> null
                 }
             Cells.plan(
-                item,
-                state,
-                access,
-                folderName = { id -> app.layouts.get(id)?.name },
-                command = app.commands::get,
-                automation = app.automations::get,
-            )
+                    item,
+                    state,
+                    access,
+                    folderName = { id -> app.layouts.get(id)?.name },
+                    command = app.commands::get,
+                    automation = app.automations::get,
+                )
+                ?.let { Cells.styled(it, layout.looks[item.key]) }
         }
     }
 

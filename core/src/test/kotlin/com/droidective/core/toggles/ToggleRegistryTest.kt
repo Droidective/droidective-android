@@ -82,12 +82,7 @@ class ToggleRegistryTest {
     @Test
     fun pendingTogglesAreTheKnownOnes() {
         assertEquals(
-            setOf(
-                "preferred-network",
-                "hotspot",
-                "bluetooth-tethering",
-                "screenshot",
-            ),
+            setOf("preferred-network", "hotspot", "bluetooth-tethering"),
             all.filterNot { it.isBuilt }.map { it.id }.toSet(),
         )
     }

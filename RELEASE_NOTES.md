@@ -3,6 +3,32 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.2.0
+
+- **Any action, one tap from the home screen.** A widget slot can now run one of your
+  automations, run a single action on its own (set a toggle to one exact state, force stop, clear
+  data or uninstall an app, grant or revoke a permission), run a saved command as root or Shell,
+  or open any of Droidective's tools. Saved commands can finally be put on a widget, too.
+- **Style widgets your own way.** Grid or list, a fixed number of columns, icon size, corners,
+  padding, a circle or rounded chip behind each icon that fills in while it's on, labels, each
+  slot's state under its label, text size and colour, and your wallpaper's colours on Android 12+.
+  Presets set the colours in one tap. Each slot can have its own label, icon and colour, from 181
+  icons.
+- **Two more widgets**: a one-cell button and a list that shows every state. Place any of the
+  three from the Widgets tab or the launcher.
+- **Keep widgets live.** On OnePlus, OPPO and realme phones, Android freezes apps in the
+  background and held a widget tap for up to half a minute. Droidective now keeps a quiet
+  notification up while any widget, tile or notification bar is placed, so every tap lands at once
+  and widgets follow changes made anywhere else. It's on by default on those phones, and the
+  Widgets tab has the switch.
+- Fixes from testing on a OnePlus Pad: Stay awake, Grayscale, SELinux and Strict mode flash now
+  show their real state; toggles a phone lacks the hardware for (NFC, mobile data) are hidden;
+  font size, brightness and timeout no longer ask for Modify system settings when Droidective has
+  Shell; rows follow changes made outside the app; Crash Catcher asks for notifications when you
+  watch an app; Usage access opens Droidective's own page and is allowed automatically with Shell;
+  Device Info shows the bootloader's lock; preinstalled apps no longer say they were installed in
+  1970; a Quick Settings slot can be cleared.
+
 ## 0.1.2
 
 - **Widgets work again.** In 0.1.0 and 0.1.1 a tap on a home-screen bar or a folder did nothing:

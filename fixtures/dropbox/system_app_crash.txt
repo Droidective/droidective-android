@@ -1,0 +1,152 @@
+Drop box contents: 78 entries
+Max entries: 1000
+Low priority rate limit period: 2000 ms
+Low priority tags: {data_app_wtf, keymaster, system_server_wtf, system_app_strictmode, system_app_wtf, system_server_strictmode, data_app_strictmode, netstats}
+Searching for: system_app_crash
+
+========================================
+2026-10-19 00:17:44 system_app_crash (text, 4036 bytes)
+SystemUptimeMs: 4737164
+Process: com.android.systemui
+PID: 1077
+UID: 10186
+Frozen: false
+Flags: 0x20c8be0d
+Package: com.android.systemui v36 (16)
+Foreground: No
+Process-Runtime: 4718403
+Timestamp: 2026-10-19 00:17:44.621+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+java.lang.IllegalArgumentException: Unknown authority com.google.android.flipendo.api
+	at android.content.ContentResolver.call(ContentResolver.java:2465)
+	at com.google.android.systemui.power.LowPowerWarningsController.onBatteryEventUpdate(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:243)
+	at com.google.android.systemui.power.PowerNotificationWarningsGoogleImpl$$ExternalSyntheticLambda2.invoke(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:104)
+	at com.google.android.systemui.power.BatteryEventClient$listener$1.onBatteryEventChanged(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:46)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService.access$notifyAidlListenerBatteryEventUpdate(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:178)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService$notifyAidlBatteryEventsCallbacks$2.invokeSuspend(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:94)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService$notifyAidlBatteryEventsCallbacks$2.invoke(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:13)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatchedOrReturn(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:5)
+	at kotlinx.coroutines.BuildersKt.withContext(Unknown Source:77)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService$notifyForBatteryEventsUpdate$2.invokeSuspend(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:69)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService$notifyForBatteryEventsUpdate$2.invoke(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:13)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatchedOrReturn(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:5)
+	at kotlinx.coroutines.BuildersKt.withContext(Unknown Source:77)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService$onCreate$1$1.emit(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:36)
+	at kotlinx.coroutines.flow.StateFlowImpl.collect(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:193)
+	at kotlinx.coroutines.flow.StateFlowImpl$collect$1.invokeSuspend(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:13)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:8)
+	at kotlinx.coroutines.DispatchedTask.run(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:112)
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:524)
+	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:348)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+	at java.lang.Thread.run(Thread.java:1119)
+	Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [StandaloneCoroutine{Cancelling}@7b6b9a9, java.util.concurrent.ScheduledThreadPoolExecutor@d103841[Running, pool size = 4, active threads = 1, queued tasks = 0, completed tasks = 20770]]
+
+========================================
+2026-10-19 00:18:13 system_app_crash (text, 4034 bytes)
+SystemUptimeMs: 4765816
+Process: com.android.systemui
+PID: 20375
+UID: 10186
+Frozen: false
+Flags: 0x20c8be0d
+Package: com.android.systemui v36 (16)
+Foreground: No
+Process-Runtime: 28583
+Timestamp: 2026-10-19 00:18:13.272+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+java.lang.IllegalArgumentException: Unknown authority com.google.android.flipendo.api
+	at android.content.ContentResolver.call(ContentResolver.java:2465)
+	at com.google.android.systemui.power.LowPowerWarningsController.onBatteryEventUpdate(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:243)
+	at com.google.android.systemui.power.PowerNotificationWarningsGoogleImpl$$ExternalSyntheticLambda2.invoke(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:104)
+	at com.google.android.systemui.power.BatteryEventClient$listener$1.onBatteryEventChanged(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:46)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService.access$notifyAidlListenerBatteryEventUpdate(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:178)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService$notifyAidlBatteryEventsCallbacks$2.invokeSuspend(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:94)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService$notifyAidlBatteryEventsCallbacks$2.invoke(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:13)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatchedOrReturn(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:5)
+	at kotlinx.coroutines.BuildersKt.withContext(Unknown Source:77)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService$notifyForBatteryEventsUpdate$2.invokeSuspend(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:69)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService$notifyForBatteryEventsUpdate$2.invoke(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:13)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatchedOrReturn(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:5)
+	at kotlinx.coroutines.BuildersKt.withContext(Unknown Source:77)
+	at com.google.android.systemui.power.batteryevent.domain.BatteryEventService$onCreate$1$1.emit(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:36)
+	at kotlinx.coroutines.flow.StateFlowImpl.collect(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:193)
+	at kotlinx.coroutines.flow.StateFlowImpl$collect$1.invokeSuspend(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:13)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:8)
+	at kotlinx.coroutines.DispatchedTask.run(go/retraceme 5ef7505f3172d45c77e95a8eba788f1ba3487bafbb4dd5bf3a1ad9be0371fc04:112)
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:524)
+	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:348)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+	at java.lang.Thread.run(Thread.java:1119)
+	Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [StandaloneCoroutine{Cancelling}@60de79d, java.util.concurrent.ScheduledThreadPoolExecutor@d103841[Running, pool size = 4, active threads = 1, queued tasks = 0, completed tasks = 3935]]
+
+========================================
+2026-10-19 09:53:42 system_app_crash (text, 1167 bytes)
+SystemUptimeMs: 39295495
+Process: com.android.settings
+PID: 1342
+UID: 1000
+Frozen: false
+Flags: 0x38cbbe45
+Package: com.android.settings v36 (16)
+Foreground: Yes
+Process-Runtime: 39276242
+Timestamp: 2026-10-19 09:53:42.951+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+android.app.RemoteServiceException$CrashedByAdbException: shell-induced crash
+	at android.app.ActivityThread.throwRemoteServiceException(ActivityThread.java:2377)
+	at android.app.ActivityThread.-$$Nest$mthrowRemoteServiceException(Unknown Source:0)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2741)
+	at android.os.Handler.dispatchMessage(Handler.java:110)
+	at android.os.Looper.loopOnce(Looper.java:248)
+	at android.os.Looper.loop(Looper.java:338)
+	at android.app.ActivityThread.main(ActivityThread.java:9067)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+
+========================================
+2026-10-19 09:54:27 system_app_crash (text, 1163 bytes)
+SystemUptimeMs: 39340134
+Process: com.android.settings
+PID: 10671
+UID: 1000
+Frozen: false
+Flags: 0x38cbbe45
+Package: com.android.settings v36 (16)
+Foreground: No
+Process-Runtime: 3410
+Timestamp: 2026-10-19 09:54:27.590+0530
+Build: google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys
+Crash-Handler: com.android.internal.os.RuntimeInit$KillApplicationHandler
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+android.app.RemoteServiceException$CrashedByAdbException: shell-induced crash
+	at android.app.ActivityThread.throwRemoteServiceException(ActivityThread.java:2377)
+	at android.app.ActivityThread.-$$Nest$mthrowRemoteServiceException(Unknown Source:0)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2741)
+	at android.os.Handler.dispatchMessage(Handler.java:110)
+	at android.os.Looper.loopOnce(Looper.java:248)
+	at android.os.Looper.loop(Looper.java:338)
+	at android.app.ActivityThread.main(ActivityThread.java:9067)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+

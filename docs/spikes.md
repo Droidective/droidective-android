@@ -5,7 +5,7 @@ Android version and date, so a later change can be checked against what was meas
 
 | # | Question | Where | Status |
 |---|---|---|---|
-| 1 | Does a widget tap on a cold process reach Shizuku and flip Wi-Fi in under a second on Android 15, 16 and 17? | emulators + your phone | **API 36: yes** (below); 35 and 37 open |
+| 1 | Does a widget tap on a cold process reach Shizuku and flip Wi-Fi in under a second on Android 15, 16 and 17? | emulators + your phone | **Yes on 35, 36 and 37**, except the first shell use after a boot (below) |
 | 2 | Do the Granted writes take effect at once on Samsung, Xiaomi and OnePlus builds, as AOSP 17's source says? | your phone | open (AOSP emulator: yes, below) |
 | 3 | Does a six-toggle notification row fit the 48 dp collapsed height on Android 15, 16 and 17? | emulators | **Yes on all three** (below) |
 | 4 | What does Shizuku do after a restart on your phones? | your phone | open |
@@ -13,6 +13,7 @@ Android version and date, so a later change can be checked against what was meas
 | 6 | Preferred network type, Bluetooth tethering, hotspot via `TetheringManager`, font size: which work? | emulators + your phone | open |
 | 7 | Does joining a Wi-Fi network wake the app through a PendingIntent network callback, and does leaving one? | emulators | **Answered: joining once, leaving never** (below) |
 | 8 | Do restart, Bluetooth and exact-alarm triggers arrive on Xiaomi and Samsung with default battery settings? | your phone | open (emulators: restart and exact alarms do, below) |
+| 9 | Can the app hear about another app's crash, and read it, without a service of its own? | emulators | **Answered: hear it only while running; read it with READ_DROPBOX_DATA and usage access** (below) |
 
 Brand-specific spikes (2, 4, 5, 8) run only on a phone you plug in, and every toggle a spike
 changes is put back afterwards.
@@ -45,6 +46,21 @@ What it changed:
 Measurement traps worth knowing: `adb root` restarts adbd and kills `shizuku_server` with it; a
 Google sign-in screen on google_apis images swallows taps; HOME returns the launcher to its first
 page, where a pinned bar may not be.
+
+#### On API 35 and 37 (2026-10-19, `dv-api35` google_apis_playstore, `dv-api37` google_apis)
+
+The same measurement, with the bar pinned through the app's own "Add a bar to the home screen" and
+Shizuku 13.6.0 started over adb. Each emulator ran beside the API 36 one.
+
+| | round 1 | round 2 | round 3 | round 4 |
+|---|---|---|---|---|
+| API 35 | 1032 ms | 693 ms | 712 ms | |
+| API 37 | 1353 ms | 617 ms | 868 ms | 719 ms |
+
+Round 1 on each was the first shell command since the emulator booted, so it also paid for
+Shizuku starting the user service's JVM; it stays up as a daemon after that. Every later cold tap
+was under a second. So the first Shell tap after starting Shizuku takes 1.0–1.4 s, and opening the
+app once does the same, since its Toggles screen reads hidden settings through the shell.
 
 ### 2. Granted writes (AOSP emulator, API 36)
 
@@ -88,3 +104,26 @@ So a Wi-Fi trigger needs a listener that's running: Wi-Fi moved to the automatio
   (`window=0 exactAllowReason=permission`); without it the alarm gets the 10-minute window.
 - A time-window While on `dv-api37` began at 01:47:00 and ended at 01:49:00, putting its toggle
   back.
+
+### 9. Hearing about crashes (2026-10-19, `dv-api36`, API 36)
+
+A receiver for `DropBoxManager.ACTION_DROPBOX_ENTRY_ADDED`, crashes made with `am crash` (a Java
+crash), `run-as <debug app> kill -SEGV` (a native crash) and the ANR that followed it.
+
+- **A manifest receiver never runs.** ActivityManager's broadcast history shows it skipped at
+  enqueue, "Background execution not allowed", while the app was dead and while it was alive;
+  Google Play services' own manifest receiver is skipped the same way. A receiver registered at
+  runtime got each entry 7–10 ms after DropBox filed it.
+- The system sends the broadcast twice: once requiring `READ_DROPBOX_DATA`, for apps targeting
+  35 and later (compat change 296060945), and once requiring `READ_LOGS` for the rest. Both are
+  development permissions, so `pm grant` gives them.
+- Reading the entry (`getNextEntry`) also needs usage access: without it the broadcast still
+  arrives, and the read throws `SecurityException ... not allowed to perform GET_USAGE_STATS`.
+- Tags: `data_app_crash`, `data_app_native_crash` and `data_app_anr` for apps,
+  `system_app_*` for system apps. Each entry is a `Key: Value` header (Process, PID, Package with
+  its version, Foreground), a blank line, then the stack trace, tombstone or ANR report; the
+  ANR's reason is its `Subject:` line. Real entries are in `fixtures/dropbox/`.
+
+So crash alerts are a service-woken trigger like apps opening: the automation service registers
+the receiver while an automation watches for crashes, and the Granted level grows to include
+`READ_DROPBOX_DATA` (`READ_LOGS` below Android 15).

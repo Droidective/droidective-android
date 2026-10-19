@@ -54,6 +54,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "install-app" to { InstallAppTool(it) },
         "current-activity" to { CurrentActivityTool(it) },
         "meminfo" to { MemoryTool(it) },
+        "sandbox-browser" to { SandboxTool(it) },
         "crash-catcher" to { CrashCatcherTool(it) },
         "custom-commands" to { CustomCommandsTool(it) },
         "deep-link" to { DeepLinksTool(it) },

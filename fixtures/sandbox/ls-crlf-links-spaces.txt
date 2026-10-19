@@ -1,0 +1,8 @@
+total 612
+drwxrwx--x 2 u0_a217 u0_a217   4096 2026-10-19 12:27 .
+drwxrwx--x 2 u0_a217 u0_a217   4096 2026-10-19 12:27 ..
+-rw-rw---- 1 u0_a217 u0_a217 106496 2026-10-20 01:51 androidx.work.workdb
+-rw------- 1 u0_a217 u0_a217  32768 2026-10-20 01:54 androidx.work.workdb-shm
+-rw------- 1 u0_a217 u0_a217 457352 2026-10-20 01:54 androidx.work.workdb-wal
+lrwxrwxrwx 1 u0_a217 u0_a217     45 2026-10-20 01:54 lib -> /data/app/~~7doW8kU1uyfntwbeOzVqaA==/lib/arm64
+-rw------- 1 u0_a217 u0_a217     12 2026-10-20 01:54 my notes.txt

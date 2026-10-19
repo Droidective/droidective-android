@@ -1,9 +1,11 @@
 package com.droidective.core.device
 
 import com.droidective.core.apps.AppActions
+import com.droidective.core.apps.MemInfo
 import com.droidective.core.shell.Parse
 import com.droidective.core.shell.ShellCommand
 import com.droidective.core.shell.shellQuote
+import java.util.Locale
 
 /** One `/proc/stat` line's jiffies: [core] is -1 for the whole CPU, else the core's number. */
 data class CpuTimes(val core: Int, val total: Long, val idle: Long)
@@ -339,4 +341,35 @@ class PerformanceTracker {
         if (total <= 0) return null
         return ((now.ticks - then.ticks) * 100.0 / total).coerceIn(0.0, 100.0)
     }
+}
+
+/**
+ * What the Performance overlay shows over other apps, line by line: the load and the frames of the
+ * app in front, then memory and the hottest part, then which app it is and any throttling.
+ */
+object PerformanceHud {
+    fun lines(reading: PerformanceReading?, app: String?): List<String> {
+        if (reading == null) return listOfNotNull("Measuring…", app)
+        val load =
+            listOfNotNull(
+                reading.cpuPercent?.let { "CPU ${percent(it)}" },
+                reading.fps?.let { "%.0f fps".format(Locale.ROOT, it) },
+                reading.jankPercent?.let { "${percent(it)} janky" },
+            )
+        val thermal = reading.thermal
+        val heat =
+            thermal?.cpu?.let { "CPU ${degrees(it)}" }
+                ?: thermal?.skin?.let { "Skin ${degrees(it)}" }
+                ?: thermal?.battery?.let { "Battery ${degrees(it)}" }
+        val body = listOfNotNull(reading.memUsedKb?.let { "RAM ${MemInfo.size(it)}" }, heat)
+        val throttling =
+            thermal?.takeIf { (it.status ?: 0) > 0 }?.statusTitle?.let { "Throttling: $it" }
+        return listOf(load.joinToString(" · "), body.joinToString(" · "), app, throttling)
+            .filterNot { it.isNullOrBlank() }
+            .map { it!! }
+    }
+
+    private fun percent(value: Double) = "%.0f%%".format(Locale.ROOT, value)
+
+    private fun degrees(celsius: Double) = "%.0f °C".format(Locale.ROOT, celsius)
 }

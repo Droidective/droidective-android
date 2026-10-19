@@ -173,4 +173,31 @@ class PerformanceTest {
         assertEquals(0.0, idle.fps)
         assertNull(idle.jankPercent, "no frames drawn, so no share of them was janky")
     }
+
+    @Test
+    fun theOverlaySaysTheLoadThenTheHeatThenWhichApp() {
+        val reading =
+            PerformanceReading(
+                cores = listOf(CoreLoad(-1, 23.4)),
+                memUsedKb = 1_800_000,
+                memTotalKb = 4_000_000,
+                thermal = Thermal(2, listOf(Temperature("CPU0", Temperature.CPU, 41.6))),
+                frames = null,
+                fps = 58.7,
+                jankPercent = 4.0,
+                appCpuPercent = null,
+            )
+        assertEquals(
+            listOf(
+                "CPU 23% · 59 fps · 4% janky",
+                "RAM 1.72 GB · CPU 42 °C",
+                "Settings",
+                "Throttling: Moderate",
+            ),
+            PerformanceHud.lines(reading, "Settings"),
+        )
+        val quiet = reading.copy(thermal = Thermal(0, emptyList()), fps = null, jankPercent = null)
+        assertEquals(listOf("CPU 23%", "RAM 1.72 GB"), PerformanceHud.lines(quiet, null))
+        assertEquals(listOf("Measuring…"), PerformanceHud.lines(null, null))
+    }
 }

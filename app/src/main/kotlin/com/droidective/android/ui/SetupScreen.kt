@@ -26,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -129,13 +128,11 @@ fun SetupScreen(app: DroidectiveApplication) {
             "su, through Magisk or KernelSU",
             done = access.shell?.isRoot == true,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Use root when it’s available", modifier = Modifier.weight(1f))
-                Switch(
-                    checked = root != RootUse.Off,
-                    onCheckedChange = { app.access.rootAllowed = it },
-                )
-            }
+            SwitchRow(
+                "Use root when it’s available",
+                checked = root != RootUse.Off,
+                onChange = { app.access.rootAllowed = it },
+            )
             Text(
                 when (root) {
                     RootUse.Off,

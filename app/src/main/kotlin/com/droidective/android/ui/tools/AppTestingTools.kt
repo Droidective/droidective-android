@@ -19,7 +19,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,6 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,6 +43,7 @@ import com.droidective.android.droidective
 import com.droidective.android.monkey.MonkeyPlan
 import com.droidective.android.monkey.MonkeyRun
 import com.droidective.android.monkey.MonkeyRuns
+import com.droidective.android.ui.SwitchRow
 import com.droidective.android.ui.automations.AppChooser
 import com.droidective.android.ui.notificationsShow
 import com.droidective.android.ui.openNotificationSettings
@@ -256,25 +257,20 @@ fun MonkeyTool(tool: ToolContext) {
                     )
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Swipes too")
-                    Text(
-                        if (swipes) {
-                            "Scrolls and drags reach the whole screen: a swipe from the top " +
-                                "opens Quick Settings, and the next taps can switch Bluetooth " +
-                                "off or turn the brightness down."
-                        } else {
-                            "Taps only, which can't open the shade or Quick Settings."
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color =
-                            if (swipes) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(checked = swipes, onCheckedChange = { swipes = it })
-            }
+            SwitchRow(
+                "Swipes too",
+                checked = swipes,
+                onChange = { swipes = it },
+                note =
+                    if (swipes) {
+                        "Scrolls and drags reach the whole screen: a swipe from the top opens " +
+                            "Quick Settings, and the next taps can switch Bluetooth off or turn " +
+                            "the brightness down."
+                    } else {
+                        "Taps only, which can't open the shade or Quick Settings."
+                    },
+                noteColor = if (swipes) MaterialTheme.colorScheme.error else Color.Unspecified,
+            )
             if (run !is MonkeyRun.Running) {
                 Button(
                     enabled = count != null,

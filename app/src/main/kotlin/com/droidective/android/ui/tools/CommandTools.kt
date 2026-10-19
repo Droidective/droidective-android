@@ -18,7 +18,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,6 +43,7 @@ import com.droidective.android.surface.CommandTaps
 import com.droidective.android.surface.ShellRuns
 import com.droidective.android.surface.Surfaces
 import com.droidective.android.ui.CommandOutput
+import com.droidective.android.ui.SwitchRow
 import com.droidective.android.ui.Symbols
 import com.droidective.core.commands.CustomCommand
 import com.droidective.core.commands.DeepLink
@@ -208,10 +208,7 @@ private fun CommandEditor(
                     singleLine = true,
                 )
                 MonoField(line, { line = it }, if (isToggle) "On command" else "Command")
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Works as a toggle", modifier = Modifier.weight(1f))
-                    Switch(checked = isToggle, onCheckedChange = { isToggle = it })
-                }
+                SwitchRow("Works as a toggle", checked = isToggle, onChange = { isToggle = it })
                 if (isToggle) {
                     MonoField(offLine, { offLine = it }, "Off command")
                     MonoField(check, { check = it }, "Check command (optional)")

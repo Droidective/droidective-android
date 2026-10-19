@@ -282,5 +282,13 @@
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
         </service>
+        <service
+            android:name=".surface.CurrentActivityTile"
+            android:exported="true"
+            android:icon="@drawable/sym_layers"
+            android:label="@string/tile_current_activity"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
     </application>
 </manifest>

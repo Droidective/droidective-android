@@ -28,6 +28,7 @@ class ManifestTest {
                     "DemoMode",
                     "WirelessDebugging",
                     "NetworkSpeed",
+                    "CurrentActivity",
                 )
                 .map { "com.droidective.android.surface.${it}Tile" }
 

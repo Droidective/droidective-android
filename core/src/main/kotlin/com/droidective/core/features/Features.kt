@@ -153,6 +153,15 @@ object Features {
                 AccessLevel.App,
             ),
             FeatureDef(
+                "current-activity",
+                "Current Activity",
+                "Which activity is on screen, from a Quick Settings tile",
+                listOf("activity", "current", "top", "screen", "component", "class", "foreground"),
+                FeatureCategory.Apps,
+                "layers",
+                AccessLevel.App,
+            ),
+            FeatureDef(
                 "meminfo",
                 "Memory Usage",
                 "An app's memory, live: heaps, code, graphics and views",

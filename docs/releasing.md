@@ -39,6 +39,27 @@ never commit it (`.gitignore` already refuses `*.jks` and `*.keystore`).
 If Play ever happens, upload this same key to Play App Signing, so a Play install and a GitHub
 install update each other.
 
+## Where the key is
+
+Made on 2026-10-19 (RSA 4096, valid to 2126, certificate SHA-256 in `release-cert.sha256`):
+
+- The keystore: `~/.droidective/release/droidective-release.jks` on the Mac it was made on (mode
+  600), alias `droidective`.
+- The password: that Mac's login Keychain, item "Droidective Android release key password". A
+  second copy of the keystore, base64, is the item "Droidective Android release keystore (base64)".
+- GitHub: the four repository secrets above.
+
+Both copies are on one Mac, so keep a third somewhere else (a password manager or an offline
+drive). To build a release locally:
+
+```sh
+export DROIDECTIVE_KEYSTORE=~/.droidective/release/droidective-release.jks
+export DROIDECTIVE_KEYSTORE_PASSWORD="$(security find-generic-password -a droidective \
+  -s "Droidective Android release key password" -w)"
+export DROIDECTIVE_KEY_ALIAS=droidective DROIDECTIVE_KEY_PASSWORD="$DROIDECTIVE_KEYSTORE_PASSWORD"
+scripts/build-release.sh v0.1.0
+```
+
 ## Each release
 
 1. On a branch, bump `droidective.versionName` and `droidective.versionCode` in

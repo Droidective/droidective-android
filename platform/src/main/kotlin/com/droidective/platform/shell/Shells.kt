@@ -2,7 +2,6 @@ package com.droidective.platform.shell
 
 import android.content.ComponentName
 import android.content.ServiceConnection
-import android.os.Bundle
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import android.os.RemoteException
@@ -10,6 +9,7 @@ import android.system.Os
 import android.system.OsConstants
 import android.system.StructPollfd
 import com.droidective.core.ShellProvider
+import com.droidective.core.shell.ResultFrame
 import com.droidective.core.shell.Shell
 import com.droidective.core.shell.ShellCommand
 import com.droidective.core.shell.ShellResult
@@ -106,10 +106,13 @@ class ShizukuShell(packageName: String) : Shell {
         val bound = bound()
         return withContext(Dispatchers.IO) {
             try {
-                bound.exec(command.line, COMMAND_TIMEOUT_MILLIS).toResult()
+                val pipe = bound.exec(command.line, COMMAND_TIMEOUT_MILLIS)
+                ParcelFileDescriptor.AutoCloseInputStream(pipe).use(ResultFrame::read)
             } catch (e: RemoteException) {
                 service = null
                 throw ShellUnavailableException("Shizuku stopped responding", e)
+            } catch (e: IOException) {
+                throw ShellUnavailableException("The shell service stopped mid-command", e)
             }
         }
     }
@@ -160,22 +163,11 @@ class ShizukuShell(packageName: String) : Shell {
         }
     }
 
-    private fun Bundle.toResult() =
-        ShellResult(
-            exitCode = getInt(KEY_EXIT),
-            stdout = getString(KEY_STDOUT).orEmpty(),
-            stderr = getString(KEY_STDERR).orEmpty(),
-        )
-
     private companion object {
         // Bump when ShellUserService changes, so Shizuku replaces a running old copy.
-        const val SERVICE_VERSION = 2
+        const val SERVICE_VERSION = 3
     }
 }
-
-internal const val KEY_EXIT = "exit"
-internal const val KEY_STDOUT = "stdout"
-internal const val KEY_STDERR = "stderr"
 
 /**
  * `exec`, so the command replaces the shell: stopping the process stops the command itself rather
@@ -226,12 +218,21 @@ class ShellUserService : IShellService.Stub() {
         return read
     }
 
-    override fun exec(command: String, timeoutMillis: Long): Bundle {
-        val result = ProcessExec.run(listOf("sh", "-c", command), timeoutMillis)
-        return Bundle().apply {
-            putInt(KEY_EXIT, result.exitCode)
-            putString(KEY_STDOUT, result.stdout)
-            putString(KEY_STDERR, result.stderr)
+    override fun exec(command: String, timeoutMillis: Long): ParcelFileDescriptor {
+        val (read, write) = ParcelFileDescriptor.createPipe()
+        thread(isDaemon = true, name = "exec") {
+            // Closing the write end without a whole frame is how the app learns it failed.
+            ParcelFileDescriptor.AutoCloseOutputStream(write).use { out ->
+                try {
+                    ResultFrame.write(
+                        ProcessExec.run(listOf("sh", "-c", command), timeoutMillis),
+                        out,
+                    )
+                } catch (_: IOException) {
+                    // The app stopped reading, so nobody is waiting for the result.
+                }
+            }
         }
+        return read
     }
 }

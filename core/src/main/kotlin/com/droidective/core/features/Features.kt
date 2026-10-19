@@ -261,6 +261,15 @@ object Features {
                 AccessLevel.Granted,
             ),
             FeatureDef(
+                "terminal",
+                "Terminal",
+                "A shell prompt as root, the shell user or the app",
+                listOf("terminal", "shell", "console", "command line", "sh", "su", "root"),
+                FeatureCategory.Commands,
+                "terminal",
+                AccessLevel.App,
+            ),
+            FeatureDef(
                 "custom-commands",
                 "Custom Commands",
                 "Your own shell commands, as buttons and toggles",

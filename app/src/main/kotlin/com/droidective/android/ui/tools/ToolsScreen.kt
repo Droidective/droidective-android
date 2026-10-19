@@ -60,6 +60,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "monkey" to { MonkeyTool(it) },
         "crash-catcher" to { CrashCatcherTool(it) },
         "custom-commands" to { CustomCommandsTool(it) },
+        "terminal" to { TerminalTool(it) },
         "deep-link" to { DeepLinksTool(it) },
         "device-info" to { DeviceInfoTool(it) },
         "root-status" to { RootStatusTool(it) },

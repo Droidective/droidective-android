@@ -1,0 +1,89 @@
+Applications Memory Usage (in Kilobytes):
+Uptime: 42066117 Realtime: 42066117
+
+** MEMINFO in pid 1649 [com.google.android.gms] **
+                   Pss  Private  Private  SwapPss      Rss     Heap     Heap     Heap
+                 Total    Dirty    Clean    Dirty    Total     Size    Alloc     Free
+                ------   ------   ------   ------   ------   ------   ------   ------
+  Native Heap      709      704        0     9447     1576    22320    10424     7943
+  Dalvik Heap      545      536        0    17506     1180    21530    16148     5382
+ Dalvik Other     1232      320        0    10164     2520                           
+        Stack      192      192        0     1528      196                           
+       Ashmem        8        0        0        0      668                           
+    Other dev      136        0      136        0      444                           
+     .so mmap      343       24        0      231    17848                           
+    .jar mmap      795        0        0        0    34212                           
+    .apk mmap     8723        4     3544      356    26848                           
+    .dex mmap     1493        0     1304        4     2536                           
+    .oat mmap      179        0        0        0     9952                           
+    .art mmap      349       88        0     1400    17804                           
+   Other mmap      584       40       48        4     1784                           
+      Unknown      167      104       60      901      604                           
+        TOTAL    56996     2012     5092    41541   118172    43850    26572    13325
+ 
+ App Summary
+                       Pss(KB)                        Rss(KB)
+                        ------                         ------
+           Java Heap:      624                          18984
+         Native Heap:      704                           1576
+                Code:     4880                          93224
+               Stack:      192                            196
+            Graphics:        0                              0
+       Private Other:      704
+              System:    49892
+             Unknown:                                    4192
+ 
+           TOTAL PSS:    56996            TOTAL RSS:   118172       TOTAL SWAP PSS:    41541
+ 
+ Objects
+               Views:        0         ViewRootImpl:        0
+         AppContexts:      403           Activities:        0
+              Assets:       26        AssetManagers:        0
+       Local Binders:      103        Proxy Binders:      102
+       Parcel memory:       37         Parcel count:      121
+    Death Recipients:        7             WebViews:        0
+ 
+ Native Allocations
+                         Count                       Total(kB)
+                        ------                         ------
+    Other (malloced):      364                             33
+ Other (nonmalloced):      289                            174
+ 
+ SQL
+         MEMORY_USED:     1011
+  PAGECACHE_OVERFLOW:      133          MALLOC_SIZE:       46
+ 
+ DATABASES
+      pgsz     dbsz   Lookaside(b) cache hits cache misses cache size  Dbname
+PER CONNECTION STATS
+         4       32             13     4    42     1  /data/user/0/com.google.android.gms/databases/personalsafety_db
+         4        8                    0     0     0    (attached) temp
+         4       32             28     3    21     1  /data/user/0/com.google.android.gms/databases/personalsafety_db (1)
+         4       36             56     6    34     7  /data/user/0/com.google.android.gms/databases/mobstore_gc_db_v0
+         4       28             55   677    32     7  /data/user/0/com.google.android.gms/databases/googlesettings.db
+         4       84            113   191   189    25  /data/user/0/com.google.android.gms/databases/icing_contacts.db
+         4       28             13     4    42     1  /data/user/0/com.google.android.gms/databases/constellation_room_database
+         4        8                    0     0     0    (attached) temp
+         4       28             26    33    21     1  /data/user/0/com.google.android.gms/databases/constellation_room_database (1)
+         4       32             31    11    45     4  /data/user/0/com.google.android.gms/databases/lighter_registration.db
+         4       40             58    25    63     8  /data/user/0/com.google.android.gms/databases/portable_geller_.db
+         4      144             71    87   230    25  /data/user/0/com.google.android.gms/databases/google_app_measurement.db
+         4       24             18     6    52     1  /data/user/0/com.google.android.gms/databases/chime_gms_database
+         4        8                    0     0     0    (attached) temp
+         4       24             24     3    21     1  /data/user/0/com.google.android.gms/databases/chime_gms_database (1)
+POOL STATS
+     cache hits  cache misses    cache size  Dbname
+            184           242           426  /data/user/0/com.google.android.gms/databases/gservices.db
+              7            67            74  /data/user/0/com.google.android.gms/databases/personalsafety_db
+              6            35            41  /data/user/0/com.google.android.gms/databases/mobstore_gc_db_v0
+            677            33           710  /data/user/0/com.google.android.gms/databases/googlesettings.db
+              9            83            92  /data/user/0/com.google.android.gms/databases/chromesync.data_store
+             27           229           256  /data/user/0/com.google.android.gms/databases/pay
+            183           198           381  /data/user/0/com.google.android.gms/databases/icing_contacts.db
+             37            67           104  /data/user/0/com.google.android.gms/databases/constellation_room_database
+             11            46            57  /data/user/0/com.google.android.gms/databases/lighter_registration.db
+             22            79           101  /data/user/0/com.google.android.gms/databases/cobalt_db
+             25            64            89  /data/user/0/com.google.android.gms/databases/portable_geller_.db
+             87           231           318  /data/user/0/com.google.android.gms/databases/google_app_measurement.db
+            388           105           493  /data/user/0/com.google.android.gms/databases/icing-indexapi.db
+              9            77            86  /data/user/0/com.google.android.gms/databases/chime_gms_database

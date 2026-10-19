@@ -74,6 +74,7 @@ object Symbols {
             "location_on" to Symbol(R.drawable.sym_location_on, R.drawable.sym_location_on_fill),
             "lock" to Symbol(R.drawable.sym_lock, R.drawable.sym_lock_fill),
             "lock_open" to Symbol(R.drawable.sym_lock_open, R.drawable.sym_lock_open_fill),
+            "memory" to Symbol(R.drawable.sym_memory, R.drawable.sym_memory_fill),
             "more_vert" to Symbol(R.drawable.sym_more_vert, R.drawable.sym_more_vert_fill),
             "my_location" to Symbol(R.drawable.sym_my_location, R.drawable.sym_my_location_fill),
             "nfc" to Symbol(R.drawable.sym_nfc, R.drawable.sym_nfc_fill),

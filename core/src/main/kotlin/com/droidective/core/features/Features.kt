@@ -153,6 +153,15 @@ object Features {
                 AccessLevel.App,
             ),
             FeatureDef(
+                "meminfo",
+                "Memory Usage",
+                "An app's memory, live: heaps, code, graphics and views",
+                listOf("memory", "meminfo", "ram", "pss", "heap", "leak", "views"),
+                FeatureCategory.Apps,
+                "memory",
+                AccessLevel.Shell,
+            ),
+            FeatureDef(
                 "crash-catcher",
                 "Crash Catcher",
                 "Crashes and ANRs, with alerts for the apps you watch",

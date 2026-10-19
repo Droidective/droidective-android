@@ -125,6 +125,9 @@ runs actions.
 - Glance adds a `glance-action:` data URI to every activity action, which stops an implicit
   intent (a Settings panel) resolving. Widget buttons that open implicit intents go through
   `OpenActivity`; explicit ones go direct. RemoteViews and tiles don't have the problem.
+- **What the app can't run as itself**, even holding DUMP: `dumpsys meminfo` answers "Can't find
+  service: meminfo" (SELinux) and `screencap` fails, so Memory Usage and screenshots need Shell;
+  `dumpsys activity` needs usage access on top.
 - Android 12+ won't let an app *read* a hidden settings key that isn't marked readable, even one
   it may write: `SettingsStore.get` returns `Unreadable` and `ToggleRunner` reads it as the shell.
 - The Shizuku user service is a daemon, started once per boot; a cold widget tap only rebinds.

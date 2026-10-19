@@ -626,13 +626,14 @@ object Toggles {
                         mapOf("run" to listOf(cmd("input", "keyevent", "KEYCODE_SLEEP")))
                     ),
             ),
-            pending(
-                "screenshot",
-                "Screenshot",
-                ToggleGroup.Device,
-                "screenshot",
-                reason = "Needs a media scan after screencap so it shows in Photos (M3)",
+            ToggleDef(
+                id = "screenshot",
+                title = "Screenshot",
+                group = ToggleGroup.Device,
+                icon = "screenshot",
                 states = action("Take screenshot"),
+                read = Probe.None,
+                write = Write.Commands(mapOf("run" to listOf(Screenshot.command))),
             ),
             api(
                 "switch-keyboard",

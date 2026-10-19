@@ -72,6 +72,19 @@ class ToggleRunnerTest {
     }
 
     @Test
+    fun aScreenshotCollapsesTheShadeCapturesAndScansInOneLine() = runTest {
+        access = Access(granted = true, shell = ShellProvider.Shizuku)
+        assertEquals(
+            Outcome.Applied("run", confirmed = false),
+            runner.apply(toggle("screenshot"), "run"),
+        )
+        val line = shell.invocations.single()
+        assertEquals(Screenshot.command.line, line)
+        val steps = listOf("cmd statusbar collapse", "screencap -p", "--method scan_file")
+        assertEquals(steps.sortedBy(line::indexOf), steps, "collapse, capture, then scan")
+    }
+
+    @Test
     fun preferredNetworkSetsSlotZerosMaskAndReadsItBack() = runTest {
         access = Access(granted = true, shell = ShellProvider.Shizuku)
         // Recorded from the API 36 emulator after the 4G mask.

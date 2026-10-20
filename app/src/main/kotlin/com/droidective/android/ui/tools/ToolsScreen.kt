@@ -57,6 +57,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "current-activity" to { CurrentActivityTool(it) },
         "meminfo" to { MemoryTool(it) },
         "sandbox-browser" to { SandboxTool(it) },
+        "apk-inspector" to { ApkInspectorTool(it) },
         "background-work" to { BackgroundWorkTool(it) },
         "settings-editor" to { SettingsEditorTool(it) },
         "file-explorer" to { FileExplorerTool(it) },

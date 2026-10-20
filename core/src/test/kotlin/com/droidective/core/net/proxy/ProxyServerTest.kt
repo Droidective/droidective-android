@@ -44,8 +44,11 @@ class ProxyServerTest {
         server?.stop()
     }
 
-    private fun proxy(rules: ProxyRules = ProxyRules()): Int {
-        val running = ProxyServer(certificates, sink, trustingUpstream)
+    private fun proxy(
+        rules: ProxyRules = ProxyRules(),
+        owners: FlowOwners = FlowOwners.UNKNOWN,
+    ): Int {
+        val running = ProxyServer(certificates, sink, trustingUpstream, owners)
         running.rules = rules
         server = running
         return running.start()
@@ -69,6 +72,24 @@ class ProxyServerTest {
             assertNotNull(flow.durationMillis)
             // The server is handed a path, never the whole URL the proxy was given.
             assertEquals("/thing?x=1", origin.received.single().target)
+        }
+    }
+
+    @Test
+    fun aFlowCarriesTheAppThatOpenedTheConnection() {
+        FakeServer().use { origin ->
+            val port = proxy(owners = FlowOwners { 10144 })
+            get("http://127.0.0.1:${origin.port}/thing", port)
+            assertEquals(10144, sink.next().uid)
+        }
+    }
+
+    @Test
+    fun aFlowSaysNothingAboutTheAppWhenNothingCanBeTold() {
+        FakeServer().use { origin ->
+            val port = proxy()
+            get("http://127.0.0.1:${origin.port}/thing", port)
+            assertNull(sink.next().uid)
         }
     }
 

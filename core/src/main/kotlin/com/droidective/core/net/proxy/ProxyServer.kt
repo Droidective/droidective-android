@@ -44,6 +44,7 @@ class ProxyServer(
     private val certificates: ProxyCertificates,
     private val sink: FlowSink = FlowSink.NONE,
     private val upstream: UpstreamTls = UpstreamTls.SYSTEM,
+    private val owners: FlowOwners = FlowOwners.UNKNOWN,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     /** Which hosts are opened; may be changed while the proxy is running. */
@@ -104,10 +105,13 @@ class ProxyServer(
             val source = BufferedInputStream(client.getInputStream())
             val out = BufferedOutputStream(client.getOutputStream())
             val head = HttpReader(source).readRequest() ?: return
+            // Asked once per connection: the port is the only thing tying it to an app, and it
+            // stops meaning anything the moment the connection closes.
+            val uid = owners.uidOf(client.port)
             if (head.method.equals(CONNECT, ignoreCase = true)) {
-                accept(head, client, source, out)
+                accept(head, client, source, out, uid)
             } else {
-                exchanges(source, out, secure = false, fixed = null, first = head)
+                exchanges(source, out, secure = false, fixed = null, first = head, uid = uid)
             }
         } catch (_: IOException) {
             // A client that goes away part-way through is ordinary and not worth a record.
@@ -115,11 +119,17 @@ class ProxyServer(
     }
 
     /** A `CONNECT`: answer as the host and read what follows, or pass the bytes through. */
-    private fun accept(head: RequestHead, client: Socket, source: InputStream, out: OutputStream) {
+    private fun accept(
+        head: RequestHead,
+        client: Socket,
+        source: InputStream,
+        out: OutputStream,
+        uid: Int?,
+    ) {
         val origin = Origin.authority(head.target) ?: return out.writeQuietly(BAD_REQUEST)
         out.write(ESTABLISHED)
         out.flush()
-        if (!rules.opens(origin.host)) return tunnel(origin, head, client, source, out)
+        if (!rules.opens(origin.host)) return tunnel(origin, head, client, source, out, uid)
         val context =
             contexts.getOrPut(origin.host) {
                 val leaf = certificates.certificateFor(origin.host, clock())
@@ -132,7 +142,7 @@ class ProxyServer(
             // The app would not have the certificate: either the authority is not installed, or
             // the app pins its own. Saying so beats a connection that merely stops.
             sink.finished(
-                begin(head, origin, secure = true)
+                begin(head, origin, secure = true, uid = uid)
                     .copy(
                         finishedAt = clock(),
                         failure = "the app refused the certificate: ${e.reason()}",
@@ -146,6 +156,7 @@ class ProxyServer(
             secure = true,
             fixed = origin,
             first = null,
+            uid = uid,
         )
     }
 
@@ -156,6 +167,7 @@ class ProxyServer(
         secure: Boolean,
         fixed: Origin?,
         first: RequestHead?,
+        uid: Int?,
     ) {
         val reader = HttpReader(source)
         var upstream: Upstream? = null
@@ -167,7 +179,7 @@ class ProxyServer(
                     upstream.close()
                     upstream = null
                 }
-                val flow = begin(head, origin, secure)
+                val flow = begin(head, origin, secure, uid)
                 if (upstream == null) {
                     upstream =
                         try {
@@ -243,8 +255,9 @@ class ProxyServer(
         client: Socket,
         source: InputStream,
         out: OutputStream,
+        uid: Int?,
     ) {
-        val flow = begin(head, origin, secure = true).copy(tunnelled = true)
+        val flow = begin(head, origin, secure = true, uid = uid).copy(tunnelled = true)
         sink.started(flow)
         val upstream = Socket()
         try {
@@ -261,8 +274,8 @@ class ProxyServer(
         }
     }
 
-    private fun begin(head: RequestHead, origin: Origin, secure: Boolean) =
-        Flow(ids.incrementAndGet(), clock(), secure, origin.host, origin.port, head)
+    private fun begin(head: RequestHead, origin: Origin, secure: Boolean, uid: Int?) =
+        Flow(ids.incrementAndGet(), clock(), secure, origin.host, origin.port, head, uid = uid)
 
     private fun failed(flow: Flow, out: OutputStream, error: Throwable) {
         sink.finished(flow.copy(finishedAt = clock(), failure = error.reason()))

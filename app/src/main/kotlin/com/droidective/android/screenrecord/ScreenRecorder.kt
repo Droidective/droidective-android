@@ -20,6 +20,7 @@ import com.droidective.android.MainActivity
 import com.droidective.android.R
 import com.droidective.android.droidective
 import com.droidective.android.surface.Launch
+import com.droidective.android.surface.Surfaces
 import com.droidective.core.device.RecordOptions
 import com.droidective.core.device.ScreenRecording
 import com.droidective.core.device.SystemValues
@@ -100,8 +101,19 @@ object ScreenRecorder {
     }
 
     fun stop(context: Context) {
+        // Said at once, so a tile reading it straight after sees it stopping.
+        current.value =
+            when (current.value) {
+                is RecordRun.Recording -> RecordRun.Saving
+                is RecordRun.Counting -> RecordRun.Failed("Stopped before it started.")
+                else -> current.value
+            }
         context.startService(service(context).setAction(ScreenRecordService.ACTION_STOP))
     }
+
+    /** Counting down or recording: what a Record screen tile shows as on. */
+    val recording: Boolean
+        get() = current.value.let { it is RecordRun.Counting || it is RecordRun.Recording }
 
     /** The share sheet for a saved recording. */
     fun share(saved: RecordRun.Saved): Intent {
@@ -168,7 +180,8 @@ class ScreenRecordService : Service() {
     private fun stopRecording() {
         val running = pid
         if (running == null) {
-            if (ScreenRecorder.current.value is RecordRun.Counting) {
+            // Still counting down: nothing is recording yet, so there's nothing to save.
+            if (job != null) {
                 job?.cancel()
                 finish(RecordRun.Failed("Stopped before it started."))
             }
@@ -306,12 +319,17 @@ class ScreenRecordService : Service() {
     }
 
     private fun show(run: RecordRun) {
+        val started =
+            run is RecordRun.Recording && ScreenRecorder.current.value !is RecordRun.Recording
         ScreenRecorder.current.value = run
         notify(notification(run))
+        // A Record screen tile or widget slot shows whether a recording is on.
+        if (started) Surfaces.refreshBehind(this)
     }
 
     private fun finish(run: RecordRun) {
         ScreenRecorder.current.value = run
+        Surfaces.refreshBehind(this)
         job = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
         notify(notification(run))

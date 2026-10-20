@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.core.content.edit
 import com.droidective.android.automation.Automations
 import com.droidective.android.crashes.OwnCrashes
+import com.droidective.android.surface.AppPlatformToggles
 import com.droidective.android.update.Updates
 import com.droidective.core.apps.SavedIntents
 import com.droidective.core.automations.AutomationLedger
@@ -93,7 +94,7 @@ class DroidectiveApplication : Application() {
         toggles =
             ToggleRunner(
                 settings = AndroidSettingsStore(this),
-                platform = AndroidPlatformToggles(this),
+                platform = AppPlatformToggles(this, AndroidPlatformToggles(this)),
                 appShell = AppShell(),
                 shell = { access.shell() },
                 access = { access.access.value },

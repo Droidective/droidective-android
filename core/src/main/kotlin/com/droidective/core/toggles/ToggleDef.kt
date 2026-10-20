@@ -66,6 +66,15 @@ enum class PlatformApi(val opensScreen: Boolean = false) {
     BatterySaver,
     DemoMode,
     SwitchKeyboard,
+
+    /** The app's own Screen Record, started and stopped like a switch. */
+    ScreenRecording,
+
+    /** The Performance Monitor's overlay over other apps. */
+    PerformanceOverlay,
+
+    /** A UI Inspector capture of whatever is on screen in a few seconds. */
+    CaptureViews,
 }
 
 /** How a toggle's current state is read. */

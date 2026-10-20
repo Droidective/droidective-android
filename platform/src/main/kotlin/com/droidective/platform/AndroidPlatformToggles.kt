@@ -94,6 +94,10 @@ class AndroidPlatformToggles(private val context: Context) : PlatformToggles {
             PlatformApi.SwitchKeyboard,
             PlatformApi.BluetoothDiscoverable,
             PlatformApi.BrightnessSlider -> null
+            // The app's own features: the app reads these before they get here.
+            PlatformApi.ScreenRecording,
+            PlatformApi.PerformanceOverlay,
+            PlatformApi.CaptureViews -> null
         }
 
     override suspend fun write(api: PlatformApi, state: String): Outcome =

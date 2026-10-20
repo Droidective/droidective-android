@@ -30,6 +30,7 @@ import com.droidective.android.R
 import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
 import com.droidective.android.surface.Launch
+import com.droidective.android.surface.Surfaces
 import com.droidective.core.apps.AppActions
 import com.droidective.core.device.Performance
 import com.droidective.core.device.PerformanceHud
@@ -79,6 +80,7 @@ class PerformanceOverlayService : Service() {
         if (view == null) {
             view = show()
             running.value = true
+            Surfaces.refreshBehind(this)
             scope.launch { measure() }
         }
         return START_STICKY
@@ -89,6 +91,7 @@ class PerformanceOverlayService : Service() {
         view?.let { runCatching { getSystemService(WindowManager::class.java).removeView(it) } }
         view = null
         running.value = false
+        Surfaces.refreshBehind(this)
         super.onDestroy()
     }
 
@@ -252,12 +255,15 @@ class PerformanceOverlayService : Service() {
         val isRunning: StateFlow<Boolean> = running.asStateFlow()
 
         fun start(context: Context) {
+            // On at once for whoever reads it next; onDestroy turns it off if it can't show.
+            running.value = true
             try {
                 ContextCompat.startForegroundService(
                     context,
                     Intent(context, PerformanceOverlayService::class.java),
                 )
             } catch (e: IllegalStateException) {
+                running.value = false
                 if (
                     Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
                         e !is ForegroundServiceStartNotAllowedException
@@ -268,6 +274,7 @@ class PerformanceOverlayService : Service() {
         }
 
         fun stop(context: Context) {
+            running.value = false
             context.stopService(Intent(context, PerformanceOverlayService::class.java))
         }
     }

@@ -11,14 +11,14 @@ class ToggleRegistryTest {
 
     @Test
     fun hasTheTogglesThePlanListsAndReactNativesKeys() {
-        assertEquals(55, all.size)
+        assertEquals(58, all.size)
         assertEquals(
             mapOf(
                 ToggleGroup.Network to 15,
                 ToggleGroup.Sound to 3,
                 ToggleGroup.Display to 11,
                 ToggleGroup.Device to 7,
-                ToggleGroup.Developer to 19,
+                ToggleGroup.Developer to 22,
             ),
             all.groupingBy { it.group }.eachCount(),
         )
@@ -81,6 +81,9 @@ class ToggleRegistryTest {
             setOf(
                 "screenshot",
                 "clean-screenshot",
+                "record-screen",
+                "perf-overlay",
+                "capture-views",
                 "lock-screen",
                 "show-touches",
                 "pointer-location",

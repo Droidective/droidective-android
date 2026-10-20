@@ -702,6 +702,15 @@ object Toggles {
                 read = Probe.None,
                 write = Write.Commands(mapOf("run" to listOf(Screenshot.command))),
             ),
+            ToggleDef(
+                id = "clean-screenshot",
+                title = "Clean screenshot",
+                group = ToggleGroup.Device,
+                icon = "screenshot_monitor",
+                states = action("Take a clean screenshot"),
+                read = Probe.None,
+                write = Write.Commands(mapOf("run" to listOf(Screenshot.clean))),
+            ),
             api(
                 "switch-keyboard",
                 "Switch keyboard",

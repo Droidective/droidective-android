@@ -11,13 +11,13 @@ class ToggleRegistryTest {
 
     @Test
     fun hasTheTogglesThePlanListsAndReactNativesKeys() {
-        assertEquals(54, all.size)
+        assertEquals(55, all.size)
         assertEquals(
             mapOf(
                 ToggleGroup.Network to 15,
                 ToggleGroup.Sound to 3,
                 ToggleGroup.Display to 11,
-                ToggleGroup.Device to 6,
+                ToggleGroup.Device to 7,
                 ToggleGroup.Developer to 19,
             ),
             all.groupingBy { it.group }.eachCount(),
@@ -80,6 +80,7 @@ class ToggleRegistryTest {
         val noStandIn =
             setOf(
                 "screenshot",
+                "clean-screenshot",
                 "lock-screen",
                 "show-touches",
                 "pointer-location",

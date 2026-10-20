@@ -8,15 +8,19 @@ toggles Android keeps from ordinary apps. The macOS app lives in
 ## What it does
 
 - **Widgets everywhere.** Home-screen bars, buttons and lists, folders, a notification bar, Quick
-  Settings tiles and shortcuts, all built from the same items: 54 toggles (network, sound,
+  Settings tiles and shortcuts, all built from the same items: 55 toggles (network, sound,
   display, device and developer), single actions (a toggle set to one state, an app force-stopped,
   a permission granted), apps, other apps' shortcuts, your own shell commands, deep links,
   automations and tools. Every widget can be styled: grid or list, sizes, chips, labels, states,
   colours, and each slot's own label, icon and colour.
-- **Developer tools.** Developer Settings, Logcat, Crash Catcher, Sandbox Browser (an app's
-  files, preferences and databases), Install App (APK, APKS, XAPK and APKM, with only this
-  phone's splits), Memory Usage, Current Activity, Simulate, Demo Mode, HTTP Proxy, Private DNS,
-  Wireless ADB, Wi-Fi, Network Speed, Apps, Device Info and more.
+- **Developer tools.** Performance Monitor (CPU, memory, temperature and an app's frames, with
+  an overlay that shows them over any app), Logcat, Crash Catcher, Terminal, Settings Editor
+  (settings, properties and feature flags, with undo), Sandbox Browser (an app's files,
+  preferences and databases), File Explorer, APK Inspector, Screen Record, Bug Report, Background
+  Work (Doze, standby buckets and jobs), Monkey Test, React Native, Language, Install App (APK,
+  APKS, XAPK and APKM, with only this phone's splits), Developer Settings, Memory Usage, Current
+  Activity, Simulate, Demo Mode, HTTP Proxy, Private DNS, Wireless ADB, Wi-Fi, Network Speed,
+  Apps, Device Info and more.
 - **Automations.** When something happens, run actions once; while something holds, keep
   toggles set and put each one back when it ends. Schedules, restarts, Bluetooth, Wi-Fi, apps
   opening, charging, crashes, a run from the Mac, and more.

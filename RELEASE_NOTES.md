@@ -3,6 +3,23 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.5.0
+
+Two more of the Mac's tools, and a crash fixed.
+
+- **APK Inspector.** What an installed app or an APK file is made of, with no shell needed: its
+  signature schemes and each certificate's SHA-256 (with a warning for Android Studio's debug
+  key), the manifest flags reviewers ask about, native code per ABI and the dex count across every
+  split, each permission's protection level, and every component with whether any app can reach
+  it. Copy report puts it all in one block of text.
+- **Screen Record.** The screen as a video through Android's own screenrecord: full or half size,
+  a choice of quality and time limit, a countdown to open what you want to show, and while it
+  records shown taps, demo mode's clean status bar, or burned-in timestamps for bug videos. It
+  keeps recording when you leave; the notification stops it, and taps and the status bar go back
+  exactly as they were.
+- **Fixed:** Bug Report's Share closed the app. The report now saves to Downloads as a file
+  Droidective owns, which the share sheet accepts.
+
 ## 0.4.0
 
 Four more tools, the numbers over any app, and two fixes underneath.

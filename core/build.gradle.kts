@@ -27,7 +27,9 @@ ktfmt { kotlinLangStyle() }
 lint {
     warningsAsErrors = true
     abortOnError = true
-    disable += setOf("GradleDependency", "NewerVersionAvailable")
+    // TrulyRandom is about a SecureRandom provider fixed in Android 4.4; this app starts
+    // at 11, and the check fires on every key the proxy generates.
+    disable += setOf("GradleDependency", "NewerVersionAvailable", "TrulyRandom")
 }
 
 dependencies {

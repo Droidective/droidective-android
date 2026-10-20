@@ -3,6 +3,26 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.6.0
+
+Four new tools, none of them on the Mac yet, and a root fix.
+
+- **UI Inspector.** Any app's views from `uiautomator`, with a screenshot: tap the picture to pick
+  the view under your finger, or search by text, description or id. Each view shows its id, text,
+  bounds in pixels and dp, and the lines UI Automator, Espresso, Compose and Maestro tests would
+  find it by. It counts clickable views TalkBack can't name and touch targets under 48 dp.
+- **Intent Builder.** Any activity, broadcast or service intent: action, data, type, a component
+  picked from the app's own list, categories, flags and typed extras. A launch it waits for is
+  timed, and Cold start stops the app first, which is how Android Studio measures startup. Save
+  the ones you reuse, or copy one as an adb command.
+- **Network Check.** A host or URL checked from the phone: DNS, the connection, the TLS
+  handshake with every certificate's expiry and SPKI pin, and the first HTTP answer, each timed.
+  Pins copy as an OkHttp `CertificatePinner` or a network security config.
+- **App Snapshots.** Save an app's private data and put it back later, to test again from a
+  signed-in or onboarded state. Debug builds through run-as; any app with root.
+- **Fixed:** the Sandbox Browser's root mode found nothing for other apps on phones where su runs
+  in the app's own mount namespace; it now reads in init's namespace, where every app's data is.
+
 ## 0.5.0
 
 Two more of the Mac's tools, and a crash fixed.

@@ -1,0 +1,2 @@
+Broadcasting: Intent { act=com.droidective.test.PROBE flg=0x400000 pkg=com.droidective.android }
+Broadcast completed: result=0

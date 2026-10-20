@@ -56,6 +56,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "install-app" to { InstallAppTool(it) },
         "current-activity" to { CurrentActivityTool(it) },
         "ui-inspector" to { UiInspectorTool(it) },
+        "intent-builder" to { IntentBuilderTool(it) },
         "meminfo" to { MemoryTool(it) },
         "sandbox-browser" to { SandboxTool(it) },
         "apk-inspector" to { ApkInspectorTool(it) },

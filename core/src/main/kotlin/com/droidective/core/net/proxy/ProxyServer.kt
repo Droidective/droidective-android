@@ -12,6 +12,7 @@ import java.io.BufferedOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -60,10 +61,22 @@ class ProxyServer(
     val port: Int
         get() = listener?.localPort ?: -1
 
-    /** Starts listening. Port 0 takes whatever is free, which is what the tests use. */
+    /** The address being listened on, which is always the phone's own. */
+    val address: InetAddress?
+        get() = listener?.inetAddress
+
+    /**
+     * Starts listening, on loopback only. Port 0 takes whatever is free, which is what the tests
+     * use.
+     *
+     * Loopback is not a detail. A proxy listening on every interface is an open proxy for everyone
+     * else on that Wi-Fi: their traffic through this phone, and this phone's address against
+     * whatever they do with it. The phone points at 127.0.0.1 and nothing off the device can reach
+     * it.
+     */
     fun start(port: Int = 0): Int {
         check(listener == null) { "the proxy is already listening" }
-        val server = ServerSocket(port)
+        val server = ServerSocket(port, BACKLOG, InetAddress.getLoopbackAddress())
         val running = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         listener = server
         scope = running
@@ -304,6 +317,7 @@ class ProxyServer(
     private companion object {
         const val CONNECT = "CONNECT"
         const val SWITCHING = 101
+        const val BACKLOG = 50
         const val IDLE_MILLIS = 120_000
         const val CONNECT_MILLIS = 15_000
 

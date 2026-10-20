@@ -6,6 +6,7 @@ import androidx.core.content.edit
 import com.droidective.android.automation.Automations
 import com.droidective.android.crashes.OwnCrashes
 import com.droidective.android.update.Updates
+import com.droidective.core.apps.SavedIntents
 import com.droidective.core.automations.AutomationLedger
 import com.droidective.core.automations.AutomationRepository
 import com.droidective.core.commands.CommandRepository
@@ -50,6 +51,10 @@ class DroidectiveApplication : Application() {
     lateinit var automations: AutomationRepository
         private set
 
+    /** The intents the Intent Builder saved. */
+    lateinit var savedIntents: SavedIntents
+        private set
+
     /** What the Settings Editor changed, to undo. */
     lateinit var valueChanges: ValueChanges
         private set
@@ -80,6 +85,7 @@ class DroidectiveApplication : Application() {
         automations = AutomationRepository(filesDir)
         ledger = AutomationLedger(filesDir)
         valueChanges = ValueChanges(filesDir)
+        savedIntents = SavedIntents(filesDir)
         access = AccessMonitor(this, scope).also { it.start() }
         // A force stop clears the app's alarms; starting again puts the schedules back.
         scope.launch { Automations.reschedule(this@DroidectiveApplication) }

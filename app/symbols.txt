@@ -93,6 +93,7 @@ memory
 receipt_long
 pause
 vertical_align_bottom
+videocam
 # Widget actions: what an action slot draws (Cells.actionIcon).
 block
 cleaning_services

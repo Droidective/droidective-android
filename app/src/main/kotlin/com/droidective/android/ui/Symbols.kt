@@ -218,6 +218,7 @@ object Symbols {
                     R.drawable.sym_vertical_align_bottom_fill,
                 ),
             "vibration" to Symbol(R.drawable.sym_vibration, R.drawable.sym_vibration_fill),
+            "videocam" to Symbol(R.drawable.sym_videocam, R.drawable.sym_videocam_fill),
             "visibility" to Symbol(R.drawable.sym_visibility, R.drawable.sym_visibility_fill),
             "visibility_off" to
                 Symbol(R.drawable.sym_visibility_off, R.drawable.sym_visibility_off_fill),

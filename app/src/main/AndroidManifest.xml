@@ -158,6 +158,14 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Draws the Performance overlay the person turned on: a small window over other apps showing CPU load, the frames the app in front draws, memory and temperature, updated once a second while the screen is on. Runs only until they turn it off from the app or its notification." />
         </service>
+        <service
+            android:name=".screenrecord.ScreenRecordService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Records the screen while the person asked it to: runs Android's own screenrecord through the shell they set up, from Start until they press Stop or the time limit they chose, then saves the video to Movies. Runs only for that recording." />
+        </service>
         <!-- A Bluetooth device connecting or disconnecting. Protected broadcasts from the system;
              the receiver only re-reads which devices are connected. -->
         <receiver

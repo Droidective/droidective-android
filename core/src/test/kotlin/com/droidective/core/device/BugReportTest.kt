@@ -40,21 +40,18 @@ class BugReportTest {
     }
 
     @Test
-    fun copiesTheZipToDownloadsUnderItsOwnName() {
+    fun handsTheZipOverReadableUnderItsOwnName() {
+        val folder = "/storage/emulated/0/Android/data/com.droidective.android/files/handover"
         assertEquals(
             "cp '/data/user_de/0/com.android.shell/files/bugreports/bugreport-x.zip' " +
-                "'/sdcard/Download/bugreport-x.zip'",
-            BugReport.copyToDownloads(
+                "'$folder/bugreport-x.zip' && chmod 644 '$folder/bugreport-x.zip'",
+            BugReport.handOver(
                     "/data/user_de/0/com.android.shell/files/bugreports/bugreport-x.zip",
-                    "/sdcard/Download",
+                    folder,
                 )
                 .line,
         )
-        assertFailsWith<IllegalArgumentException> {
-            BugReport.copyToDownloads("/etc/hosts", "/sdcard/Download")
-        }
-        assertFailsWith<IllegalArgumentException> {
-            BugReport.copyToDownloads("/a/../b.zip", "/sdcard/Download")
-        }
+        assertFailsWith<IllegalArgumentException> { BugReport.handOver("/etc/hosts", folder) }
+        assertFailsWith<IllegalArgumentException> { BugReport.handOver("/a/../b.zip", folder) }
     }
 }

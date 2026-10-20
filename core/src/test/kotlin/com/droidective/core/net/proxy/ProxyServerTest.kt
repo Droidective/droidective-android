@@ -55,6 +55,14 @@ class ProxyServerTest {
     }
 
     @Test
+    fun itListensOnThePhoneAndNowhereElse() {
+        proxy()
+        // Anything wider would be an open proxy for everyone else on the Wi-Fi.
+        val listening = assertNotNull(server?.address)
+        assertTrue(listening.isLoopbackAddress, "the proxy was listening on $listening")
+    }
+
+    @Test
     fun aPlainRequestIsForwardedAndRecorded() {
         FakeServer().use { origin ->
             origin.reply = { ok("hello") }

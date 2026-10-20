@@ -52,27 +52,14 @@ so the whole proxy is unit-tested against loopback sockets with no emulator.
 | [#72](https://github.com/Droidective/droidective-android/pull/72) | Per-app attribution |
 | [#73](https://github.com/Droidective/droidective-android/pull/73) | The store and the filter |
 | [#74](https://github.com/Droidective/droidective-android/pull/74) | Body decoding and cURL export |
+| [#76](https://github.com/Droidective/droidective-android/pull/76) | Listening on loopback rather than every interface |
 
 Nothing is wired into the app yet. There is no feature id in the registry, no screen,
 and no way to start it — `core` is complete and inert.
 
 ## What is left, in order
 
-### 1. Bind to loopback — do this first
-
-`ProxyServer.start` currently calls `ServerSocket(port)`, which listens on **every
-interface**. As soon as the service exists, that is an open proxy for everyone else
-on the Wi-Fi. It must be:
-
-```kotlin
-val server = ServerSocket(port, BACKLOG, InetAddress.getLoopbackAddress())
-```
-
-Expose the bound address and assert `isLoopbackAddress` in a test. The existing tests
-all connect to `127.0.0.1`, so they keep passing. `TrafficProxy`'s KDoc on the WIP
-branch already claims this is true; it is not true yet.
-
-### 2. `ProxyService`
+### 1. `ProxyService`
 
 A foreground service, `specialUse`, declared in the manifest beside
 `ScreenRecordService` (copy that declaration and its `PROPERTY_SPECIAL_USE_FGS_SUBTYPE`
@@ -88,7 +75,7 @@ frozen proxy is a phone whose network has silently stopped.
 > ("Expose Local Services"). Whoever picks this up either writes it by hand or grants
 > the permission first.
 
-### 3. `TrafficProxy` — on the `proxy-android` branch, unmerged
+### 2. `TrafficProxy` — on the `proxy-android` branch, unmerged
 
 Already written, pushed, **does not compile on its own** because it refers to
 `ProxyService`. It holds the state flow, the store, the certificate keystore
@@ -96,7 +83,7 @@ Already written, pushed, **does not compile on its own** because it refers to
 the `FlowOwners` that reads the socket table through the shell, the `KeyChain` install
 intent, and the proxy-setting plumbing.
 
-### 4. Feature registration
+### 3. Feature registration
 
 - `Features.kt`: id **`network-traffic`**, title "Network Traffic", category `Network`,
   level `Shell`, icon `travel_explore`. Keywords worth having: proxy, http, https,
@@ -105,7 +92,7 @@ intent, and the proxy-setting plumbing.
 - `ToolsTest.kt`: add to `phoneOnly` — the Mac has no counterpart. (The Mac's
   `http-proxy` is a different feature: it only *sets* the device's proxy.)
 
-### 5. The screen
+### 4. The screen
 
 Model the layout on `LogcatTool`: a `Scaffold` with a `LazyColumn`, not `ToolScaffold`,
 which scrolls and cannot hold a long list.
@@ -121,7 +108,7 @@ which scrolls and cannot hold a long list.
 Pace the list off `TrafficProxy.changes` with `sample(250)` rather than recomposing per
 flow — the same lesson the Mac app learned about feeds.
 
-### 6. Then
+### 5. Then
 
 Pass-through rules editor (`ProxyRules`), HAR export, a Quick Settings tile, and
 editing a request before it goes out.
@@ -161,6 +148,9 @@ than let someone discover it:
   connection through it weaker than it was.
 - **Only HTTP/1.1 is offered in ALPN**, so clients fall back from HTTP/2 to something
   this can read.
+- **It listens on loopback only.** A proxy on every interface is an open proxy for
+  everyone else on that Wi-Fi. The phone points at `127.0.0.1`, which is all the
+  on-device design ever needed.
 - **Bodies are forwarded whole** however little is kept. The app must behave exactly as
   it would with nothing in the way.
 - **Stopping clears the phone's proxy setting.** A phone left pointing at a proxy that

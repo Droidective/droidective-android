@@ -16,8 +16,8 @@ All merged to `main`, all unreleased:
 - **Notification Inspector** (#68) — why a notification shows or doesn't: what an app has
   showing now, each channel's importance, whether notifications are off as a whole, and
   Do Not Disturb.
-- **The debugging proxy's engine** (#69–#74) — complete in `core`, not yet reachable from
-  the app. See [network-traffic-proxy.md](network-traffic-proxy.md).
+- **The debugging proxy's engine** (#69–#74, #76) — complete in `core`, not yet reachable
+  from the app. See [network-traffic-proxy.md](network-traffic-proxy.md).
 
 **Next release is 0.7.0**: bump `versionName`/`versionCode` in `gradle.properties`, add a
 `RELEASE_NOTES.md` section, PR, merge, tag `v0.7.0`.
@@ -25,9 +25,8 @@ All merged to `main`, all unreleased:
 ## Next: finish the proxy
 
 The whole engine is merged and tested; none of it is reachable yet. The remaining work,
-in order, is in [network-traffic-proxy.md](network-traffic-proxy.md). **Step 1 of that
-document is a security fix and should be done before anything else** — the server
-currently binds every interface rather than loopback.
+in order, is in [network-traffic-proxy.md](network-traffic-proxy.md): the foreground
+service, the screen, and the feature registration.
 
 ## Then: make the app reach further than its own screen
 

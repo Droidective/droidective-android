@@ -6,9 +6,7 @@ import android.app.PendingIntent
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
-import android.media.MediaScannerConnection
 import android.net.Uri
-import android.os.Environment
 import androidx.core.app.NotificationCompat
 import com.droidective.android.MainActivity
 import com.droidective.android.R
@@ -18,20 +16,22 @@ import com.droidective.core.device.BugReport
 import com.droidective.core.device.BugReportLine
 import com.droidective.core.shell.Parse
 import com.droidective.core.shell.ShellUnavailableException
-import kotlin.coroutines.resume
+import com.droidective.platform.SharedStorage
+import com.droidective.platform.SharedStorage.Place.Downloads
+import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** Where taking a bug report is. */
 sealed interface BugReportRun {
     /** [done] of [of], or null before bugreportz has said how far it is. */
     data class Gathering(val done: Int?, val of: Int?) : BugReportRun
 
-    data class Saved(val name: String, val uri: Uri?) : BugReportRun
+    data class Saved(val name: String, val uri: Uri) : BugReportRun
 
     data class Failed(val message: String) : BugReportRun
 }
@@ -98,33 +98,28 @@ object BugReports {
             return BugReportRun.Failed(it)
         }
         val path = zip ?: return BugReportRun.Failed("bugreportz ended without a report.")
-        @Suppress("DEPRECATION") // The shell needs the path itself; MediaStore has no path to give.
-        val downloads =
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path
-        val copy = shell.run(BugReport.copyToDownloads(path, downloads))
-        if (!copy.succeeded) {
+        val folder =
+            SharedStorage.handover(context)
+                ?: return BugReportRun.Failed("Shared storage isn't available.")
+        val handOver = shell.run(BugReport.handOver(path, folder.path))
+        if (!handOver.succeeded) {
             return BugReportRun.Failed(
-                Parse.lines(copy.stderr).firstOrNull { it.isNotBlank() }
-                    ?: "It couldn't be copied to Downloads."
+                Parse.failure(handOver.stderr, handOver.stdout) ?: "The shell couldn't copy it."
             )
         }
         val name = BugReport.fileName(path)
-        return BugReportRun.Saved(name, scan(context, "$downloads/$name"))
+        return try {
+            SharedStorage.publish(context, File(folder, name), "application/zip", Downloads)?.let {
+                BugReportRun.Saved(name, it)
+            } ?: BugReportRun.Failed("Android didn't make room for it in Downloads.")
+        } catch (e: IOException) {
+            BugReportRun.Failed("It couldn't be saved to Downloads: ${e.message}")
+        }
     }
 
-    /** Has Android index the copy, so the share sheet and the Files app can see it. */
-    private suspend fun scan(context: Context, path: String): Uri? =
-        suspendCancellableCoroutine { done ->
-            MediaScannerConnection.scanFile(context, arrayOf(path), arrayOf("application/zip")) {
-                _,
-                uri ->
-                done.resume(uri)
-            }
-        }
-
     /** The share sheet for a saved report, titled with its name rather than its MediaStore id. */
-    fun share(saved: BugReportRun.Saved): Intent? {
-        val uri = saved.uri ?: return null
+    fun share(saved: BugReportRun.Saved): Intent {
+        val uri = saved.uri
         val send =
             Intent(Intent.ACTION_SEND)
                 .setType("application/zip")

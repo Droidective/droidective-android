@@ -51,11 +51,13 @@ object BugReport {
     fun fileName(path: String): String = path.substringAfterLast('/')
 
     /**
-     * Copies the finished zip into [downloads], keeping its name: the shell user can write
-     * Downloads and every app can read it.
+     * Copies the finished zip into [folder], keeping its name, and lets every app read the copy.
+     * [folder] is this app's own: the shell can write it, and from there the app saves the report
+     * to Downloads as a file it owns, which is what lets it hand the report to the share sheet.
      */
-    fun copyToDownloads(path: String, downloads: String): ShellCommand {
+    fun handOver(path: String, folder: String): ShellCommand {
         require(path.endsWith(".zip") && ".." !in path) { "\"$path\" isn’t a bug report" }
-        return ShellCommand.of("cp", shellQuote(path), shellQuote("$downloads/${fileName(path)}"))
+        val copy = shellQuote("$folder/${fileName(path)}")
+        return ShellCommand("cp ${shellQuote(path)} $copy && chmod 644 $copy")
     }
 }

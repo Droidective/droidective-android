@@ -58,8 +58,8 @@ fun BugReportTool(tool: ToolContext) {
                 ToolSection("Saved") {
                     InfoRow("File", "Download/${now.name}", copyable = true, mono = true)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        BugReports.share(now)?.let { share ->
-                            Button(onClick = { context.openSafely(share) }) { Text("Share") }
+                        Button(onClick = { context.openSafely(BugReports.share(now)) }) {
+                            Text("Share")
                         }
                         OutlinedButton(onClick = { context.openSafely(downloads()) }) {
                             Text("Open Downloads")

@@ -8,8 +8,8 @@ import com.droidective.core.net.http.ResponseHead
  * One exchange the proxy saw: a request going out and whatever came back, or the reason nothing
  * did.
  *
- * [uid] is left for the Android layer to fill in, which is how a flow gets an app's name against it
- * — `core` has no way of knowing which app opened a socket.
+ * [uid] and [app] are left for the Android layer to fill in: `core` can read which uid holds a
+ * socket but has no way to turn that into an app's name.
  */
 data class Flow(
     val id: Long,
@@ -25,6 +25,7 @@ data class Flow(
     val failure: String? = null,
     val tunnelled: Boolean = false,
     val uid: Int? = null,
+    val app: String? = null,
 ) {
     val scheme: String
         get() = if (secure) "https" else "http"

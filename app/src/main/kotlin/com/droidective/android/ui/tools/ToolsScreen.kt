@@ -67,6 +67,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "file-explorer" to { FileExplorerTool(it) },
         "locale" to { LanguageTool(it) },
         "monkey" to { MonkeyTool(it) },
+        "notification-inspector" to { NotificationInspectorTool(it) },
         "crash-catcher" to { CrashCatcherTool(it) },
         "custom-commands" to { CustomCommandsTool(it) },
         "terminal" to { TerminalTool(it) },

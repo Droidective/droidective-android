@@ -252,6 +252,7 @@ private fun AppDetailScreen(packageName: String, tool: ToolContext) {
                     }
                 }
             }
+            AppOpsSection(packageName, tool)
         }
         ToolSection("Details") {
             app.facts.forEach { InfoRow(it.label, it.value, copyable = true) }

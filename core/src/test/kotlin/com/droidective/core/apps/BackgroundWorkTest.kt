@@ -101,4 +101,37 @@ class BackgroundWorkTest {
         assertEquals(StandbyBucket.Restricted, Doze.bucket("45"))
         assertNull(Doze.bucket("No such package"))
     }
+
+    @Test
+    fun readsAnAppsAlarmsFromTheWholeDump() {
+        val dump =
+            File(System.getProperty("fixtures.dir"), "alarms/dumpsys-alarm-api36.txt").readText()
+        val gms = Alarms.parse(dump, "com.google.android.gms")
+        assertEquals(19, gms.size)
+        val activity = gms.first()
+        assertEquals("ELAPSED_WAKEUP", activity.type)
+        assertEquals("com.google.android.location.ALARM_WAKEUP_ACTIVITY_DETECTION", activity.tag)
+        assertEquals("+1m52s585ms", activity.inTime)
+        assertEquals(false, activity.exact)
+        assertEquals(true, activity.wakesThePhone)
+        val heartbeat = gms[1]
+        assertEquals("com.google.android.gms.gcm.HEARTBEAT_ALARM", heartbeat.tag)
+        assertEquals(true, heartbeat.exact)
+        assertEquals("allow-listed", heartbeat.exactReason)
+        val settings = Alarms.parse(dump, "com.android.settings").single()
+        assertEquals("RTC_WAKEUP", settings.type)
+        assertEquals("policy_permission", settings.exactReason)
+        assertEquals(emptyList(), Alarms.parse(dump, "com.example.none"))
+        assertEquals(17, Alarms.parse(dump, "android").size, "android isn't a prefix match")
+    }
+
+    @Test
+    fun saysWhenAnAlarmFiresTheWayPeopleDo() {
+        assertEquals("1m 52s", Alarms.readable("+1m52s585ms"))
+        assertEquals("2h 5m", Alarms.readable("+2h5m12s0ms"))
+        assertEquals("1d 3h", Alarms.readable("+1d3h0m0s"))
+        assertEquals("now", Alarms.readable("+0ms"))
+        assertEquals("overdue", Alarms.readable("-5s2ms"))
+        assertEquals("more than a year away", Alarms.readable("+3648d15h2m1s0ms"))
+    }
 }

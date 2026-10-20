@@ -156,3 +156,88 @@ object Doze {
         return ShellCommand.of(*verb, shellQuote(packageName))
     }
 }
+
+/**
+ * One alarm an app has set with AlarmManager, as `dumpsys alarm` lists it.
+ *
+ * @property type RTC or ELAPSED, with _WAKEUP when it wakes a sleeping phone.
+ * @property tag the alarm's action or listener tag, without AlarmManager's `*walarm*:` prefix.
+ * @property inTime how long until it fires, as dumpsys counts it (`+1m52s585ms`).
+ * @property exact whether it fires at its time rather than somewhere in a window.
+ */
+data class ScheduledAlarm(
+    val type: String,
+    val tag: String,
+    val inTime: String,
+    val exact: Boolean,
+    val repeatMillis: Long,
+    val exactReason: String?,
+) {
+    val wakesThePhone: Boolean
+        get() = type.endsWith("_WAKEUP")
+}
+
+/** The alarms apps have pending, read as the shell user. */
+object Alarms {
+    val list: ShellCommand = ShellCommand.of("dumpsys", "alarm")
+
+    private val header = Regex("""^\s+([A-Z_]+) #\d+: Alarm\{\S+ type \d+ .* (\S+)\}$""")
+
+    /** [packageName]'s alarms, soonest first, as the "pending alarms" section lists them. */
+    fun parse(output: String, packageName: String): List<ScheduledAlarm> {
+        val lines = Parse.lines(output)
+        val alarms = mutableListOf<ScheduledAlarm>()
+        var index = 0
+        while (index < lines.size) {
+            val match = header.find(lines[index])
+            index++
+            if (match == null || match.groupValues[2] != packageName) continue
+            val details =
+                lines.drop(index).takeWhile { header.find(it) == null && it.startsWith("      ") }
+            alarms += alarm(match.groupValues[1], details)
+        }
+        return alarms
+    }
+
+    private fun alarm(type: String, details: List<String>): ScheduledAlarm {
+        fun field(name: String) = details.firstNotNullOfOrNull { line ->
+            Regex("""(?:^|\s)$name=(\S+)""").find(line.trim())?.groupValues?.get(1)
+        }
+        val tag =
+            details
+                .firstOrNull { it.trim().startsWith("tag=") }
+                ?.trim()
+                ?.removePrefix("tag=")
+                ?.substringAfter("alarm*:")
+                .orEmpty()
+        return ScheduledAlarm(
+            type = type,
+            tag = tag,
+            inTime = field("whenElapsed").orEmpty(),
+            exact = field("window") == "0",
+            repeatMillis = field("repeatInterval")?.toLongOrNull() ?: 0,
+            exactReason = field("exactAllowReason"),
+        )
+    }
+
+    /**
+     * `+1m52s585ms` as people say it: its two largest units that aren't zero, `1m 52s`, and "in"
+     * goes in front of it, so a year or more reads as "more than a year away".
+     */
+    fun readable(inTime: String): String {
+        if (inTime.startsWith("-")) return "overdue"
+        val units =
+            Regex("""(\d+)(d|h|ms|m|s)""").findAll(inTime).associate {
+                it.groupValues[2] to it.groupValues[1].toLong()
+            }
+        // Some apps park an alarm years out rather than cancel it.
+        if ((units["d"] ?: 0) >= DAYS_PER_YEAR) return "more than a year away"
+        val parts =
+            listOf("d", "h", "m", "s")
+                .mapNotNull { unit -> units[unit]?.takeIf { it > 0 }?.let { "$it$unit" } }
+                .take(2)
+        return parts.ifEmpty { listOf("now") }.joinToString(" ")
+    }
+
+    private const val DAYS_PER_YEAR = 365
+}

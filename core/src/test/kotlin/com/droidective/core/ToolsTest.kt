@@ -252,6 +252,7 @@ class ToolsTest {
                 "intent-builder",
                 "network-check",
                 "app-snapshots",
+                "notification-inspector",
             )
         assertEquals(emptySet(), phoneOnly intersect macIds)
         assertEquals(emptySet(), Features.all.map { it.id }.toSet() - macIds - phoneOnly)

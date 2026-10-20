@@ -166,6 +166,14 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Records the screen while the person asked it to: runs Android's own screenrecord through the shell they set up, from Start until they press Stop or the time limit they chose, then saves the video to Movies. Runs only for that recording." />
         </service>
+        <service
+            android:name=".uiinspect.UiCaptureService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Captures the screen's view hierarchy when the person asks the UI Inspector to: counts down a few seconds so they can open the app to inspect, then runs uiautomator and takes a screenshot through the shell they set up. Runs only for those few seconds." />
+        </service>
         <!-- A Bluetooth device connecting or disconnecting. Protected broadcasts from the system;
              the receiver only re-reads which devices are connected. -->
         <receiver

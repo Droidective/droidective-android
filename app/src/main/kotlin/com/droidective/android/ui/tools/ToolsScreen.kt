@@ -60,6 +60,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "intent-builder" to { IntentBuilderTool(it) },
         "meminfo" to { MemoryTool(it) },
         "sandbox-browser" to { SandboxTool(it) },
+        "app-snapshots" to { AppSnapshotsTool(it) },
         "apk-inspector" to { ApkInspectorTool(it) },
         "background-work" to { BackgroundWorkTool(it) },
         "settings-editor" to { SettingsEditorTool(it) },

@@ -30,14 +30,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
 import com.droidective.android.ui.automations.AppChooser
+import com.droidective.core.apps.Alarms
 import com.droidective.core.apps.Doze
 import com.droidective.core.apps.Jobs
+import com.droidective.core.apps.ScheduledAlarm
 import com.droidective.core.apps.ScheduledJob
 import com.droidective.core.apps.StandbyBucket
 import com.droidective.core.shell.Parse
 import com.droidective.core.shell.ShellCommand
 import com.droidective.core.shell.ShellUnavailableException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * What holds an app's background work back, put where a test needs it: Doze for the whole phone,
@@ -54,6 +58,7 @@ fun BackgroundWorkTool(tool: ToolContext) {
     var packageName by rememberSaveable { mutableStateOf<String?>(null) }
     var bucket by remember { mutableStateOf<StandbyBucket?>(null) }
     var jobs by remember { mutableStateOf<List<ScheduledJob>?>(null) }
+    var alarms by remember { mutableStateOf<List<ScheduledAlarm>?>(null) }
     var choosing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     fun run(commands: List<ShellCommand>, done: String) {
@@ -73,6 +78,10 @@ fun BackgroundWorkTool(tool: ToolContext) {
         if (access.shell == null) return@LaunchedEffect
         bucket = shellOutput(context, Doze.getBucket(pkg))?.let(Doze::bucket)
         jobs = shellOutput(context, Jobs.list(pkg))?.let(Jobs::parse)
+        alarms =
+            shellOutput(context, Alarms.list)?.let {
+                withContext(Dispatchers.Default) { Alarms.parse(it, pkg) }
+            }
     }
 
     ToolScaffold("Background Work", tool) {
@@ -144,6 +153,7 @@ fun BackgroundWorkTool(tool: ToolContext) {
         Jobs(context, pkg, jobs) { job ->
             run(listOf(Jobs.run(pkg, job)), done = "Running job ${job.id}")
         }
+        Alarms(context, pkg, alarms)
     }
 
     if (choosing) {
@@ -151,6 +161,7 @@ fun BackgroundWorkTool(tool: ToolContext) {
             packageName = it.packageName
             bucket = null
             jobs = null
+            alarms = null
             choosing = false
         }
     }
@@ -199,6 +210,44 @@ private fun Jobs(
         }
     }
 }
+
+@Composable
+private fun Alarms(context: Context, packageName: String, alarms: List<ScheduledAlarm>?) {
+    ToolSection("Alarms") {
+        when {
+            alarms == null -> ToolNote("Reading…")
+            alarms.isEmpty() ->
+                ToolNote("${CrashAlerts.label(context, packageName)} has no alarms set now.")
+            else ->
+                alarms.forEach { alarm ->
+                    Column(Modifier.padding(4.dp)) {
+                        Text(alarm.tag.ifEmpty { alarm.type }, fontFamily = FontFamily.Monospace)
+                        Text(
+                            listOfNotNull(
+                                    Alarms.readable(alarm.inTime).let {
+                                        if (it.first().isDigit()) "in $it" else it
+                                    },
+                                    if (alarm.wakesThePhone) "wakes the phone" else null,
+                                    if (alarm.exact) "exact" else "within a window",
+                                    alarm.repeatMillis
+                                        .takeIf { it > 0 }
+                                        ?.let { "repeats every ${it / MILLIS_PER_MINUTE} min" },
+                                )
+                                .joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+        }
+        ToolNote(
+            "Doze holds alarms back, except exact ones the app is allowed to set; Doze now above " +
+                "shows which of them still fire."
+        )
+    }
+}
+
+private const val MILLIS_PER_MINUTE = 60_000L
 
 /** Runs [commands] in order; null when they all worked, else what the failing one said. */
 private suspend fun runAll(context: Context, commands: List<ShellCommand>): String? {

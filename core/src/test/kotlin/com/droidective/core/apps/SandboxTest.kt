@@ -68,7 +68,7 @@ class SandboxTest {
             Sandbox.list("com.example.app", "", SandboxAccess.RunAs).line,
         )
         assertEquals(
-            "ls -la '/data/user/0/com.example.app/files/my notes.txt'",
+            "nsenter -t 1 -m -- ls -la '/data/user/0/com.example.app/files/my notes.txt'",
             Sandbox.list("com.example.app", "files/my notes.txt", root).line,
         )
         assertEquals(
@@ -92,9 +92,9 @@ class SandboxTest {
     }
 
     @Test
-    fun rootCopiesStraightToTheDestination() {
+    fun rootReadsInInitsNamespaceAndWritesInThisAppsOwn() {
         assertEquals(
-            "cat '/data/user/0/com.example.app/databases/app.db' > '/sdcard/x.db'",
+            "nsenter -t 1 -m -- cat '/data/user/0/com.example.app/databases/app.db' > '/sdcard/x.db'",
             Sandbox.copy("com.example.app", "databases/app.db", root, "/sdcard/x.db").line,
         )
     }
@@ -110,7 +110,7 @@ class SandboxTest {
         assertTrue(Sandbox.isSafePath("files/..hidden"))
         assertTrue(Sandbox.isSafePath("files/it's here; reboot"))
         assertEquals(
-            "ls -la '/data/user/0/com.example.app/files/it'\\''s here; reboot'",
+            "nsenter -t 1 -m -- ls -la '/data/user/0/com.example.app/files/it'\\''s here; reboot'",
             Sandbox.list("com.example.app", "files/it's here; reboot", root).line,
         )
         assertFailsWith<IllegalArgumentException> {

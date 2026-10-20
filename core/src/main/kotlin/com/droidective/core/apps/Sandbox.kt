@@ -47,6 +47,12 @@ object Sandbox {
     /** The most of a file the text viewer reads. */
     const val TEXT_LIMIT_BYTES = 256 * 1024
 
+    /**
+     * Enters init's mount namespace for the one command that follows. A copy's redirect stays
+     * outside it, where this app's own folders are.
+     */
+    private val ROOT_NAMESPACE = arrayOf("nsenter", "-t", "1", "-m", "--")
+
     /** The first bytes of every SQLite database file. */
     const val SQLITE_HEADER = "SQLite format 3\u0000"
 
@@ -84,7 +90,9 @@ object Sandbox {
 
     /**
      * Runs [verb] on [path] in the app's data folder: inside it through `run-as`, which starts in
-     * that folder, or with its full path as root.
+     * that folder, or with its full path as root, in init's mount namespace. Android 11's app data
+     * isolation hides every other app's data folder from a root shell in this app's own namespace:
+     * `ls /data/user/0/<package>` said "No such file or directory" on a rooted OnePlus tablet.
      */
     private fun command(
         packageName: String,
@@ -104,7 +112,11 @@ object Sandbox {
                     shellQuote(path),
                 )
             is SandboxAccess.Root ->
-                ShellCommand.of(*words.toTypedArray(), shellQuote("${access.dataDir}/$path"))
+                ShellCommand.of(
+                    *ROOT_NAMESPACE,
+                    *words.toTypedArray(),
+                    shellQuote("${access.dataDir}/$path"),
+                )
         }
     }
 

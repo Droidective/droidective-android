@@ -330,6 +330,7 @@ fun DeepLinksTool(tool: ToolContext) {
                     LinkRow(link, onOpen = { open(link.uri) }, onEdit = { editing = link })
                 }
             }
+        AppLinksSection(tool)
     }
     editing?.let { link ->
         LinkEditor(

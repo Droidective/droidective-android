@@ -1,0 +1,260 @@
+package com.droidective.core.net.proxy
+
+import com.droidective.core.net.http.CapturedBody
+import com.droidective.core.net.http.Header
+import com.droidective.core.net.http.Headers
+import com.droidective.core.net.http.RequestHead
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPOutputStream
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class BodyViewTest {
+    private fun headers(vararg pairs: Pair<String, String>) =
+        Headers(pairs.map { Header(it.first, it.second) })
+
+    private fun body(bytes: ByteArray, truncated: Boolean = false) =
+        CapturedBody(bytes, bytes.size.toLong(), truncated)
+
+    private fun body(text: String, truncated: Boolean = false) = body(text.toByteArray(), truncated)
+
+    private fun gzipped(text: String): ByteArray {
+        val out = ByteArrayOutputStream()
+        GZIPOutputStream(out).use { it.write(text.toByteArray()) }
+        return out.toByteArray()
+    }
+
+    @Test
+    fun nothingKeptIsNothingToShow() {
+        assertEquals(BodyShape.Empty, BodyView.of(Headers(), null))
+        assertEquals(BodyShape.Empty, BodyView.of(Headers(), CapturedBody.NONE))
+    }
+
+    @Test
+    fun jsonIsLaidOutWithTheServersOwnKeyOrderKept() {
+        val shape =
+            BodyView.of(
+                headers("Content-Type" to "application/json"),
+                body("""{"zebra":1,"apple":{"deep":[1,2]}}"""),
+            )
+        val json = assertIs<BodyShape.Json>(shape)
+        // Zebra first, because that is how it arrived: reordering hides what changed between
+        // two answers, which is the thing people are most often comparing.
+        assertTrue(json.pretty.indexOf("zebra") < json.pretty.indexOf("apple"))
+        assertContains(json.pretty, "\n")
+    }
+
+    @Test
+    fun jsonIsRecognisedWithoutBeingAnnounced() {
+        // Plenty of servers send JSON as text/plain, or with no type at all.
+        assertIs<BodyShape.Json>(BodyView.of(Headers(), body("""[1, 2, 3]""")))
+        assertIs<BodyShape.Json>(
+            BodyView.of(headers("Content-Type" to "text/plain"), body("""  {"a":1}"""))
+        )
+    }
+
+    @Test
+    fun whatIsNotJsonStaysText() {
+        assertEquals(BodyShape.Text("hello"), BodyView.of(Headers(), body("hello")))
+        // Starts like JSON and is not: shown as what it is rather than refused.
+        assertEquals(BodyShape.Text("{not json"), BodyView.of(Headers(), body("{not json")))
+    }
+
+    @Test
+    fun aCompressedBodyIsReadBeforeItIsJudged() {
+        val shape =
+            BodyView.of(
+                headers("Content-Type" to "application/json", "Content-Encoding" to "gzip"),
+                body(gzipped("""{"a":1}""")),
+            )
+        assertContains(assertIs<BodyShape.Json>(shape).pretty, "\"a\"")
+    }
+
+    @Test
+    fun aCompressionThisCannotReadSaysSoRatherThanShowingRubbish() {
+        val shape =
+            BodyView.of(
+                headers("Content-Type" to "application/json", "Content-Encoding" to "br"),
+                body("not really brotli"),
+            )
+        assertContains(assertIs<BodyShape.Binary>(shape).reason, "br")
+    }
+
+    @Test
+    fun aHalfCapturedCompressedBodyGivesBackAsMuchAsItCan() {
+        val items = (1..200).joinToString(",") { "\"item-$it\"" }
+        val original = """{"items":[$items]}"""
+        val whole = gzipped(original)
+        val most = body(whole.copyOfRange(0, whole.size * 3 / 4), truncated = true)
+        val shape =
+            BodyView.of(
+                headers("Content-Type" to "application/json", "Content-Encoding" to "gzip"),
+                most,
+            )
+        // Not JSON any more, because it is not whole - but what did arrive is readable, and is
+        // the start of what was sent rather than something invented to fill the gap.
+        val text = assertIs<BodyShape.Text>(shape).text
+        assertTrue(text.isNotEmpty())
+        assertTrue(original.startsWith(text), "what came back should be the start of what was sent")
+        assertContains(text, "item-1")
+    }
+
+    @Test
+    fun aTruncatedBodyIsNeverPassedOffAsWholeJson() {
+        val shape =
+            BodyView.of(
+                headers("Content-Type" to "application/json"),
+                body("""{"a":1}""", truncated = true),
+            )
+        assertIs<BodyShape.Text>(shape)
+    }
+
+    @Test
+    fun anImageIsHandedOverAsBytesToDraw() {
+        val bytes = byteArrayOf(-119, 80, 78, 71)
+        val shape = BodyView.of(headers("Content-Type" to "image/png"), body(bytes))
+        assertEquals(BodyShape.Image("image/png", bytes), shape)
+    }
+
+    @Test
+    fun aFormIsPulledApartIntoItsFields() {
+        val shape =
+            BodyView.of(
+                headers("Content-Type" to "application/x-www-form-urlencoded"),
+                body("name=Ada+Lovelace&note=100%25+sure&empty="),
+            )
+        assertEquals(
+            listOf("name" to "Ada Lovelace", "note" to "100% sure", "empty" to ""),
+            assertIs<BodyShape.Form>(shape).fields,
+        )
+    }
+
+    @Test
+    fun bytesThatAreNotTextSaySoInsteadOfPrintingReplacements() {
+        val bytes = byteArrayOf(0, -1, -2, -3, 99)
+        val shape = BodyView.of(headers("Content-Type" to "application/octet-stream"), body(bytes))
+        assertEquals("not text", assertIs<BodyShape.Binary>(shape).reason)
+    }
+
+    @Test
+    fun aStatedCharsetIsUsedAndNonsenseFallsBackToUtf8() {
+        val latin = "café".toByteArray(Charsets.ISO_8859_1)
+        val shape =
+            BodyView.of(headers("Content-Type" to "text/plain; charset=ISO-8859-1"), body(latin))
+        assertEquals(BodyShape.Text("café"), shape)
+        // A charset nobody has heard of is not a reason to show nothing.
+        assertIs<BodyShape.Text>(
+            BodyView.of(headers("Content-Type" to "text/plain; charset=wat"), body("plain"))
+        )
+    }
+
+    @Test
+    fun prettyJsonRefusesWhatIsNotJson() {
+        assertNull(BodyView.prettyJson("{"))
+        assertNull(BodyView.prettyJson(""))
+    }
+}
+
+class CurlTest {
+    private fun flowWith(
+        method: String = "GET",
+        headers: Headers = Headers(),
+        requestBody: CapturedBody = CapturedBody.NONE,
+    ) =
+        Flow(
+            id = 1,
+            startedAt = 0,
+            secure = true,
+            host = "api.example.com",
+            port = 443,
+            request = RequestHead(method, "/orders?page=2", "HTTP/1.1", headers),
+            requestBody = requestBody,
+        )
+
+    @Test
+    fun aPlainGetIsOneLine() {
+        assertEquals("curl 'https://api.example.com/orders?page=2'", Curl.of(flowWith()))
+    }
+
+    @Test
+    fun anotherMethodIsNamed() {
+        assertContains(Curl.of(flowWith(method = "DELETE")), "curl -X DELETE")
+    }
+
+    @Test
+    fun headersAndBodyComeThrough() {
+        val command =
+            Curl.of(
+                flowWith(
+                    method = "POST",
+                    headers =
+                        Headers(
+                            listOf(
+                                Header("Content-Type", "application/json"),
+                                Header("Authorization", "Bearer abc123"),
+                            )
+                        ),
+                    requestBody = CapturedBody("""{"a":1}""".toByteArray(), 7, false),
+                )
+            )
+        assertContains(command, "-H 'Content-Type: application/json'")
+        assertContains(command, "-H 'Authorization: Bearer abc123'")
+        assertContains(command, """--data-raw '{"a":1}'""")
+    }
+
+    @Test
+    fun whatBelongsToTheHopIsLeftOut() {
+        val command =
+            Curl.of(
+                flowWith(
+                    headers =
+                        Headers(
+                            listOf(
+                                Header("Content-Length", "7"),
+                                Header("Connection", "keep-alive"),
+                                Header("Proxy-Connection", "keep-alive"),
+                                Header("Accept", "*/*"),
+                            )
+                        )
+                )
+            )
+        assertContains(command, "Accept")
+        assertTrue("Content-Length" !in command)
+        assertTrue("Connection" !in command)
+    }
+
+    @Test
+    fun aQuoteInAValueCannotEndTheQuoting() {
+        val command =
+            Curl.of(
+                flowWith(
+                    method = "POST",
+                    headers = Headers(listOf(Header("X-Odd", "it's; rm -rf /"))),
+                    requestBody = CapturedBody("it's".toByteArray(), 4, false),
+                )
+            )
+        assertContains(command, """'X-Odd: it'\''s; rm -rf /'""")
+        assertContains(command, """--data-raw 'it'\''s'""")
+    }
+
+    @Test
+    fun aBodyThatCannotBeWrittenOutSaysSo() {
+        val binary = CapturedBody(byteArrayOf(0, -1, -2), 3, false)
+        val command = Curl.of(flowWith(method = "POST", requestBody = binary))
+        assertContains(command, "# the body was binary")
+        assertTrue("--data-raw" !in command)
+    }
+
+    @Test
+    fun aHalfKeptBodySaysHowMuchOfItThisIs() {
+        val part = CapturedBody("{\"a\":".toByteArray(), 9_000, true)
+        assertContains(
+            Curl.of(flowWith(method = "POST", requestBody = part)),
+            "# only the first 5 bytes",
+        )
+    }
+}

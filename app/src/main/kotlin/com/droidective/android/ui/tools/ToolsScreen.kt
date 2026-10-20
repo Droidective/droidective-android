@@ -51,6 +51,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "wireless-adb" to { WirelessAdbTool(it) },
         "wifi" to { WifiTool(it) },
         "network-speed" to { NetworkSpeedTool(it) },
+        "network-check" to { NetworkCheckTool(it) },
         "get-ip" to { GetIpTool(it) },
         "apps" to { AppsTool(it) },
         "install-app" to { InstallAppTool(it) },

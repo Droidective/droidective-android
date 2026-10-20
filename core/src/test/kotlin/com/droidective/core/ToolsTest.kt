@@ -245,7 +245,13 @@ class ToolsTest {
         // Tools the phone has and the Mac doesn't yet. Each is a new idea, not a renamed one: when
         // the Mac gets one, it takes this id.
         val phoneOnly =
-            setOf("background-work", "settings-editor", "ui-inspector", "intent-builder")
+            setOf(
+                "background-work",
+                "settings-editor",
+                "ui-inspector",
+                "intent-builder",
+                "network-check",
+            )
         assertEquals(emptySet(), phoneOnly intersect macIds)
         assertEquals(emptySet(), Features.all.map { it.id }.toSet() - macIds - phoneOnly)
         assertEquals(Features.all.size, Features.all.map { it.id }.toSet().size)

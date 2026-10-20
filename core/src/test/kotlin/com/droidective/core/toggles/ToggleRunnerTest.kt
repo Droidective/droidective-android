@@ -85,6 +85,31 @@ class ToggleRunnerTest {
     }
 
     @Test
+    fun aCleanScreenshotWrapsTheCaptureInDemoModeAndPutsItBack() = runTest {
+        access = Access(granted = true, shell = ShellProvider.Shizuku)
+        runner.apply(toggle("clean-screenshot"), "run")
+        val line = shell.invocations.single()
+        val steps =
+            listOf(
+                "cmd statusbar collapse",
+                "a=$(settings get global sysui_demo_allowed)",
+                "settings put global sysui_demo_allowed 1",
+                "-e command 'enter'",
+                "-e command 'clock' -e hhmm '0941'",
+                "-e command 'notifications' -e visible 'false'",
+                "screencap -p",
+                "--method scan_file",
+                "s=$?",
+                "-e command 'exit'",
+                "if [ \"\$a\" = null ]; then settings delete global sysui_demo_allowed; " +
+                    "else settings put global sysui_demo_allowed \"\$a\"; fi",
+                "exit \$s",
+            )
+        steps.forEach { assertTrue(it in line, "missing: $it") }
+        assertEquals(steps.sortedBy(line::indexOf), steps, "demo mode, capture, then put back")
+    }
+
+    @Test
     fun preferredNetworkSetsSlotZerosMaskAndReadsItBack() = runTest {
         access = Access(granted = true, shell = ShellProvider.Shizuku)
         // Recorded from the API 36 emulator after the 4G mask.

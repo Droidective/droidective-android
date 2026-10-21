@@ -73,10 +73,13 @@ class ProxyServer(
      * else on that Wi-Fi: their traffic through this phone, and this phone's address against
      * whatever they do with it. The phone points at 127.0.0.1 and nothing off the device can reach
      * it.
+     *
+     * It is IPv4's loopback by name, not `InetAddress.getLoopbackAddress()`: on Android that is
+     * IPv6's `::1`, and a socket bound there never hears a connection to 127.0.0.1.
      */
     fun start(port: Int = 0): Int {
         check(listener == null) { "the proxy is already listening" }
-        val server = ServerSocket(port, BACKLOG, InetAddress.getLoopbackAddress())
+        val server = ServerSocket(port, BACKLOG, LOOPBACK)
         val running = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         listener = server
         scope = running
@@ -320,6 +323,9 @@ class ProxyServer(
         const val BACKLOG = 50
         const val IDLE_MILLIS = 120_000
         const val CONNECT_MILLIS = 15_000
+
+        /** What the phone's proxy setting names. */
+        val LOOPBACK: InetAddress = InetAddress.getByAddress("localhost", byteArrayOf(127, 0, 0, 1))
 
         val ESTABLISHED = wire("HTTP/1.1 200 Connection Established\r\n\r\n")
         val BAD_REQUEST = wire("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n")

@@ -5,8 +5,8 @@ Fiddler and mitmproxy do, with a certificate authority the phone generates itsel
 For developers watching their own app, and for anyone who needs to see what a device
 is actually sending.
 
-This document is the handover. It says what is built, what is left, in what order,
-and the handful of decisions that are easy to get wrong a second time.
+This document is the handover. It says what is built, what is left, and the handful
+of decisions that are easy to get wrong a second time.
 
 ## Why it runs on the phone
 
@@ -19,7 +19,8 @@ is not yours to configure.
 ## Where the code is
 
 Everything except the Android plumbing is in `core`, which is a plain JVM module —
-so the whole proxy is unit-tested against loopback sockets with no emulator.
+so the whole proxy is unit-tested against loopback sockets with no emulator. `core`'s
+tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the decisions).
 
 | File | What it is |
 | --- | --- |
@@ -31,95 +32,81 @@ so the whole proxy is unit-tested against loopback sockets with no emulator.
 | `core/net/http/HttpReader.kt` | Reads a head and stops at the body |
 | `core/net/http/HttpBody.kt` | Moves a body across, keeping a bounded copy |
 | `core/net/proxy/ProxyServer.kt` | The server: forward, open a `CONNECT`, or pass it through |
-| `core/net/proxy/ProxyRules.kt` | Which hosts are opened and which are left alone |
+| `core/net/proxy/ProxyRules.kt` | Which apps and hosts are read, and `Passing`: why one wasn't |
+| `core/net/proxy/Refusals.kt` | The (app, host) pairs that refused the certificate, passed through after |
+| `core/net/proxy/TrafficRules.kt` | The rules as kept: apps by package, host patterns, the step-aside switch |
+| `core/net/proxy/Dial.kt` | Connecting to a host's first address that answers |
+| `core/net/proxy/TlsFailure.kt` | A TLS failure in words: the alert, not BoringSSL's internals |
 | `core/net/proxy/Origin.kt` | Where a request is going |
 | `core/net/proxy/ProxyTls.kt` | The two TLS ends |
 | `core/net/proxy/ConnectionOwners.kt` | `/proc/net/tcp` → the uid behind a connection |
+| `core/net/proxy/ProxySetting.kt` | `http_proxy`: what to write, whether it points here, what to put back |
 | `core/net/proxy/FlowStore.kt` | What has been seen, bounded by count and by bytes |
 | `core/net/proxy/FlowFilter.kt` | The search box, and `FlowSummary` for the chips |
+| `core/net/proxy/FlowLabels.kt` | How a row reads: outcome, sizes, durations, GraphQL operation, why passed |
 | `core/net/proxy/BodyView.kt` | Decoding and shaping a captured body |
 | `core/net/proxy/Curl.kt` | A flow written back out as a command |
+| `core/net/proxy/Har.kt` | Flows as a HAR 1.2 file, written an entry at a time |
 
-`core/net` carries **126 tests**, nearly all of them this work.
+`core/net` carries **194 tests**, nearly all of them this work.
+
+The Android side is in `app`:
+
+| File | What it is |
+| --- | --- |
+| `proxy/TrafficProxy.kt` | The one proxy: state, store, certificate, rules, pointing the phone |
+| `proxy/ProxyService.kt` | The `specialUse` foreground service, and `ProxyNotices` |
+| `proxy/TrafficExport.kt` | Saving flows as HAR to Downloads, and the share sheet |
+| `ui/tools/NetworkTrafficTool.kt` | The screen: proxy, certificate, rules, the list |
+| `ui/tools/NetworkTrafficRules.kt` | The rules editor |
+| `ui/tools/NetworkTrafficDetail.kt` | One flow: overview, headers, body, cURL, rule shortcuts |
+| `surface/AppPlatformToggles.kt` | The `traffic-proxy` toggle; `TrafficProxyTile` is in `TileSlots.kt` |
 
 ## What is merged
 
 | PR | What it added |
 | --- | --- |
-| [#69](https://github.com/Droidective/droidective-android/pull/69) | The certificate authority |
-| [#70](https://github.com/Droidective/droidective-android/pull/70) | The HTTP wire layer |
-| [#71](https://github.com/Droidective/droidective-android/pull/71) | The proxy itself |
-| [#72](https://github.com/Droidective/droidective-android/pull/72) | Per-app attribution |
-| [#73](https://github.com/Droidective/droidective-android/pull/73) | The store and the filter |
-| [#74](https://github.com/Droidective/droidective-android/pull/74) | Body decoding and cURL export |
-| [#76](https://github.com/Droidective/droidective-android/pull/76) | Listening on loopback rather than every interface |
+| [#69](https://github.com/Droidective/droidective-android/pull/69)–[#74](https://github.com/Droidective/droidective-android/pull/74), [#76](https://github.com/Droidective/droidective-android/pull/76) | The engine: certificates, HTTP, the proxy, attribution, the store, bodies, cURL |
+| [#78](https://github.com/Droidective/droidective-android/pull/78) | `ProxyService` and `TrafficProxy`; pointing read back from the setting; the certificate saved to Downloads |
+| [#79](https://github.com/Droidective/droidective-android/pull/79) | Listening on `127.0.0.1` — Android's loopback address is `::1` |
+| [#80](https://github.com/Droidective/droidective-android/pull/80) | The Network Traffic tool |
+| [#81](https://github.com/Droidective/droidective-android/pull/81) | Attribution in the background, and for every connection of a burst |
+| [#82](https://github.com/Droidective/droidective-android/pull/82) | A phone left pointed at a stopped proxy gets its setting back |
+| [#83](https://github.com/Droidective/droidective-android/pull/83) | Every address of a host tried; TLS failures in words; requests on record before the dial |
+| [#84](https://github.com/Droidective/droidective-android/pull/84) | Reading only chosen apps; stepping aside for apps that refuse |
+| [#85](https://github.com/Droidective/droidective-android/pull/85) | The rules editor, kept in `traffic-rules.json` |
+| [#86](https://github.com/Droidective/droidective-android/pull/86) | HAR export |
+| [#87](https://github.com/Droidective/droidective-android/pull/87) | The `traffic-proxy` toggle and its Quick Settings tile |
 
-Nothing is wired into the app yet. There is no feature id in the registry, no screen,
-and no way to start it — `core` is complete and inert.
+## What is left, worth doing
 
-## What is left, in order
+Roughly in the order people reach for them after the list itself:
 
-### 1. `ProxyService`
-
-A foreground service, `specialUse`, declared in the manifest beside
-`ScreenRecordService` (copy that declaration and its `PROPERTY_SPECIAL_USE_FGS_SUBTYPE`
-wording). It owns the proxy's lifetime: `onStartCommand` starts it, `onDestroy` calls
-`TrafficProxy.shutDown`. Notification: "Watching this phone's traffic", "Listening on
-127.0.0.1:8888", with a Stop action and a tap that opens the tool. Channel
-`traffic-proxy`, id 7430, icon `sym_travel_explore`.
-
-This is not decoration. Without a foreground service OxygenOS freezes the app, and a
-frozen proxy is a phone whose network has silently stopped.
-
-> Writing this file was refused by the Claude Code auto-mode permission classifier
-> ("Expose Local Services"). Whoever picks this up either writes it by hand or grants
-> the permission first.
-
-### 2. `TrafficProxy` — on the `proxy-android` branch, unmerged
-
-Already written, pushed, **does not compile on its own** because it refers to
-`ProxyService`. It holds the state flow, the store, the certificate keystore
-(`filesDir/proxy-ca.p12`), the `FlowSink` that stamps each flow with the app name,
-the `FlowOwners` that reads the socket table through the shell, the `KeyChain` install
-intent, and the proxy-setting plumbing.
-
-### 3. Feature registration
-
-- `Features.kt`: id **`network-traffic`**, title "Network Traffic", category `Network`,
-  level `Shell`, icon `travel_explore`. Keywords worth having: proxy, http, https,
-  charles, proxyman, mitm, capture, intercept, api, request, response.
-- `ToolsScreen.kt`: add to `toolScreens`.
-- `ToolsTest.kt`: add to `phoneOnly` — the Mac has no counterpart. (The Mac's
-  `http-proxy` is a different feature: it only *sets* the device's proxy.)
-
-### 4. The screen
-
-Model the layout on `LogcatTool`: a `Scaffold` with a `LazyColumn`, not `ToolScaffold`,
-which scrolls and cannot hold a long list.
-
-- **Setup**, shown until it is running: install the certificate, point the phone here,
-  and the explanation in "What stops this working" below.
-- **Running**: start/stop, the address, how many flows and how much is held.
-- **The list**: a row per flow — method, status tinted by class, host and path, the
-  app, duration, size. Search box over `FlowFilter.parse`, chips from `FlowSummary`.
-- **The detail**: request and response headers, the body through `BodyView`
-  (JSON tree, text, form fields, image), and copy as cURL.
-
-Pace the list off `TrafficProxy.changes` with `sample(250)` rather than recomposing per
-flow — the same lesson the Mac app learned about feeds.
-
-### 5. Then
-
-Pass-through rules editor (`ProxyRules`), HAR export, a Quick Settings tile, and
-editing a request before it goes out.
+- **Repeat and edit a request.** Send a flow again, as it was or changed — Charles's
+  *Repeat* and *Compose*. The request head and kept body are all there; it needs a client
+  that goes through the proxy, so the repeat is recorded too.
+- **Breakpoints.** Hold a request or a response for a host, edit it, let it go. The relay
+  already sits between the two ends; the work is pausing a connection on a decision the
+  screen makes.
+- **Map local and map remote.** Answer a URL from a file, or send it to another host — the
+  commonest way to try a server change before it ships.
+- **The system store, with root.** A user certificate is trusted only by apps that opt in.
+  With root it can go in the system store, and every app that doesn't pin trusts it. On
+  Android 14 and later the store lives in the Conscrypt APEX, so it means a tmpfs mounted
+  over `/apex/com.android.conscrypt/cacerts` in every app's mount namespace (HTTP Toolkit's
+  approach), redone after each reboot. `CertificateTrust.System` already reads the result.
+- **WebSocket frames.** An upgrade is carried as bytes (`tunnelled`); reading the frames
+  would show what a socket.io or GraphQL subscription says.
+- **brotli and zstd.** Browsers ask for them, and a body in either is shown and exported as
+  it arrived: it needs a decoder the app doesn't carry.
+- **HTTP/2.** Only HTTP/1.1 is offered in ALPN, so clients fall back; gRPC can't.
 
 ## What stops this working, and what to tell people
 
-**Android 7 and later do not trust a user-installed certificate by default.** This is
-the single thing that confuses everyone, and the screen should say it plainly rather
-than let someone discover it:
+**Android 7 and later do not trust a user-installed certificate by default.** The screen
+says so, and offers the fix for your own app:
 
-- **Your own debug build** — add a network security config and it works:
+- **Your own debug build** — a network security config, which the certificate card copies:
   ```xml
   <network-security-config>
     <debug-overrides>
@@ -130,12 +117,20 @@ than let someone discover it:
     </debug-overrides>
   </network-security-config>
   ```
-  Offer this as a copy button.
-- **Any app, on a rooted device** — the certificate goes in the system store.
-- **An app that pins its certificates** will not work either way. That is the app
-  working correctly. Put the host in `ProxyRules.except` so it keeps working while
-  the app you are debugging stays open. **Defeating pinning is deliberately out of
-  scope** — Charles and Proxyman do not do it either.
+- **Chrome** trusts user certificates, which makes it the quickest check that it all works.
+- **Any app, on a rooted device** — the certificate goes in the system store (left to do).
+- **An app that pins its certificates** will not work either way. That is the app working
+  correctly. Pass its host through, or leave step-aside on. **Defeating pinning is
+  deliberately out of scope** — Charles and Proxyman do not do it either.
+
+**Android 11 and later refuse a CA certificate an app hands over**
+(`KeyChain.createInstallIntent`). The certificate is saved to Downloads and installed from
+Settings (search "CA certificate"); Android asks for a screen lock first.
+
+**Some apps go around a proxy they can't trust.** Android's `HttpURLConnection` (OkHttp
+inside) always tries a direct connection after the proxy route fails, so such an app is
+recorded refusing once and then works without the proxy. Droidective's own update check
+does exactly this.
 
 ## Decisions worth not relitigating
 
@@ -144,30 +139,37 @@ than let someone discover it:
 - **One leaf key for every host.** Standing in for a new host costs a signature, not an
   RSA key generation — milliseconds instead of seconds on a phone.
 - **The real server's certificate is checked**, hostname and all. An app that trusts the
-  proxy has handed it that decision; skipping the check would quietly make every
-  connection through it weaker than it was.
-- **Only HTTP/1.1 is offered in ALPN**, so clients fall back from HTTP/2 to something
-  this can read.
-- **It listens on loopback only.** A proxy on every interface is an open proxy for
-  everyone else on that Wi-Fi. The phone points at `127.0.0.1`, which is all the
-  on-device design ever needed.
-- **Bodies are forwarded whole** however little is kept. The app must behave exactly as
-  it would with nothing in the way.
-- **Stopping clears the phone's proxy setting.** A phone left pointing at a proxy that
-  has gone has no working network and nothing on screen says why. `:0` is how Android
-  clears it; an empty value does not.
-- **Attribution is asked once per connection.** The port stops meaning anything the
-  moment the connection closes.
+  proxy has handed it that decision.
+- **Only HTTP/1.1 is offered in ALPN**, so clients fall back from HTTP/2 to something this
+  can read.
+- **It listens on `127.0.0.1`, by name.** A proxy on every interface is an open proxy for
+  everyone else on that Wi-Fi. And not `InetAddress.getLoopbackAddress()`: on Android that
+  is `::1`, and a socket there never hears a connection to `127.0.0.1` (#79). `core`'s tests
+  prefer IPv6 for that reason, so the desktop JVM can't hide it again.
+- **Bodies are forwarded whole** however little is kept. The app must behave exactly as it
+  would with nothing in the way.
+- **Stopping puts the setting back the way it was**: the proxy somebody had before, or `:0`
+  (an empty value does not clear it), and nothing at all when somebody changed it since.
+  Whether it points here is read back from the setting, never remembered, and the app's
+  next start puts back a setting left pointing at a proxy that isn't running (#82).
+- **Attribution never makes a request wait**, except when the answer decides what happens
+  to the connection: some apps chosen, or a host somebody refused (#81, #84). It is asked
+  the moment a connection is accepted, while the app is still on the other end.
+- **Only the chosen apps are read; the rest pass through untouched.** An app that can't be
+  told apart, while apps are chosen, passes through: reading it could break an app nobody
+  asked about. Chosen apps of which none is installed read nothing (`NOBODY`).
+- **Step aside is on by default**, keyed by app and host, kept for one run, and cleared when
+  the certificate's trust changes.
+- **HAR is written decoded**, an entry at a time, and leaves out connections never read.
 
 ## Resuming
 
 ```bash
 git fetch origin
-git worktree add -b proxy-ui ../droidective-android-proxy-ui origin/main
-git checkout origin/proxy-android -- app/src/main/kotlin/com/droidective/android/proxy/
+git worktree add -b <branch> ../droidective-android-<branch> origin/main
 ```
 
-Then work through the list above from step 1. The check CI runs is:
+The check CI runs is:
 
 ```bash
 ./gradlew ktfmtFormat

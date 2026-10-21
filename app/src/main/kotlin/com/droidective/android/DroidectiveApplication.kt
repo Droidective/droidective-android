@@ -5,6 +5,8 @@ import android.content.Context
 import androidx.core.content.edit
 import com.droidective.android.automation.Automations
 import com.droidective.android.crashes.OwnCrashes
+import com.droidective.android.proxy.ProxyNotices
+import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.surface.AppPlatformToggles
 import com.droidective.android.update.Updates
 import com.droidective.core.apps.SavedIntents
@@ -24,6 +26,7 @@ import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Holds the app-wide objects every surface shares: the app, widgets, tiles and automations. */
@@ -91,6 +94,14 @@ class DroidectiveApplication : Application() {
         // A force stop clears the app's alarms; starting again puts the schedules back.
         scope.launch { Automations.reschedule(this@DroidectiveApplication) }
         scope.launch { Updates.schedule(this@DroidectiveApplication) }
+        scope.launch {
+            // A service Android is restarting gets going first: it may still be listening.
+            delay(STRANDED_GRACE_MILLIS)
+            access.settled()
+            if (TrafficProxy.releaseIfStranded(this@DroidectiveApplication)) {
+                ProxyNotices.released(this@DroidectiveApplication)
+            }
+        }
         toggles =
             ToggleRunner(
                 settings = AndroidSettingsStore(this),
@@ -105,3 +116,6 @@ class DroidectiveApplication : Application() {
 
 val Context.droidective: DroidectiveApplication
     get() = applicationContext as DroidectiveApplication
+
+/** How long a freshly started process leaves a restarting proxy before calling it stranded. */
+private const val STRANDED_GRACE_MILLIS = 5_000L

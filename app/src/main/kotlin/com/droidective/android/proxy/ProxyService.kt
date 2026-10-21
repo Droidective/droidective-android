@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -95,13 +96,7 @@ class ProxyService : Service() {
         stopSelf()
     }
 
-    private fun notify(notification: Notification) {
-        try {
-            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification)
-        } catch (_: SecurityException) {
-            // Notifications are off; the screen shows the same.
-        }
-    }
+    private fun notify(notification: Notification) = ProxyNotices.post(this, notification)
 
     private fun running(): Notification {
         val text =
@@ -126,26 +121,7 @@ class ProxyService : Service() {
             .setAutoCancel(true)
             .build()
 
-    private fun builder(): Notification.Builder {
-        getSystemService(NotificationManager::class.java)
-            .createNotificationChannel(
-                NotificationChannel(CHANNEL, "Network Traffic", NotificationManager.IMPORTANCE_LOW)
-                    .apply { description = "The debugging proxy, while it runs" }
-            )
-        val open =
-            PendingIntent.getActivity(
-                this,
-                NOTIFICATION_ID,
-                Intent(this, MainActivity::class.java)
-                    .putExtra(Launch.EXTRA_DESTINATION, Launch.DESTINATION_TOOL)
-                    .putExtra(Launch.EXTRA_TOOL, TrafficProxy.TOOL),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-        return Notification.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.sym_travel_explore)
-            .setContentIntent(open)
-            .setOnlyAlertOnce(true)
-    }
+    private fun builder(): Notification.Builder = ProxyNotices.builder(this)
 
     private fun stopIntent(): PendingIntent =
         PendingIntent.getService(
@@ -160,10 +136,60 @@ class ProxyService : Service() {
     companion object {
         internal const val ACTION_STOP = "com.droidective.android.action.STOP_TRAFFIC_PROXY"
         internal const val EXTRA_POINT = "com.droidective.android.extra.POINT"
-        private const val CHANNEL = "traffic-proxy"
-        private const val NOTIFICATION_ID = 7_430
+        private const val NOTIFICATION_ID = ProxyNotices.ID
 
         /** How often the count in the notification may change; it is a glance, not a feed. */
         private const val NOTIFY_GAP = 2_000L
+    }
+}
+
+/** The proxy's notifications: the one its service keeps up, and the ones left behind. */
+internal object ProxyNotices {
+    const val ID = 7_430
+    private const val CHANNEL = "traffic-proxy"
+
+    fun builder(context: Context): Notification.Builder {
+        context
+            .getSystemService(NotificationManager::class.java)
+            .createNotificationChannel(
+                NotificationChannel(CHANNEL, "Network Traffic", NotificationManager.IMPORTANCE_LOW)
+                    .apply { description = "The debugging proxy, while it runs" }
+            )
+        val open =
+            PendingIntent.getActivity(
+                context,
+                ID,
+                Intent(context, MainActivity::class.java)
+                    .putExtra(Launch.EXTRA_DESTINATION, Launch.DESTINATION_TOOL)
+                    .putExtra(Launch.EXTRA_TOOL, TrafficProxy.TOOL),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        return Notification.Builder(context, CHANNEL)
+            .setSmallIcon(R.drawable.sym_travel_explore)
+            .setContentIntent(open)
+            .setOnlyAlertOnce(true)
+    }
+
+    /** Says the setting was put back, so nobody wonders why their proxy came off. */
+    fun released(context: Context) {
+        val text =
+            "Network Traffic had stopped and left it pointed at the proxy, so apps had no network."
+        post(
+            context,
+            builder(context)
+                .setContentTitle("The phone's proxy setting was put back")
+                .setContentText(text)
+                .setStyle(Notification.BigTextStyle().bigText(text))
+                .setAutoCancel(true)
+                .build(),
+        )
+    }
+
+    fun post(context: Context, notification: Notification) {
+        try {
+            context.getSystemService(NotificationManager::class.java).notify(ID, notification)
+        } catch (_: SecurityException) {
+            // Notifications are off; the screen shows the same.
+        }
     }
 }

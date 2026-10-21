@@ -17,6 +17,7 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import javax.net.ssl.SSLContext
@@ -25,6 +26,7 @@ import kotlin.concurrent.thread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -92,9 +94,13 @@ class ProxyServer(
                         break // The listener was closed: that is how stopping looks from here.
                     }
                 open += client
+                // Asked the moment it arrives, while the app is still waiting on the other end: an
+                // app that refuses the certificate is gone a few milliseconds later, and with it
+                // the only row that said which app it was.
+                val owner = ownerOf(client.port)
                 launch {
                     try {
-                        serve(client)
+                        serve(client, owner)
                     } finally {
                         open -= client
                         client.closeQuietly()
@@ -115,19 +121,19 @@ class ProxyServer(
         scope = null
     }
 
-    private fun serve(client: Socket) {
+    private fun serve(client: Socket, owner: CompletableFuture<Int?>) {
         try {
             client.soTimeout = IDLE_MILLIS
             val source = BufferedInputStream(client.getInputStream())
             val out = BufferedOutputStream(client.getOutputStream())
             val head = HttpReader(source).readRequest() ?: return
-            // Asked once per connection: the port is the only thing tying it to an app, and it
-            // stops meaning anything the moment the connection closes.
-            val uid = owners.uidOf(client.port)
+            // Once per connection: the port is the only thing tying it to an app, and it stops
+            // meaning anything the moment the connection closes.
+            val record = Owned(sink, owner)
             if (head.method.equals(CONNECT, ignoreCase = true)) {
-                accept(head, client, source, out, uid)
+                accept(head, client, source, out, record)
             } else {
-                exchanges(source, out, secure = false, fixed = null, first = head, uid = uid)
+                exchanges(source, out, secure = false, fixed = null, first = head, record = record)
             }
         } catch (_: IOException) {
             // A client that goes away part-way through is ordinary and not worth a record.
@@ -140,12 +146,12 @@ class ProxyServer(
         client: Socket,
         source: InputStream,
         out: OutputStream,
-        uid: Int?,
+        record: FlowSink,
     ) {
         val origin = Origin.authority(head.target) ?: return out.writeQuietly(BAD_REQUEST)
         out.write(ESTABLISHED)
         out.flush()
-        if (!rules.opens(origin.host)) return tunnel(origin, head, client, source, out, uid)
+        if (!rules.opens(origin.host)) return tunnel(origin, head, client, source, out, record)
         val context =
             contexts.getOrPut(origin.host) {
                 val leaf = certificates.certificateFor(origin.host, clock())
@@ -157,8 +163,8 @@ class ProxyServer(
         } catch (e: SSLException) {
             // The app would not have the certificate: either the authority is not installed, or
             // the app pins its own. Saying so beats a connection that merely stops.
-            sink.finished(
-                begin(head, origin, secure = true, uid = uid)
+            record.finished(
+                begin(head, origin, secure = true)
                     .copy(
                         finishedAt = clock(),
                         failure = "the app refused the certificate: ${e.reason()}",
@@ -172,7 +178,7 @@ class ProxyServer(
             secure = true,
             fixed = origin,
             first = null,
-            uid = uid,
+            record = record,
         )
     }
 
@@ -183,7 +189,7 @@ class ProxyServer(
         secure: Boolean,
         fixed: Origin?,
         first: RequestHead?,
-        uid: Int?,
+        record: FlowSink,
     ) {
         val reader = HttpReader(source)
         var upstream: Upstream? = null
@@ -195,16 +201,16 @@ class ProxyServer(
                     upstream.close()
                     upstream = null
                 }
-                val flow = begin(head, origin, secure, uid)
+                val flow = begin(head, origin, secure)
                 if (upstream == null) {
                     upstream =
                         try {
                             Upstream(origin, dial(origin, secure))
                         } catch (e: IOException) {
-                            return failed(flow, out, e)
+                            return failed(flow, out, e, record)
                         }
                 }
-                if (!exchange(flow, head, source, out, upstream)) break
+                if (!exchange(flow, head, Ends(source, out, upstream), record)) break
                 head = reader.readRequest()
             }
         } finally {
@@ -213,35 +219,30 @@ class ProxyServer(
     }
 
     /** One request and its answer. Returns whether the connection can carry another. */
-    private fun exchange(
-        flow: Flow,
-        head: RequestHead,
-        source: InputStream,
-        out: OutputStream,
-        upstream: Upstream,
-    ): Boolean {
+    private fun exchange(flow: Flow, head: RequestHead, ends: Ends, record: FlowSink): Boolean {
+        val (source, out, upstream) = ends
         upstream.sink.write(
             head.with(target = head.path, headers = forwardable(head.headers)).bytes()
         )
         val requestBody = HttpBody.relay(BodyFraming.of(head), source, upstream.sink)
         upstream.sink.flush()
         val asked = flow.copy(requestBody = requestBody)
-        sink.started(asked)
+        record.started(asked)
 
         val response =
             try {
                 upstream.reader.readResponse() ?: throw IOException("the server answered nothing")
             } catch (e: IOException) {
-                failed(asked, out, e)
+                failed(asked, out, e, record)
                 return false
             }
         out.write(response.bytes())
-        if (response.status == SWITCHING) return upgrade(asked, response, source, out, upstream)
+        if (response.status == SWITCHING) return upgrade(asked, response, ends, record)
 
         val framing = BodyFraming.of(response, head.method)
         val body = HttpBody.relay(framing, upstream.source, out)
         out.flush()
-        sink.finished(asked.copy(response = response, responseBody = body, finishedAt = clock()))
+        record.finished(asked.copy(response = response, responseBody = body, finishedAt = clock()))
         return framing != BodyFraming.UntilClose &&
             !closes(head.headers) &&
             !closes(response.headers)
@@ -254,13 +255,13 @@ class ProxyServer(
     private fun upgrade(
         flow: Flow,
         response: ResponseHead,
-        source: InputStream,
-        out: OutputStream,
-        upstream: Upstream,
+        ends: Ends,
+        record: FlowSink,
     ): Boolean {
+        val (source, out, upstream) = ends
         out.flush()
         bothWays(source, out, upstream.source, upstream.sink)
-        sink.finished(flow.copy(response = response, finishedAt = clock(), tunnelled = true))
+        record.finished(flow.copy(response = response, finishedAt = clock(), tunnelled = true))
         return false
     }
 
@@ -271,10 +272,10 @@ class ProxyServer(
         client: Socket,
         source: InputStream,
         out: OutputStream,
-        uid: Int?,
+        record: FlowSink,
     ) {
-        val flow = begin(head, origin, secure = true, uid = uid).copy(tunnelled = true)
-        sink.started(flow)
+        val flow = begin(head, origin, secure = true).copy(tunnelled = true)
+        record.started(flow)
         val upstream = Socket()
         try {
             upstream.connect(InetSocketAddress(origin.host, origin.port), CONNECT_MILLIS)
@@ -282,21 +283,30 @@ class ProxyServer(
             client.soTimeout = 0
             upstream.soTimeout = 0
             bothWays(source, out, upstream.getInputStream(), upstream.getOutputStream())
-            sink.finished(flow.copy(finishedAt = clock()))
+            record.finished(flow.copy(finishedAt = clock()))
         } catch (e: IOException) {
-            sink.finished(flow.copy(finishedAt = clock(), failure = e.reason()))
+            record.finished(flow.copy(finishedAt = clock(), failure = e.reason()))
         } finally {
             upstream.closeQuietly()
         }
     }
 
-    private fun begin(head: RequestHead, origin: Origin, secure: Boolean, uid: Int?) =
-        Flow(ids.incrementAndGet(), clock(), secure, origin.host, origin.port, head, uid = uid)
+    private fun begin(head: RequestHead, origin: Origin, secure: Boolean) =
+        Flow(ids.incrementAndGet(), clock(), secure, origin.host, origin.port, head)
 
-    private fun failed(flow: Flow, out: OutputStream, error: Throwable) {
-        sink.finished(flow.copy(finishedAt = clock(), failure = error.reason()))
+    private fun failed(flow: Flow, out: OutputStream, error: Throwable, record: FlowSink) {
+        record.finished(flow.copy(finishedAt = clock(), failure = error.reason()))
         out.writeQuietly(badGateway(error))
     }
+
+    /**
+     * Which app holds the connection from [port], asked in the background. On a phone the answer is
+     * a round trip through the shell, and a request that waited for it would be slower than the
+     * same request without the proxy in the way.
+     */
+    private fun ownerOf(port: Int): CompletableFuture<Int?> =
+        CompletableFuture.supplyAsync({ owners.uidOf(port) }, Dispatchers.IO.asExecutor())
+            .exceptionally { null }
 
     private fun dial(origin: Origin, secure: Boolean): Socket =
         if (secure) {
@@ -307,6 +317,9 @@ class ProxyServer(
                 soTimeout = IDLE_MILLIS
             }
         }
+
+    /** The three streams one exchange moves bytes between. */
+    private data class Ends(val source: InputStream, val out: OutputStream, val upstream: Upstream)
 
     /** The server end of one client connection, kept while the requests keep going there. */
     private class Upstream(val origin: Origin, private val socket: Socket) {
@@ -366,6 +379,28 @@ class ProxyServer(
 
         fun wire(text: String) = text.toByteArray(StandardCharsets.ISO_8859_1)
     }
+}
+
+/**
+ * One connection's records, with the app behind it filled in as soon as that is known.
+ *
+ * Nobody waits for the answer. An exchange that finishes before it arrives is recorded without it,
+ * then again once it does — a flow's last record is the one that counts.
+ */
+private class Owned(private val sink: FlowSink, private val owner: CompletableFuture<Int?>) :
+    FlowSink {
+    override fun started(flow: Flow) = sink.started(stamped(flow))
+
+    override fun finished(flow: Flow) {
+        val now = stamped(flow)
+        sink.finished(now)
+        if (now.uid == null && !owner.isDone) {
+            owner.thenAccept { uid -> if (uid != null) sink.finished(now.copy(uid = uid)) }
+        }
+    }
+
+    private fun stamped(flow: Flow): Flow =
+        if (flow.uid != null) flow else flow.copy(uid = owner.getNow(null))
 }
 
 /** Copies both ways at once and returns when either side is done. */

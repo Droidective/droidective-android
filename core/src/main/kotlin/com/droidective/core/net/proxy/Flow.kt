@@ -68,8 +68,10 @@ data class Flow(
 /**
  * Where exchanges go as the proxy sees them.
  *
- * Both calls happen on the connection's own thread, so neither may block: a sink that waits is a
- * sink that slows down the app being watched.
+ * Neither call may block: a sink that waits is a sink that slows down the app being watched. They
+ * come from more than one thread — the connection's own, and whichever learned which app a
+ * connection belongs to — and a flow may be finished more than once, each record replacing the
+ * last.
  */
 interface FlowSink {
     /** The request has gone out and the answer has not arrived yet. */

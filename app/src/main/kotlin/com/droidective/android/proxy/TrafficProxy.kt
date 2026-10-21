@@ -306,21 +306,28 @@ object TrafficProxy {
      * Reads the kernel's socket table through the shell.
      *
      * The table is kept between connections and read again only when a port is not in it, which is
-     * what happens for a connection that has just arrived. Without that, every connection would
-     * wait on a shell round trip.
+     * what happens for a connection that has just arrived. Connections arriving together — a
+     * browser opens several at once — share one read rather than queueing a read each, and none of
+     * this holds up a request: the proxy asks in the background.
      */
     private class ShellOwners(private val context: Context) : FlowOwners {
-        private var table = ""
+        @Volatile private var table = ""
         private var readAt = 0L
 
-        @Synchronized
         override fun uidOf(port: Int): Int? {
             ConnectionOwners.owner(table, port)?.let {
                 return it
             }
-            if (System.currentTimeMillis() - readAt < LEAST_GAP) return null
-            refresh()
-            return ConnectionOwners.owner(table, port)
+            synchronized(this) {
+                // Whoever held the lock may have read a table that has this connection in it.
+                ConnectionOwners.owner(table, port)?.let {
+                    return it
+                }
+                val wait = readAt + LEAST_GAP - System.currentTimeMillis()
+                if (wait > 0) Thread.sleep(wait)
+                refresh()
+                return ConnectionOwners.owner(table, port)
+            }
         }
 
         private fun refresh() {
@@ -364,7 +371,8 @@ object TrafficProxy {
     /** What the proxy setting held before the phone was pointed here, to put back afterwards. */
     private const val BEFORE = "before"
 
-    private const val LEAST_GAP = 400L
+    /** How often the socket table may be read, however many connections arrive. */
+    private const val LEAST_GAP = 100L
 
     /**
      * The keystore sits in the app's own storage, which is what keeps it private; the password is

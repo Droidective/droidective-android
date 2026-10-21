@@ -15,6 +15,7 @@ import java.net.Socket
 import java.net.URI
 import java.security.KeyStore
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -96,7 +97,35 @@ class ProxyServerTest {
         FakeServer().use { origin ->
             val port = proxy(owners = FlowOwners { 10144 })
             get("http://127.0.0.1:${origin.port}/thing", port)
-            assertEquals(10144, sink.next().uid)
+            assertEquals(10144, sink.nextOwned().uid)
+        }
+    }
+
+    @Test
+    fun nobodyWaitsToLearnWhichAppItWas() {
+        // On a phone the answer is a shell round trip away. The request goes, the answer comes
+        // back to the app, and the record learns who asked when it can.
+        val answer = CountDownLatch(1)
+        FakeServer().use { origin ->
+            origin.reply = { ok("hello") }
+            val port =
+                proxy(
+                    owners =
+                        FlowOwners {
+                            answer.await(10, TimeUnit.SECONDS)
+                            10144
+                        }
+                )
+            assertEquals("hello", get("http://127.0.0.1:${origin.port}/thing", port))
+            val first = sink.next()
+            assertNull(first.uid)
+            assertEquals(200, first.status)
+
+            answer.countDown()
+            val owned = sink.next()
+            assertEquals(first.id, owned.id)
+            assertEquals(10144, owned.uid)
+            assertEquals(200, owned.status)
         }
     }
 
@@ -340,6 +369,15 @@ private class Collected : FlowSink {
     }
 
     fun next(): Flow = done.poll(10, TimeUnit.SECONDS) ?: error("the proxy recorded nothing")
+
+    /** The next record that knows its app: the first record may come before the answer does. */
+    fun nextOwned(): Flow {
+        while (true) next()
+            .takeIf { it.uid != null }
+            ?.let {
+                return it
+            }
+    }
 
     /** Waits for [count] exchanges to finish, then hands back every one of them. */
     fun all(count: Int): List<Flow> {

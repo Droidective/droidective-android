@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.lifecycleScope
 import com.droidective.android.automation.AutomationService
 import com.droidective.android.crashes.CrashAlerts
+import com.droidective.android.surface.Incoming
 import com.droidective.android.surface.Launch
 import com.droidective.android.surface.Surfaces
 import com.droidective.android.ui.AppScreen
@@ -58,6 +59,8 @@ class MainActivity : ComponentActivity() {
                     ?.takeIf { Features.byId(it) != null }
                     ?.let { Request(Destination.Tools, tool = it) }
             }
-            else -> null
+            // Opened from Files or shared from another app: a package to install, a link to try.
+            else ->
+                Incoming.route(intent ?: return null)?.let { Request(Destination.Tools, tool = it) }
         }
 }

@@ -173,4 +173,20 @@ class SplitApkSelectorTest {
             AppPackageFormat.entries.filter { it.isBundle },
         )
     }
+
+    @Test
+    fun aMediaTypeNamesAFormatOnlyWhenItNamesOne() {
+        assertEquals(
+            AppPackageFormat.Apk,
+            AppPackageFormat.ofMediaType("application/vnd.android.package-archive"),
+        )
+        assertEquals(
+            AppPackageFormat.Xapk,
+            AppPackageFormat.ofMediaType("application/xapk-package-archive"),
+        )
+        assertEquals(AppPackageFormat.Apkm, AppPackageFormat.ofMediaType("APPLICATION/VND.APKM"))
+        assertNull(AppPackageFormat.ofMediaType("application/octet-stream"))
+        assertNull(AppPackageFormat.ofMediaType("application/zip"))
+        assertNull(AppPackageFormat.ofMediaType(null))
+    }
 }

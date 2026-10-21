@@ -35,6 +35,29 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- An app package opened from Files, for Install App, which asks before installing.
+                 Content URIs only: the code refuses file:// (Incoming). -->
+            <intent-filter android:label="@string/open_install">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/vnd.android.package-archive" />
+                <data android:mimeType="application/xapk-package-archive" />
+                <data android:mimeType="application/vnd.apkm" />
+            </intent-filter>
+            <!-- Shared to Droidective: a package to install, or text with a link to try. -->
+            <intent-filter android:label="@string/share_install">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/vnd.android.package-archive" />
+                <data android:mimeType="application/xapk-package-archive" />
+                <data android:mimeType="application/vnd.apkm" />
+            </intent-filter>
+            <intent-filter android:label="@string/share_link">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <!-- The launcher starts this when a bar is added or reconfigured, so it's exported. -->

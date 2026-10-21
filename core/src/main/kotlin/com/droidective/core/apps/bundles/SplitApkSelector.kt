@@ -20,6 +20,20 @@ enum class AppPackageFormat(val extension: String, val displayName: String) {
             val extension = fileName.substringAfterLast('/').substringAfterLast('.', "").lowercase()
             return entries.firstOrNull { it.extension == extension }
         }
+
+        /**
+         * By media type, for a file another app handed over under a name with no extension. Only
+         * the types that name one format; `application/octet-stream` and `zip` name none.
+         */
+        fun ofMediaType(type: String?): AppPackageFormat? = MEDIA_TYPES[type?.lowercase()]
+
+        /** What [ofMediaType] knows, for the intent filters that take these files. */
+        val MEDIA_TYPES =
+            mapOf(
+                "application/vnd.android.package-archive" to Apk,
+                "application/xapk-package-archive" to Xapk,
+                "application/vnd.apkm" to Apkm,
+            )
     }
 }
 

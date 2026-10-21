@@ -32,3 +32,30 @@ class DeepLinkRepository(root: File) {
         fun isLink(text: String): Boolean = scheme.matches(text.trim())
     }
 }
+
+/** The link in text someone shared from another app: a message with a URL in it, say. */
+object SharedLinks {
+    /**
+     * The first link in [text], or null when there is none. Quotes, brackets and the end of a
+     * sentence around it are not part of it, but a bracket the link itself opened is:
+     * `wiki/HAR_(file_format)` keeps its last `)`.
+     */
+    fun first(text: String): String? =
+        text.split(WHITESPACE).asSequence().map(::trimmed).firstOrNull(DeepLinkRepository::isLink)
+
+    private fun trimmed(word: String): String {
+        var link = word.trimStart(*OPENERS)
+        while (link.isNotEmpty() && link.last() in CLOSERS) {
+            val last = link.last()
+            val opener = PAIRS[last]
+            if (opener != null && link.count { it == opener } >= link.count { it == last }) break
+            link = link.dropLast(1)
+        }
+        return link
+    }
+
+    private val WHITESPACE = Regex("""\s+""")
+    private val OPENERS = charArrayOf('(', '[', '<', '"', '\'', '“', '‘')
+    private val CLOSERS = setOf(')', ']', '>', '"', '\'', '”', '’', '.', ',', ';', ':', '!', '?')
+    private val PAIRS = mapOf(')' to '(', ']' to '[', '>' to '<')
+}

@@ -2,6 +2,8 @@ package com.droidective.android.proxy
 
 import android.Manifest
 import android.app.Application
+import android.app.Notification
+import android.app.NotificationManager
 import android.provider.Settings
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -97,5 +99,36 @@ class TrafficProxyTest {
 
         assertTrue(TrafficProxy.point(context, here = false))
         assertEquals(":0", setting)
+    }
+
+    @Test
+    fun aPhoneLeftPointedAtNothingGetsItsSettingBack() = runTest {
+        // Rebooted, updated or force-stopped while it ran: the service never heard.
+        setting = "127.0.0.1:8888"
+
+        assertTrue(TrafficProxy.releaseIfStranded(context))
+        assertEquals(":0", setting)
+    }
+
+    @Test
+    fun aSettingThatPointsElsewhereIsNotStranded() = runTest {
+        setting = "10.0.0.12:8888"
+
+        assertFalse(TrafficProxy.releaseIfStranded(context))
+        assertEquals("10.0.0.12:8888", setting)
+    }
+
+    @Test
+    fun theNoticeSaysWhyTheProxyCameOff() {
+        ProxyNotices.released(context)
+
+        val posted =
+            shadowOf(context.getSystemService(NotificationManager::class.java))
+                .allNotifications
+                .single()
+        assertEquals(
+            "The phone's proxy setting was put back",
+            posted.extras.getString(Notification.EXTRA_TITLE),
+        )
     }
 }

@@ -8,16 +8,21 @@ toggles Android keeps from ordinary apps. The macOS app lives in
 ## What it does
 
 - **Widgets everywhere.** Home-screen bars, buttons and lists, folders, a notification bar, Quick
-  Settings tiles and shortcuts, all built from the same items: 58 toggles (network, sound,
+  Settings tiles and shortcuts, all built from the same items: 59 toggles (network, sound,
   display, device and developer), single actions (a toggle set to one state, an app force-stopped,
   a permission granted), apps, other apps' shortcuts, your own shell commands, deep links,
   automations and tools. Every widget can be styled: grid or list, sizes, chips, labels, states,
   colours, and each slot's own label, icon and colour.
+- **Network Traffic.** An HTTPS debugging proxy on the phone itself, with no computer or network
+  to set up: every request the phone's apps make, attributed to its app, decoded and searchable,
+  copied as cURL or shared as HAR. Read only the apps you choose and the rest pass through
+  untouched; stopping always puts the phone's proxy setting back.
 - **Developer tools.** Performance Monitor (CPU, memory, temperature and an app's frames, with
   an overlay that shows them over any app), Logcat, Crash Catcher, Terminal, Settings Editor
   (settings, properties and feature flags, with undo), Sandbox Browser (an app's files,
   preferences and databases), File Explorer, APK Inspector, Screen Record, Bug Report, Background
-  Work (Doze, standby buckets and jobs), Monkey Test, React Native, Language, Install App (APK,
+  Work (Doze, standby buckets, jobs and alarms), UI Inspector, Intent Builder, Network Check, App
+  Snapshots, Notification Inspector, Monkey Test, React Native, Language, Install App (APK,
   APKS, XAPK and APKM, with only this phone's splits), Developer Settings, Memory Usage, Current
   Activity, Simulate, Demo Mode, HTTP Proxy, Private DNS, Wireless ADB, Wi-Fi, Network Speed,
   Apps, Device Info and more.

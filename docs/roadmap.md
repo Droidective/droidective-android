@@ -16,17 +16,14 @@ All merged to `main`, all unreleased:
 - **Notification Inspector** (#68) — why a notification shows or doesn't: what an app has
   showing now, each channel's importance, whether notifications are off as a whole, and
   Do Not Disturb.
-- **The debugging proxy's engine** (#69–#74, #76) — complete in `core`, not yet reachable
-  from the app. See [network-traffic-proxy.md](network-traffic-proxy.md).
+- **Network Traffic** (#69–#74, #76, #78–#87) — an HTTPS debugging proxy on the phone
+  itself: every request the phone's apps make, decoded, searchable, attributed to its app;
+  reading only the apps chosen while the rest pass through; HAR export; a Quick Settings
+  tile and a toggle. See [network-traffic-proxy.md](network-traffic-proxy.md), which also
+  lists what is worth doing next for it.
 
 **Next release is 0.7.0**: bump `versionName`/`versionCode` in `gradle.properties`, add a
 `RELEASE_NOTES.md` section, PR, merge, tag `v0.7.0`.
-
-## Next: finish the proxy
-
-The whole engine is merged and tested; none of it is reachable yet. The remaining work,
-in order, is in [network-traffic-proxy.md](network-traffic-proxy.md): the foreground
-service, the screen, and the feature registration.
 
 ## Then: make the app reach further than its own screen
 
@@ -70,6 +67,4 @@ to open an app first has already lost to the thing you were doing instead.
 
 ## Branches in flight
 
-- `proxy-android` — the proxy's `TrafficProxy`, pushed so it is not stranded on one
-  machine. **Does not compile on its own**: it refers to a `ProxyService` that is not
-  written yet.
+None.

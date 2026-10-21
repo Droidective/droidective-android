@@ -74,7 +74,7 @@ class NetworkCheckTest {
 
     @Test
     fun checksALocalServerStepByStep() {
-        ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress()).use { server ->
+        ServerSocket(0, 1, java.net.InetAddress.getByName("127.0.0.1")).use { server ->
             var asked = ""
             val serving = thread {
                 server.accept().use { client ->

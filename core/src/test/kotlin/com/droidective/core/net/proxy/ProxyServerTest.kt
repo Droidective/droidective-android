@@ -63,6 +63,14 @@ class ProxyServerTest {
     }
 
     @Test
+    fun itListensWhereThePhoneIsPointed() {
+        // The phone's proxy setting says 127.0.0.1. Android's own loopback address is ::1, and a
+        // proxy bound there refused every connection the phone made to it.
+        proxy()
+        assertEquals("127.0.0.1", server?.address?.hostAddress)
+    }
+
+    @Test
     fun aPlainRequestIsForwardedAndRecorded() {
         FakeServer().use { origin ->
             origin.reply = { ok("hello") }

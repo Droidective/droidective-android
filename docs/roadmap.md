@@ -5,25 +5,30 @@ another machine. Current release: **0.7.0**.
 
 ## Shipped since 0.7.0, waiting for a release
 
-Nothing yet. 0.7.0 carried Network Traffic (#69–#88), the Notification Inspector (#68), app ops
-(#67), alarms (#66), App Links (#65) and the capture actions as toggles and tiles (#64, #90); see
-`RELEASE_NOTES.md`. For what is worth doing next in the proxy, see
-[network-traffic-proxy.md](network-traffic-proxy.md).
+The four ways the app was hard to reach from outside its own screen, all done:
 
-## Then: make the app reach further than its own screen
+- **Pinned and recent tools**, and **launcher shortcuts** from them (#91): the Tools list leads
+  with Pinned and Recent, a long press pins a tool or adds it to the home screen, and the app's
+  icon offers the pinned tools, then the recent ones.
+- **Open with, and Share** (#92): an APK, XAPK or APKM opened from Files or shared goes to Install
+  App; shared text with a link in it goes to Deep Links' field.
+- **Floating controls** (#93): a bubble over any app for screenshots, a recording, a views
+  capture, the activity on screen and the debugging proxy; it keeps out of what it captures.
+- The capture actions' own Quick Settings tiles went out in 0.7.0 (#90).
 
-A review of the newer features found the same gap in all of them — they work well once
-you are in the app, and are hard to reach from anywhere else. A phone tool that needs you
-to open an app first has already lost to the thing you were doing instead.
+**Next release is 0.8.0**: bump `versionName`/`versionCode` in `gradle.properties`, add a
+`RELEASE_NOTES.md` section, PR, merge, tag `v0.8.0`.
 
-1. **Launcher shortcuts.** Long-pressing the app icon offers nothing. The most-used tools
-   belong there, plus "add this tool to the home screen" from the tool itself.
-2. **Open with, and Share.** Tapping an APK in Files, or sharing a link to try as a deep
-   link, never reaches Droidective.
-3. **A floating control over other apps.** Only the performance overlay floats today. To
-   capture or inspect a screen you have to leave the app you are inspecting, which is the
-   one moment you cannot.
-4. **Pinned and recent tools.** Thirty-eight tools sit in one list behind a search box.
+## Next
+
+- **The proxy's next steps** — repeat and edit a request, breakpoints, map local and remote, and
+  the certificate in the system store with root — are in
+  [network-traffic-proxy.md](network-traffic-proxy.md), in the order people reach for them.
+- **The Mac tools not yet on the phone**, by the Mac's ids: `api-client` (an HTTP client, which
+  the proxy's repeat would share), `permissions` and `app-info` as their own screens (the Apps
+  tool covers most of both), and `screenshot` as a tool with markup rather than only an action.
+- **Real-device passes on the OnePlus Pad** need the person there: OxygenOS holds every
+  `adb install` for a tap on the device (see Standing constraints).
 
 ## Standing constraints
 
@@ -31,6 +36,9 @@ to open an app first has already lost to the thing you were doing instead.
   nobody is there to unlock it.
 - Don't drive system pickers (DocumentsUI) or blind app-chooser presses on that device;
   test those on the emulator.
+- An `adb install` on that device waits on OxygenOS's install screen
+  (`com.oplus.stdsp/…InstallGuideActivity`) for a tap; don't drive it. A new build reaches it
+  only when the person approves it, or updates to a release themselves.
 - Don't touch the user's own apps' data.
 - Fixtures scrub identifiers. Record them from the emulator where possible.
 - Feature ids must match the Mac app's, or be listed in `ToolsTest.phoneOnly`.

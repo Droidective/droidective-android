@@ -153,6 +153,8 @@ object Symbols {
             "phone_android" to
                 Symbol(R.drawable.sym_phone_android, R.drawable.sym_phone_android_fill),
             "photo_camera" to Symbol(R.drawable.sym_photo_camera, R.drawable.sym_photo_camera_fill),
+            "picture_in_picture" to
+                Symbol(R.drawable.sym_picture_in_picture, R.drawable.sym_picture_in_picture_fill),
             "play_arrow" to Symbol(R.drawable.sym_play_arrow, R.drawable.sym_play_arrow_fill),
             "play_circle" to Symbol(R.drawable.sym_play_circle, R.drawable.sym_play_circle_fill),
             "policy" to Symbol(R.drawable.sym_policy, R.drawable.sym_policy_fill),

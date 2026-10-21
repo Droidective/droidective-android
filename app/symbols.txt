@@ -186,3 +186,4 @@ smart_toy
 cast
 cast_connected
 travel_explore
+picture_in_picture

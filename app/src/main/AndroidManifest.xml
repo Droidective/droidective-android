@@ -205,6 +205,14 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Runs the debugging proxy the person started in Network Traffic: listens on the phone's own loopback address, 127.0.0.1, so the person can see the HTTP and HTTPS requests their apps make and the answers that come back. Nothing off the device can reach it. Runs only until they press Stop in the app or its notification, and stopping puts the phone's proxy setting back the way it was." />
         </service>
+        <service
+            android:name=".floating.FloatingControlsService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Draws the floating controls the person turned on: a small bubble over other apps that opens to buttons for a screenshot, a screen recording, a capture of the screen's views, the activity on screen and the debugging proxy, so they can capture the app they are working on without leaving it. Runs only until they turn it off from the bubble, the app or its notification." />
+        </service>
         <!-- A Bluetooth device connecting or disconnecting. Protected broadcasts from the system;
              the receiver only re-reads which devices are connected. -->
         <receiver
@@ -393,6 +401,14 @@
             android:exported="true"
             android:icon="@drawable/sym_account_tree"
             android:label="@string/tile_capture_views"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.FloatingControlsTile"
+            android:exported="true"
+            android:icon="@drawable/sym_picture_in_picture"
+            android:label="@string/tile_floating_controls"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
         </service>

@@ -3,6 +3,7 @@ package com.droidective.android.surface
 import android.content.Context
 import android.provider.Settings
 import com.droidective.android.droidective
+import com.droidective.android.floating.FloatingControlsService
 import com.droidective.android.performance.PerformanceOverlayService
 import com.droidective.android.proxy.ProxyRun
 import com.droidective.android.proxy.TrafficProxy
@@ -29,6 +30,7 @@ class AppPlatformToggles(private val context: Context, private val platform: Pla
             PlatformApi.ScreenRecording -> onOff(ScreenRecorder.recording)
             PlatformApi.PerformanceOverlay -> onOff(PerformanceOverlayService.isRunning.value)
             PlatformApi.CaptureViews -> null
+            PlatformApi.FloatingControls -> onOff(FloatingControlsService.isRunning.value)
             PlatformApi.TrafficProxy ->
                 onOff(
                     TrafficProxy.state.value.let { it !is ProxyRun.Off && it !is ProxyRun.Failed }
@@ -44,6 +46,7 @@ class AppPlatformToggles(private val context: Context, private val platform: Pla
                 Outcome.Applied(state, confirmed = false)
             }
             PlatformApi.PerformanceOverlay -> overlay(state == ON)
+            PlatformApi.FloatingControls -> floatingControls(state == ON)
             PlatformApi.CaptureViews -> {
                 UiCaptures.capture(context, CAPTURE_DELAY_SECONDS)
                 Outcome.Applied(state, confirmed = false)
@@ -57,26 +60,44 @@ class AppPlatformToggles(private val context: Context, private val platform: Pla
             else -> platform.write(api, state)
         }
 
-    /**
-     * Display over other apps is an app-op the shell can allow; without one, it has to be asked.
-     */
     private suspend fun overlay(on: Boolean): Outcome {
         if (!on) {
             PerformanceOverlayService.stop(context)
             return Outcome.Applied(OFF, confirmed = false)
         }
-        if (!Settings.canDrawOverlays(context)) {
-            try {
-                context.droidective.access.shell()?.run(Grants.overlayCommand(context.packageName))
-            } catch (_: ShellUnavailableException) {
-                // Reported below, as the permission still missing.
-            }
-        }
-        if (!Settings.canDrawOverlays(context)) {
+        if (!canDrawOverlays()) {
             return Outcome.Failed("Allow Display over other apps in the Performance Monitor first.")
         }
         PerformanceOverlayService.start(context)
         return Outcome.Applied(ON, confirmed = false)
+    }
+
+    private suspend fun floatingControls(on: Boolean): Outcome {
+        if (!on) {
+            FloatingControlsService.stop(context)
+            return Outcome.Applied(OFF, confirmed = false)
+        }
+        if (!canDrawOverlays()) {
+            return Outcome.Failed(
+                "Allow Display over other apps for Droidective in Settings ▸ Apps ▸ Special access."
+            )
+        }
+        FloatingControlsService.start(context)
+        return Outcome.Applied(ON, confirmed = false)
+    }
+
+    /**
+     * Display over other apps is an app-op the shell can allow; without one, it has to be asked.
+     */
+    private suspend fun canDrawOverlays(): Boolean {
+        if (!Settings.canDrawOverlays(context)) {
+            try {
+                context.droidective.access.shell()?.run(Grants.overlayCommand(context.packageName))
+            } catch (_: ShellUnavailableException) {
+                // Reported by the caller, as the permission still missing.
+            }
+        }
+        return Settings.canDrawOverlays(context)
     }
 
     private fun onOff(on: Boolean) = if (on) ON else OFF

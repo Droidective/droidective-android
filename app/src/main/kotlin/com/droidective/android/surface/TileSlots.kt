@@ -229,6 +229,8 @@ class PerformanceOverlayTile : FixedTileService("perf-overlay")
 
 class CaptureViewsTile : FixedTileService("capture-views")
 
+class FloatingControlsTile : FixedTileService("floating-controls")
+
 class WirelessDebuggingTile : FixedTileService("wireless-debugging")
 
 /** Live network speed while Quick Settings is open; a tap opens the Network Speed tool. */

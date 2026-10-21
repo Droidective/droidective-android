@@ -35,6 +35,7 @@ import com.droidective.core.net.proxy.BodyView
 import com.droidective.core.net.proxy.Curl
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowLabels
+import com.droidective.core.net.proxy.TlsFailure
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -118,7 +119,7 @@ private fun connection(flow: Flow): String =
 private fun FailureSection(failure: String) {
     ToolSection("What happened") {
         Text(failure, color = MaterialTheme.colorScheme.error)
-        if (failure.startsWith(REFUSED)) {
+        if (failure.startsWith(TlsFailure.REFUSED)) {
             ToolNote(
                 "The app wouldn't accept Droidective's certificate. Either the certificate isn't " +
                     "installed, the app doesn't trust user certificates (most apps don't, unless " +
@@ -229,8 +230,6 @@ private fun ImageBody(image: BodyShape.Image) {
     }
 }
 
-/** How the proxy words a handshake the app turned down. */
-private const val REFUSED = "the app refused the certificate"
 private const val MAX_SHOWN_CHARS = 100_000
 private const val MAX_IMAGE_HEIGHT = 320
 private val TIME = DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZoneId.systemDefault())

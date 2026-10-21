@@ -13,7 +13,6 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.nio.charset.StandardCharsets
@@ -167,7 +166,7 @@ class ProxyServer(
                 begin(head, origin, secure = true)
                     .copy(
                         finishedAt = clock(),
-                        failure = "the app refused the certificate: ${e.reason()}",
+                        failure = TlsFailure.refused(e.message),
                     )
             )
             return
@@ -202,6 +201,9 @@ class ProxyServer(
                     upstream = null
                 }
                 val flow = begin(head, origin, secure)
+                // On record at once, before the server is reached: a dial can take its full
+                // fifteen seconds, and a request nobody can see yet looks like one never made.
+                record.started(flow)
                 if (upstream == null) {
                     upstream =
                         try {
@@ -276,9 +278,9 @@ class ProxyServer(
     ) {
         val flow = begin(head, origin, secure = true).copy(tunnelled = true)
         record.started(flow)
-        val upstream = Socket()
+        var upstream: Socket? = null
         try {
-            upstream.connect(InetSocketAddress(origin.host, origin.port), CONNECT_MILLIS)
+            upstream = Dial.connect(origin.host, origin.port, CONNECT_MILLIS)
             // A tunnel may be idle for a long time and still be alive; only a close ends it.
             client.soTimeout = 0
             upstream.soTimeout = 0
@@ -287,7 +289,7 @@ class ProxyServer(
         } catch (e: IOException) {
             record.finished(flow.copy(finishedAt = clock(), failure = e.reason()))
         } finally {
-            upstream.closeQuietly()
+            upstream?.closeQuietly()
         }
     }
 
@@ -295,7 +297,9 @@ class ProxyServer(
         Flow(ids.incrementAndGet(), clock(), secure, origin.host, origin.port, head)
 
     private fun failed(flow: Flow, out: OutputStream, error: Throwable, record: FlowSink) {
-        record.finished(flow.copy(finishedAt = clock(), failure = error.reason()))
+        // A TLS failure here is the real server's, which is usually its certificate.
+        val why = if (error is SSLException) TlsFailure.upstream(error.message) else error.reason()
+        record.finished(flow.copy(finishedAt = clock(), failure = why))
         out.writeQuietly(badGateway(error))
     }
 
@@ -312,10 +316,7 @@ class ProxyServer(
         if (secure) {
             upstream.connect(origin, CONNECT_MILLIS)
         } else {
-            Socket().apply {
-                connect(InetSocketAddress(origin.host, origin.port), CONNECT_MILLIS)
-                soTimeout = IDLE_MILLIS
-            }
+            Dial.connect(origin.host, origin.port, CONNECT_MILLIS).apply { soTimeout = IDLE_MILLIS }
         }
 
     /** The three streams one exchange moves bytes between. */

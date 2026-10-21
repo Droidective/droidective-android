@@ -224,6 +224,22 @@ object TrafficProxy {
         return now == here
     }
 
+    /**
+     * Puts the phone's proxy setting back when it points here and the proxy is not running.
+     *
+     * A reboot, an update or a force stop ends the proxy without its service hearing of it, and a
+     * phone left pointed at nothing has no network. The next time the app starts for any reason is
+     * the next chance to undo that.
+     *
+     * @return whether the setting had to be, and was, put back.
+     */
+    suspend fun releaseIfStranded(context: Context): Boolean {
+        val now = current.value
+        if (now != ProxyRun.Off && now !is ProxyRun.Failed) return false
+        if (!refreshPointing(context)) return false
+        return point(context, here = false)
+    }
+
     internal suspend fun run(context: Context) {
         current.value = ProxyRun.Starting
         refreshPointing(context)

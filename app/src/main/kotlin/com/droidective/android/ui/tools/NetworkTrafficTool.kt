@@ -103,6 +103,7 @@ fun NetworkTrafficTool(tool: ToolContext) {
             item { TitleRow(tool, flows.isNotEmpty()) }
             item { ProxySection(tool) }
             item { CertificateSection(tool) }
+            item { RulesSection(flows) }
             item { SearchRow(query, flows, labels) { query = it } }
             item {
                 ToolNote(

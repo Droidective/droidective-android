@@ -3,6 +3,7 @@ package com.droidective.android.proxy
 import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -20,6 +21,8 @@ import com.droidective.core.net.proxy.ProxyRules
 import com.droidective.core.net.proxy.ProxyServer
 import com.droidective.core.net.proxy.ProxySetting
 import com.droidective.core.net.proxy.Refusals
+import com.droidective.core.net.proxy.TrafficRules
+import com.droidective.core.net.proxy.TrafficRulesRepository
 import com.droidective.core.net.tls.ProxyCertificates
 import com.droidective.core.shell.ShellUnavailableException
 import com.droidective.core.toggles.SettingScope
@@ -100,12 +103,11 @@ object TrafficProxy {
      */
     val pointing: StateFlow<Boolean> = pointed.asStateFlow()
 
-    @Volatile
-    var rules: ProxyRules = ProxyRules()
-        set(value) {
-            field = value
-            server?.rules = value
-        }
+    private val chosen = MutableStateFlow(TrafficRules())
+    @Volatile private var loaded = false
+
+    /** The rules as chosen and kept. [loadRules] reads them the first time. */
+    val rules: StateFlow<TrafficRules> = chosen.asStateFlow()
 
     private var server: ProxyServer? = null
     @Volatile private var authority: ProxyCertificates? = null
@@ -266,7 +268,8 @@ object TrafficProxy {
                     owners = ShellOwners(context),
                     refusals = refusals,
                 )
-            running.rules = rules
+            loadRules(context)
+            running.rules = proxyRules(context, chosen.value)
             val port = withContext(Dispatchers.IO) { running.start(PORT) }
             server = running
             current.value = ProxyRun.Listening(port)
@@ -276,6 +279,38 @@ object TrafficProxy {
             current.value = ProxyRun.Failed(e.message ?: "The proxy could not start listening.")
         }
     }
+
+    /** Reads the kept rules, once; after that [rules] is the truth. */
+    fun loadRules(context: Context) {
+        if (loaded) return
+        synchronized(this) {
+            if (loaded) return
+            chosen.value = repository(context).load()
+            loaded = true
+        }
+    }
+
+    /** Keeps [new] and, while the proxy runs, applies it to the next connection. */
+    fun setRules(context: Context, new: TrafficRules) {
+        loadRules(context)
+        repository(context).save(new)
+        chosen.value = new
+        server?.rules = proxyRules(context, new)
+    }
+
+    /** The package behind a uid, as the flows name it. */
+    fun appOf(context: Context, uid: Int): String? = AppNames.of(context, uid)
+
+    private fun proxyRules(context: Context, rules: TrafficRules): ProxyRules =
+        rules.toProxyRules { packageName ->
+            try {
+                context.packageManager.getPackageUid(packageName, 0)
+            } catch (_: PackageManager.NameNotFoundException) {
+                null
+            }
+        }
+
+    private fun repository(context: Context) = TrafficRulesRepository(context.filesDir)
 
     /** Stops listening. A failure stays on screen until the next start, so it can be read. */
     internal fun shutDown() {

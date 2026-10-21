@@ -7,6 +7,8 @@ import android.app.NotificationManager
 import android.provider.Settings
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.droidective.core.net.proxy.TrafficRules
+import com.droidective.core.net.proxy.TrafficRulesRepository
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -130,5 +132,16 @@ class TrafficProxyTest {
             "The phone's proxy setting was put back",
             posted.extras.getString(Notification.EXTRA_TITLE),
         )
+    }
+
+    @Test
+    fun theRulesChosenAreKept() {
+        val rules =
+            TrafficRules(apps = listOf("com.example.shop"), passThrough = listOf("a.example"))
+        TrafficProxy.setRules(context, rules)
+
+        assertEquals(rules, TrafficProxy.rules.value)
+        assertEquals(rules, TrafficRulesRepository(context.filesDir).load())
+        TrafficProxy.setRules(context, TrafficRules())
     }
 }

@@ -52,4 +52,7 @@ tasks.test {
     useJUnitPlatform()
     inputs.dir(fixtures)
     systemProperty("fixtures.dir", fixtures.asFile.absolutePath)
+    // As Android does, so getLoopbackAddress() is ::1 here too. On the desktop JVM's default it is
+    // 127.0.0.1, which is how the proxy shipped bound to an address the phone never connects to.
+    systemProperty("java.net.preferIPv6Addresses", "true")
 }

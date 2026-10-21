@@ -3,6 +3,43 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.7.0
+
+A debugging proxy that runs on the phone itself, a tool for notifications that don't show,
+and more of what an app has set up on the phone.
+
+- **Network Traffic.** An HTTPS debugging proxy on the phone — the job Charles, Proxyman and
+  mitmproxy do from a computer, with no network to set up. Start points the phone at it; Stop
+  puts the phone's proxy setting back the way it was, even after a reboot or an update cut it
+  short. Every request the phone's apps make shows with the app that made it, its status, time
+  and size, and its body decoded: JSON laid out, gzip undone, forms, images. GraphQL requests
+  are named by their operation. Search by app, host, status or failure, copy one as cURL, or
+  share what the search shows as a HAR file that Chrome, Charles and Proxyman open.
+  - HTTPS needs Droidective's certificate installed, which the screen walks through, and an
+    app that trusts it: Chrome does, and so does your own debug build with the network security
+    config the screen copies for you.
+  - **Read only the apps you choose**, and every other app's traffic passes through untouched,
+    so the rest of the phone keeps working. An app that refuses the certificate is stepped
+    aside for after its first refusal. Hosts can be passed through, or read alone.
+  - A **Debugging proxy** tile and toggle start it from Quick Settings, a widget or an
+    automation.
+  - Without Granted or Shell it still runs: point Wi-Fi's proxy at 127.0.0.1:8888 yourself.
+    Naming the app behind each request needs Shell.
+- **Notification Inspector.** Why an app's notification shows or doesn't: notifications off for
+  the app, every channel off, or Do Not Disturb; what it has showing now, with each one's
+  channel, actions and whether it belongs to a foreground service; and every channel's
+  importance.
+- **App ops** in the Apps tool: the special accesses beyond runtime permissions — running in the
+  background, display over other apps, usage access, exact alarms and the rest — each with what
+  its modes mean, when it was last used, and a tap to change it.
+- **App Links** in Deep Links: each of an app's domains, whether links to it open the app, and
+  why not, with Verify again and Approve for testing.
+- **Alarms** in Background Work: the alarms an app has set, when each fires, and whether it
+  wakes the phone or is exact.
+- **Record screen, Performance overlay and Capture views** as toggles, so they can sit in a
+  widget, the notification bar or an automation, and **Quick Settings tiles of their own** for
+  Record screen, Screenshot, Clean screenshot, Performance overlay and Capture views.
+
 ## 0.6.0
 
 Four new tools, none of them on the Mac yet, and a root fix.

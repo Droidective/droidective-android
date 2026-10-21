@@ -253,6 +253,8 @@ class ToolsTest {
                 "network-check",
                 "app-snapshots",
                 "notification-inspector",
+                // The Mac's http-proxy only points a device at a proxy; this is the proxy.
+                "network-traffic",
             )
         assertEquals(emptySet(), phoneOnly intersect macIds)
         assertEquals(emptySet(), Features.all.map { it.id }.toSet() - macIds - phoneOnly)

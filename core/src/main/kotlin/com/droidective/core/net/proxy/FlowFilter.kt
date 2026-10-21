@@ -73,6 +73,21 @@ data class FlowFilter(val terms: List<Term>) {
         fun parse(query: String): FlowFilter =
             FlowFilter(query.split(' ', '\t', '\n').mapNotNull(::term))
 
+        /** Whether [query] already holds [word], as a word of its own rather than part of one. */
+        fun holds(query: String, word: String): Boolean = word in words(query)
+
+        /**
+         * [query] with [word] added, or taken out when it is already there: what tapping a chip
+         * does, leaving whatever else was typed as it was.
+         */
+        fun toggled(query: String, word: String): String {
+            val words = words(query)
+            return (if (word in words) words - word else words + word).joinToString(" ")
+        }
+
+        private fun words(query: String): List<String> =
+            query.split(' ', '\t', '\n').filter { it.isNotEmpty() }
+
         private fun term(word: String): Term? {
             val negated = word.startsWith("-")
             val rest = if (negated) word.substring(1) else word

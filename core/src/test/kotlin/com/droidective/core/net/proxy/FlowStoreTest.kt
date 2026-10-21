@@ -230,4 +230,27 @@ class FlowSummaryTest {
         val flows = listOf(flow(id = 1, app = "com.z"), flow(id = 2, app = "com.a"))
         assertEquals(listOf("com.a" to 1, "com.z" to 1), FlowSummary.apps(flows))
     }
+
+    @Test
+    fun aChipAddsItsWordAndTakesItBackOut() {
+        val added = FlowFilter.toggled("login", "app:com.example.shop")
+        assertEquals("login app:com.example.shop", added)
+        assertTrue(FlowFilter.holds(added, "app:com.example.shop"))
+        assertEquals("login", FlowFilter.toggled(added, "app:com.example.shop"))
+        assertEquals("is:failed", FlowFilter.toggled("", "is:failed"))
+    }
+
+    @Test
+    fun aChipOnlyCountsAWholeWord() {
+        // Typed by hand, a longer word that starts the same is a different search.
+        assertFalse(FlowFilter.holds("app:com.example.shopping", "app:com.example.shop"))
+        assertEquals(
+            "app:com.example.shopping app:com.example.shop",
+            FlowFilter.toggled("app:com.example.shopping", "app:com.example.shop"),
+        )
+        assertEquals(
+            "a b",
+            FlowFilter.toggled("  a \t b  ", "c").let { FlowFilter.toggled(it, "c") },
+        )
+    }
 }

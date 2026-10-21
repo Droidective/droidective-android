@@ -206,6 +206,8 @@ object Symbols {
             "toggle_on" to Symbol(R.drawable.sym_toggle_on, R.drawable.sym_toggle_on_fill),
             "touch_app" to Symbol(R.drawable.sym_touch_app, R.drawable.sym_touch_app_fill),
             "translate" to Symbol(R.drawable.sym_translate, R.drawable.sym_translate_fill),
+            "travel_explore" to
+                Symbol(R.drawable.sym_travel_explore, R.drawable.sym_travel_explore_fill),
             "troubleshoot" to Symbol(R.drawable.sym_troubleshoot, R.drawable.sym_troubleshoot_fill),
             "tune" to Symbol(R.drawable.sym_tune, R.drawable.sym_tune_fill),
             "upload" to Symbol(R.drawable.sym_upload, R.drawable.sym_upload_fill),

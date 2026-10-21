@@ -174,6 +174,14 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Captures the screen's view hierarchy when the person asks the UI Inspector to: counts down a few seconds so they can open the app to inspect, then runs uiautomator and takes a screenshot through the shell they set up. Runs only for those few seconds." />
         </service>
+        <service
+            android:name=".proxy.ProxyService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Runs the debugging proxy the person started in Network Traffic: listens on the phone's own loopback address, 127.0.0.1, so the person can see the HTTP and HTTPS requests their apps make and the answers that come back. Nothing off the device can reach it. Runs only until they press Stop in the app or its notification, and stopping puts the phone's proxy setting back the way it was." />
+        </service>
         <!-- A Bluetooth device connecting or disconnecting. Protected broadcasts from the system;
              the receiver only re-reads which devices are connected. -->
         <receiver

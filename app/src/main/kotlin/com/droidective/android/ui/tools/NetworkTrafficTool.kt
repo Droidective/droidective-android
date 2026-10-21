@@ -54,6 +54,7 @@ import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
 import com.droidective.android.proxy.CertificateTrust
 import com.droidective.android.proxy.ProxyRun
+import com.droidective.android.proxy.TrafficExport
 import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.copy
@@ -100,7 +101,7 @@ fun NetworkTrafficTool(tool: ToolContext) {
             Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item { TitleRow(tool, flows.isNotEmpty()) }
+            item { TitleRow(tool, flows.isNotEmpty(), visible) }
             item { ProxySection(tool) }
             item { CertificateSection(tool) }
             item { RulesSection(flows) }
@@ -117,16 +118,41 @@ fun NetworkTrafficTool(tool: ToolContext) {
 }
 
 @Composable
-private fun TitleRow(tool: ToolContext, any: Boolean) {
+private fun TitleRow(tool: ToolContext, any: Boolean, visible: List<Flow>) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     Row(verticalAlignment = Alignment.CenterVertically) {
         ToolTitle("Network Traffic", tool)
         Box(Modifier.weight(1f))
+        if (visible.any { !it.opening }) {
+            // What the search shows, oldest first, the way HAR readers lay a page out.
+            IconButton(
+                onClick = { scope.launch { exportHar(context, tool, visible.reversed()) } }
+            ) {
+                Icon(painterResource(Symbols.byName.getValue("share").outlined), "Share as HAR")
+            }
+        }
         if (any) {
             IconButton(onClick = TrafficProxy::clear) {
                 Icon(painterResource(Symbols.byName.getValue("delete_sweep").outlined), "Clear")
             }
         }
     }
+}
+
+private suspend fun exportHar(context: Context, tool: ToolContext, flows: List<Flow>) {
+    val saved =
+        try {
+            TrafficExport.save(context, flows)
+        } catch (e: IOException) {
+            tool.say("It couldn't be saved: ${e.message}")
+            return
+        }
+    if (saved == null) {
+        tool.say("Android didn't make room for it in Downloads.")
+        return
+    }
+    context.startActivity(TrafficExport.share(saved))
 }
 
 /** Start and stop, and whether the phone is sending its traffic here. */

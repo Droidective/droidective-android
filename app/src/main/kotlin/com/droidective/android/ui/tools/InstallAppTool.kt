@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.install.InstallOutcome
 import com.droidective.android.install.InstallResultReceiver
 import com.droidective.android.install.InstallResults
+import com.droidective.android.surface.Incoming
 import com.droidective.android.ui.openSafely
 import com.droidective.core.apps.bundles.ApksToc
 import com.droidective.core.apps.bundles.AppBundleManifest
@@ -75,17 +77,26 @@ fun InstallAppTool(tool: ToolContext) {
     val outcomes by InstallResults.all.collectAsStateWithLifecycle()
     val outcome = session?.let { outcomes[it] }
 
+    fun load(uri: Uri) {
+        reading = true
+        session = null
+        failure = null
+        scope.launch {
+            picked = withContext(Dispatchers.IO) { read(context, installer, uri) }
+            reading = false
+        }
+    }
     val choose =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            if (uri == null) return@rememberLauncherForActivityResult
-            reading = true
-            session = null
-            failure = null
-            scope.launch {
-                picked = withContext(Dispatchers.IO) { read(context, installer, uri) }
-                reading = false
-            }
+            uri?.let(::load)
         }
+    // A package opened from Files or shared from another app; read here, installed on Install.
+    val handed by Incoming.packageFile.collectAsStateWithLifecycle()
+    LaunchedEffect(handed) {
+        val uri = handed ?: return@LaunchedEffect
+        Incoming.packageFile.value = null
+        load(uri)
+    }
 
     ToolScaffold("Install App", tool) {
         ToolNote(
@@ -214,8 +225,10 @@ private fun Status(written: Pair<Int, Int>?, outcome: InstallOutcome?, failure: 
 /** Names the file, refuses what isn't installable, and plans a bundle's splits. */
 private fun read(context: Context, installer: AppInstaller, uri: Uri): Picked {
     val name = displayName(context, uri) ?: uri.lastPathSegment ?: "The file"
+    // The name decides; a file handed over by another app may have none, and its type says it.
     val format =
         AppPackageFormat.detect(name)
+            ?: AppPackageFormat.ofMediaType(context.contentResolver.getType(uri))
             ?: return Picked.Refused(name, "isn't an APK, APKS, XAPK or APKM.")
     if (!format.isBundle) return Picked.Ready(name, uri, format, plan = null)
     return try {

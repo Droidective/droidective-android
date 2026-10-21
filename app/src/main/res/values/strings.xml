@@ -24,6 +24,9 @@
     <string name="tile_animation_scale">Animation scale</string>
     <string name="tile_demo_mode">Demo mode</string>
     <string name="tile_traffic_proxy">Debugging proxy</string>
+    <string name="open_install">Install with Droidective</string>
+    <string name="share_install">Install with Droidective</string>
+    <string name="share_link">Try as a deep link</string>
     <string name="tile_record_screen">Record screen</string>
     <string name="tile_screenshot">Screenshot</string>
     <string name="tile_clean_screenshot">Clean screenshot</string>

@@ -38,8 +38,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.droidective
 import com.droidective.android.surface.CommandTaps
+import com.droidective.android.surface.Incoming
 import com.droidective.android.surface.ShellRuns
 import com.droidective.android.surface.Surfaces
 import com.droidective.android.ui.CommandOutput
@@ -291,6 +293,13 @@ fun DeepLinksTool(tool: ToolContext) {
         links = withContext(Dispatchers.IO) { app.deepLinks.all() }
     }
     LaunchedEffect(Unit) { reload() }
+    // A link shared from another app is put in the field, never opened: that is still a tap away.
+    val handed by Incoming.link.collectAsStateWithLifecycle()
+    LaunchedEffect(handed) {
+        val link = handed ?: return@LaunchedEffect
+        Incoming.link.value = null
+        typed = link
+    }
     fun open(uri: String) {
         try {
             context.startActivity(

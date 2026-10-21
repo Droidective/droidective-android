@@ -19,6 +19,7 @@ import com.droidective.core.net.proxy.FlowStore
 import com.droidective.core.net.proxy.ProxyRules
 import com.droidective.core.net.proxy.ProxyServer
 import com.droidective.core.net.proxy.ProxySetting
+import com.droidective.core.net.proxy.Refusals
 import com.droidective.core.net.tls.ProxyCertificates
 import com.droidective.core.shell.ShellUnavailableException
 import com.droidective.core.toggles.SettingScope
@@ -82,6 +83,13 @@ object TrafficProxy {
     val changes: StateFlow<Long> = revision.asStateFlow()
 
     val flows = FlowStore()
+
+    /**
+     * The hosts apps have turned the certificate down for, which are passed through for them from
+     * then on. Kept for one run: starting again, or the certificate's trust changing, starts
+     * afresh.
+     */
+    val refusals = Refusals()
 
     private val pointed = MutableStateFlow(false)
 
@@ -250,8 +258,14 @@ object TrafficProxy {
                     return
                 }
         try {
+            refusals.clear()
             val running =
-                ProxyServer(certificates, Recorder(context), owners = ShellOwners(context))
+                ProxyServer(
+                    certificates,
+                    Recorder(context),
+                    owners = ShellOwners(context),
+                    refusals = refusals,
+                )
             running.rules = rules
             val port = withContext(Dispatchers.IO) { running.start(PORT) }
             server = running

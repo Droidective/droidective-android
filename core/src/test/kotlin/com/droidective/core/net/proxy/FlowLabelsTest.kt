@@ -54,6 +54,27 @@ class FlowLabelsTest {
     }
 
     @Test
+    fun aPassedConnectionSaysWhy() {
+        val passed = flow(status = null, tunnelled = true)
+        assertEquals(
+            "passed through: the app refused the certificate before",
+            FlowLabels.passed(passed.copy(passing = Passing.Refused)),
+        )
+        assertEquals(
+            "passed through: not an app being read",
+            FlowLabels.passed(passed.copy(passing = Passing.OtherApp)),
+        )
+        assertEquals(
+            "passed through by a rule",
+            FlowLabels.passed(passed.copy(passing = Passing.Rule)),
+        )
+        assertEquals("passed through", FlowLabels.passed(passed))
+        // Read, or a WebSocket carried on after its 101: not passed through.
+        assertNull(FlowLabels.passed(flow()))
+        assertNull(FlowLabels.passed(flow(status = 101, tunnelled = true)))
+    }
+
+    @Test
     fun statusesAreTheirNumbersAndAWaitIsAnEllipsis() {
         assertEquals("200", FlowLabels.status(flow(status = 200)))
         assertEquals("…", FlowLabels.status(flow(status = null)))

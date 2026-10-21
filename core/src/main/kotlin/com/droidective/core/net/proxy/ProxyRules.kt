@@ -16,12 +16,29 @@ package com.droidective.core.net.proxy
 data class ProxyRules(
     val only: List<String> = emptyList(),
     val except: List<String> = emptyList(),
+    /**
+     * The apps to read, by uid. Empty reads every app. Named, only their HTTPS is opened and every
+     * other app's passes through untouched: one app debugged, and the rest of the phone working.
+     */
+    val apps: Set<Int> = emptySet(),
+    /** Whether a host an app refused the certificate for is passed through for it afterwards. */
+    val stepAside: Boolean = true,
 ) {
-    /** Whether [host] is read, rather than passed through as bytes. */
-    fun opens(host: String): Boolean {
-        if (except.any { matches(it, host) }) return false
-        return only.isEmpty() || only.any { matches(it, host) }
-    }
+    /** Whether [host] is read for the app with [uid], rather than passed through as bytes. */
+    fun opens(host: String, uid: Int? = null): Boolean = passing(host, uid) == null
+
+    /**
+     * Why [host] is passed through for the app with [uid], or null when it is read. An app that
+     * cannot be told, while only some apps are read, is passed through: reading it could break an
+     * app nobody asked about.
+     */
+    fun passing(host: String, uid: Int?): Passing? =
+        when {
+            apps.isNotEmpty() && (uid == null || uid !in apps) -> Passing.OtherApp
+            except.any { matches(it, host) } -> Passing.Rule
+            only.isNotEmpty() && only.none { matches(it, host) } -> Passing.Rule
+            else -> null
+        }
 
     companion object {
         fun matches(pattern: String, host: String): Boolean {
@@ -36,4 +53,16 @@ data class ProxyRules(
             return name == wanted
         }
     }
+}
+
+/** Why a connection was passed through rather than read. */
+enum class Passing {
+    /** A host the rules leave alone. */
+    Rule,
+
+    /** An app other than the ones being read. */
+    OtherApp,
+
+    /** The app refused the certificate for this host before. */
+    Refused,
 }

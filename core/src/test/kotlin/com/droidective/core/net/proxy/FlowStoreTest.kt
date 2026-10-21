@@ -232,6 +232,16 @@ class FlowSummaryTest {
     }
 
     @Test
+    fun passedConnectionsAreTheOnesNeverRead() {
+        val passed = flow(id = 9, status = null, tunnelled = true)
+        val socket = flow(id = 10, status = 101, tunnelled = true)
+        val filter = FlowFilter.parse("is:passed")
+        assertTrue(filter.matches(passed))
+        assertFalse(filter.matches(socket))
+        assertFalse(filter.matches(flow(id = 11)))
+    }
+
+    @Test
     fun aChipAddsItsWordAndTakesItBackOut() {
         val added = FlowFilter.toggled("login", "app:com.example.shop")
         assertEquals("login app:com.example.shop", added)

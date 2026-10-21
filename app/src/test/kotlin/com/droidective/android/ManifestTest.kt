@@ -30,6 +30,11 @@ class ManifestTest {
                     "NetworkSpeed",
                     "CurrentActivity",
                     "TrafficProxy",
+                    "RecordScreen",
+                    "Screenshot",
+                    "CleanScreenshot",
+                    "PerformanceOverlay",
+                    "CaptureViews",
                 )
                 .map { "com.droidective.android.surface.${it}Tile" }
 

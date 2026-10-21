@@ -37,6 +37,30 @@ class ProxyRulesTest {
     }
 
     @Test
+    fun namingAppsReadsOnlyThose() {
+        val rules = ProxyRules(apps = setOf(10144))
+        assertNull(rules.passing("api.example.com", 10144))
+        assertEquals(Passing.OtherApp, rules.passing("api.example.com", 10200))
+        // An app nobody could tell is not one somebody chose.
+        assertEquals(Passing.OtherApp, rules.passing("api.example.com", null))
+    }
+
+    @Test
+    fun withNoAppsNamedEveryAppIsRead() {
+        assertTrue(ProxyRules().opens("api.example.com", 10200))
+        assertTrue(ProxyRules().opens("api.example.com", null))
+    }
+
+    @Test
+    fun aHostTheRulesLeaveAloneSaysSo() {
+        assertEquals(Passing.Rule, ProxyRules(except = listOf("a.example")).passing("a.example", 1))
+        assertEquals(Passing.Rule, ProxyRules(only = listOf("a.example")).passing("b.example", 1))
+        // Another app is the first thing said: it is the bigger reason.
+        val both = ProxyRules(except = listOf("a.example"), apps = setOf(1))
+        assertEquals(Passing.OtherApp, both.passing("a.example", 2))
+    }
+
+    @Test
     fun aWildcardIsForSubdomainsAndNotTheDomainItself() {
         assertTrue(ProxyRules.matches("*.example.com", "api.example.com"))
         assertTrue(ProxyRules.matches("*.example.com", "deep.api.example.com"))

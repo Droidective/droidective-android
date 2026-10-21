@@ -24,6 +24,8 @@ data class Flow(
     val finishedAt: Long? = null,
     val failure: String? = null,
     val tunnelled: Boolean = false,
+    /** Why the connection was passed through, when it was; null for one that was read. */
+    val passing: Passing? = null,
     val uid: Int? = null,
     val app: String? = null,
 ) {

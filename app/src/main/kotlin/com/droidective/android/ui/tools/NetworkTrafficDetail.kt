@@ -108,7 +108,8 @@ fun FlowDetail(flow: Flow, tool: ToolContext) {
 
 private fun connection(flow: Flow): String =
     when {
-        flow.tunnelled && flow.response == null -> "Passed through, not read"
+        flow.tunnelled && flow.response == null ->
+            FlowLabels.passed(flow)?.replaceFirstChar { it.uppercase() } ?: "Passed through"
         flow.tunnelled -> "Upgraded, then carried as bytes"
         flow.secure -> "HTTPS, read through the proxy's certificate"
         else -> "HTTP"

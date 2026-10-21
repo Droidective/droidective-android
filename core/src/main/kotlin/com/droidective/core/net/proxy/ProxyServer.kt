@@ -18,6 +18,8 @@ import java.net.Socket
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicLong
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLException
@@ -47,6 +49,8 @@ class ProxyServer(
     private val sink: FlowSink = FlowSink.NONE,
     private val upstream: UpstreamTls = UpstreamTls.SYSTEM,
     private val owners: FlowOwners = FlowOwners.UNKNOWN,
+    /** What apps have refused the certificate for, kept by whoever outlives one run of this. */
+    private val refusals: Refusals = Refusals(),
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     /** Which hosts are opened; may be changed while the proxy is running. */
@@ -130,7 +134,7 @@ class ProxyServer(
             // meaning anything the moment the connection closes.
             val record = Owned(sink, owner)
             if (head.method.equals(CONNECT, ignoreCase = true)) {
-                accept(head, client, source, out, record)
+                accept(head, Client(client, source, out), record)
             } else {
                 exchanges(source, out, secure = false, fixed = null, first = head, record = record)
             }
@@ -140,28 +144,35 @@ class ProxyServer(
     }
 
     /** A `CONNECT`: answer as the host and read what follows, or pass the bytes through. */
-    private fun accept(
-        head: RequestHead,
-        client: Socket,
-        source: InputStream,
-        out: OutputStream,
-        record: FlowSink,
-    ) {
+    private fun accept(head: RequestHead, client: Client, record: Owned) {
+        val (socket, source, out) = client
         val origin = Origin.authority(head.target) ?: return out.writeQuietly(BAD_REQUEST)
         out.write(ESTABLISHED)
         out.flush()
-        if (!rules.opens(origin.host)) return tunnel(origin, head, client, source, out, record)
+        val rules = rules
+        // The answer has to be in before going on only when it decides what happens: some apps
+        // read and others not, or a host some app has refused before. Every other connection
+        // carries on and learns its app in the background.
+        val decides = rules.apps.isNotEmpty() || (rules.stepAside && refusals.mentions(origin.host))
+        val uid = if (decides) record.awaitUid(APP_WAIT_MILLIS) else record.uid()
+        val passing =
+            rules.passing(origin.host, uid)
+                ?: Passing.Refused.takeIf { rules.stepAside && refusals.has(uid, origin.host) }
+        if (passing != null) return tunnel(origin, head, client, record, passing)
         val context =
             contexts.getOrPut(origin.host) {
                 val leaf = certificates.certificateFor(origin.host, clock())
                 ProxyTls.serverContext(leaf, certificates.caCertificate)
             }
-        val tls = ProxyTls.accept(context, client, origin)
+        val tls = ProxyTls.accept(context, socket, origin)
         try {
             tls.startHandshake()
-        } catch (e: SSLException) {
+        } catch (e: IOException) {
             // The app would not have the certificate: either the authority is not installed, or
-            // the app pins its own. Saying so beats a connection that merely stops.
+            // the app pins its own. It may say so with an alert or simply hang up, which arrives
+            // as a reset rather than as TLS. Saying so beats a connection that merely stops, and
+            // the next connection steps aside so the app can get on with its day.
+            if (rules.stepAside) refusals.note(record.awaitUid(APP_WAIT_MILLIS), origin.host)
             record.finished(
                 begin(head, origin, secure = true)
                     .copy(
@@ -271,18 +282,18 @@ class ProxyServer(
     private fun tunnel(
         origin: Origin,
         head: RequestHead,
-        client: Socket,
-        source: InputStream,
-        out: OutputStream,
+        client: Client,
         record: FlowSink,
+        passing: Passing,
     ) {
-        val flow = begin(head, origin, secure = true).copy(tunnelled = true)
+        val (socket, source, out) = client
+        val flow = begin(head, origin, secure = true).copy(tunnelled = true, passing = passing)
         record.started(flow)
         var upstream: Socket? = null
         try {
             upstream = Dial.connect(origin.host, origin.port, CONNECT_MILLIS)
             // A tunnel may be idle for a long time and still be alive; only a close ends it.
-            client.soTimeout = 0
+            socket.soTimeout = 0
             upstream.soTimeout = 0
             bothWays(source, out, upstream.getInputStream(), upstream.getOutputStream())
             record.finished(flow.copy(finishedAt = clock()))
@@ -319,6 +330,9 @@ class ProxyServer(
             Dial.connect(origin.host, origin.port, CONNECT_MILLIS).apply { soTimeout = IDLE_MILLIS }
         }
 
+    /** The app's end of a connection. */
+    private data class Client(val socket: Socket, val source: InputStream, val out: OutputStream)
+
     /** The three streams one exchange moves bytes between. */
     private data class Ends(val source: InputStream, val out: OutputStream, val upstream: Upstream)
 
@@ -337,6 +351,12 @@ class ProxyServer(
         const val BACKLOG = 50
         const val IDLE_MILLIS = 120_000
         const val CONNECT_MILLIS = 15_000
+
+        /**
+         * How long a connection waits to learn its app when that decides whether it is read: a
+         * shell round trip, with room to spare. Past it the app counts as unknown.
+         */
+        const val APP_WAIT_MILLIS = 2_000L
 
         /** What the phone's proxy setting names. */
         val LOOPBACK: InetAddress = InetAddress.getByAddress("localhost", byteArrayOf(127, 0, 0, 1))
@@ -390,6 +410,21 @@ class ProxyServer(
  */
 private class Owned(private val sink: FlowSink, private val owner: CompletableFuture<Int?>) :
     FlowSink {
+    /** The app, if it is known yet. */
+    fun uid(): Int? = owner.getNow(null)
+
+    /** The app, waiting up to [millis] for it. */
+    fun awaitUid(millis: Long): Int? =
+        try {
+            owner.get(millis, TimeUnit.MILLISECONDS)
+        } catch (_: TimeoutException) {
+            null
+        } catch (_: InterruptedException) {
+            // Stopping: the answer no longer matters, and the interrupt is not this call's to eat.
+            Thread.currentThread().interrupt()
+            null
+        }
+
     override fun started(flow: Flow) = sink.started(stamped(flow))
 
     override fun finished(flow: Flow) {

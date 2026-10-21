@@ -40,6 +40,7 @@ import kotlin.test.assertTrue
  */
 class ProxyServerTest {
     private val sink = Collected()
+    private val refusals = Refusals()
     private var server: ProxyServer? = null
 
     @AfterTest
@@ -51,7 +52,7 @@ class ProxyServerTest {
         rules: ProxyRules = ProxyRules(),
         owners: FlowOwners = FlowOwners.UNKNOWN,
     ): Int {
-        val running = ProxyServer(certificates, sink, trustingUpstream, owners)
+        val running = ProxyServer(certificates, sink, trustingUpstream, owners, refusals)
         running.rules = rules
         server = running
         return running.start()
@@ -289,20 +290,79 @@ class ProxyServerTest {
 
     @Test
     fun anAppThatRefusesTheCertificateIsRecordedAsRefusingIt() {
-        // A client with the JDK's own trust store, which has never heard of the proxy's authority.
         val port = proxy()
-        val socket = Socket("127.0.0.1", port)
-        socket.getOutputStream().write(wire("CONNECT localhost:443 HTTP/1.1\r\n\r\n"))
-        socket.getOutputStream().flush()
-        assertEquals(200, assertNotNull(HttpReader(socket.getInputStream()).readResponse()).status)
-        val untrusting = SSLContext.getDefault().socketFactory
-        val tls = untrusting.createSocket(socket, "localhost", 443, true) as SSLSocket
-        assertFailsWith<SSLException> { tls.use { it.startHandshake() } }
+        refuse(port, "localhost:443")
 
         val flow = sink.next()
-        assertEquals("the app refused the certificate (certificate unknown)", flow.failure)
+        // With its alert, "(certificate unknown)", when it arrives before the app hangs up.
+        assertTrue(assertNotNull(flow.failure).startsWith(TlsFailure.REFUSED), flow.failure)
         assertEquals("https://localhost", flow.url)
         assertNull(flow.response)
+    }
+
+    @Test
+    fun anAppThatRefusedIsLeftAloneTheNextTime() {
+        secureServer().use { origin ->
+            origin.reply = { ok("secret") }
+            val port = proxy(owners = FlowOwners { 10144 })
+            refuse(port, "localhost:${origin.port}")
+            assertNotNull(sink.next().failure)
+
+            // The same app, the same host: straight through to the server, which it trusts.
+            assertEquals("secret", throughTunnel(port, origin.port, "/again"))
+            val passed = sink.nextOwned()
+            assertTrue(passed.tunnelled)
+            assertEquals(Passing.Refused, passed.passing)
+            assertEquals(listOf(Refusals.Refusal(10144, "localhost")), refusals.all())
+        }
+    }
+
+    @Test
+    fun withoutSteppingAsideARefusingAppIsReadEveryTime() {
+        val port = proxy(ProxyRules(stepAside = false))
+        refuse(port, "localhost:443")
+        refuse(port, "localhost:443")
+        assertNotNull(sink.next().failure)
+        assertNotNull(sink.next().failure)
+        assertEquals(emptyList(), refusals.all())
+    }
+
+    @Test
+    fun onlyTheAppsChosenAreRead() {
+        secureServer().use { origin ->
+            origin.reply = { ok("hello") }
+            val port = proxy(ProxyRules(apps = setOf(10200)), owners = FlowOwners { 10144 })
+            assertEquals("hello", throughTunnel(port, origin.port, "/thing"))
+            val passed = sink.nextOwned()
+            assertEquals(Passing.OtherApp, passed.passing)
+            assertNull(passed.response)
+        }
+    }
+
+    @Test
+    fun theAppChosenIsRead() {
+        secureServer().use { origin ->
+            origin.reply = { ok("hello") }
+            val port = proxy(ProxyRules(apps = setOf(10144)), owners = FlowOwners { 10144 })
+            assertEquals("hello", throughTunnel(port, origin.port, "/thing"))
+            val read = sink.nextOwned()
+            assertNull(read.passing)
+            assertEquals(200, read.status)
+        }
+    }
+
+    /** A client with the JDK's own trust store, which has never heard of the proxy's authority. */
+    private fun refuse(proxyPort: Int, target: String) {
+        Socket("127.0.0.1", proxyPort).use { socket ->
+            socket.getOutputStream().write(wire("CONNECT $target HTTP/1.1\r\n\r\n"))
+            socket.getOutputStream().flush()
+            val established = assertNotNull(HttpReader(socket.getInputStream()).readResponse())
+            assertEquals(200, established.status)
+            val host = target.substringBefore(':')
+            val untrusting = SSLContext.getDefault().socketFactory
+            val tls = untrusting.createSocket(socket, host, 443, true) as SSLSocket
+            assertFailsWith<SSLException> { tls.use { it.startHandshake() } }
+        }
     }
 
     /** CONNECT to the proxy, then TLS inside it, then one request — the client's whole job. */

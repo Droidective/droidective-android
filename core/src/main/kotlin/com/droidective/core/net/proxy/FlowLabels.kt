@@ -50,6 +50,17 @@ object FlowLabels {
             else -> flow.status.toString()
         }
 
+    /** Why a connection was passed through rather than read, or null when it was read. */
+    fun passed(flow: Flow): String? {
+        if (!flow.tunnelled || flow.response != null) return null
+        return when (flow.passing) {
+            Passing.Rule -> "passed through by a rule"
+            Passing.OtherApp -> "passed through: not an app being read"
+            Passing.Refused -> "passed through: the app refused the certificate before"
+            null -> "passed through"
+        }
+    }
+
     /** What follows the host: the path and query, or nothing for a connection never read. */
     fun path(flow: Flow): String = if (flow.opening) "" else flow.request.path
 

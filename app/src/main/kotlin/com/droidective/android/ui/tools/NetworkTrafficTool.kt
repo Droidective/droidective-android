@@ -268,7 +268,11 @@ private fun CertificateSection(tool: ToolContext) {
     var settled by rememberSaveable { mutableStateOf<CertificateTrust?>(null) }
     LaunchedEffect(trust) {
         val now = trust ?: return@LaunchedEffect
-        if (settled != null && settled != now) expanded = false
+        if (settled != null && settled != now) {
+            expanded = false
+            // What an app refused was refused under the old answer, and may not be refused now.
+            TrafficProxy.refusals.clear()
+        }
         settled = now
     }
     ToolSection("Certificate") {
@@ -457,7 +461,7 @@ private fun rowDetails(flow: Flow, operation: String?, labels: AppLabels): Strin
         parts += it
         return parts.joinToString(" · ")
     }
-    if (flow.tunnelled && flow.response == null) parts += "passed through"
+    FlowLabels.passed(flow)?.let { parts += it }
     flow.durationMillis?.let { parts += FlowLabels.duration(it) }
     if (flow.wireLength > 0) parts += FlowLabels.size(flow.wireLength)
     return parts.joinToString(" · ")

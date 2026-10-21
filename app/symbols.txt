@@ -185,3 +185,4 @@ sports_esports
 smart_toy
 cast
 cast_connected
+travel_explore

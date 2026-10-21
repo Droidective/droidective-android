@@ -35,7 +35,15 @@ data class Flow(
         get() = if (port == defaultPort) host else "$host:$port"
 
     val url: String
-        get() = if (tunnelled) "$scheme://$authority" else "$scheme://$authority${request.path}"
+        get() = if (opening) "$scheme://$authority" else "$scheme://$authority${request.path}"
+
+    /**
+     * Whether this records the `CONNECT` itself rather than a request inside it: a host passed
+     * through, or one whose app refused the certificate before asking anything. Its target names
+     * the host and port, not a path.
+     */
+    val opening: Boolean
+        get() = tunnelled || request.method.equals(CONNECT, ignoreCase = true)
 
     val status: Int?
         get() = response?.status
@@ -53,6 +61,7 @@ data class Flow(
     private companion object {
         const val HTTP_PORT = 80
         const val HTTPS_PORT = 443
+        const val CONNECT = "CONNECT"
     }
 }
 

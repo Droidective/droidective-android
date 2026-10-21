@@ -46,6 +46,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "simulate" to { SimulateTool(it) },
         "demo-mode" to { DemoModeTool(it) },
         "system-restrictions" to { RestrictionsTool(it) },
+        "network-traffic" to { NetworkTrafficTool(it) },
         "http-proxy" to { ProxyTool(it) },
         "private-dns" to { PrivateDnsTool(it) },
         "wireless-adb" to { WirelessAdbTool(it) },

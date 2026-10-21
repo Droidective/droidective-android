@@ -334,6 +334,46 @@
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
         </service>
         <service
+            android:name=".surface.RecordScreenTile"
+            android:exported="true"
+            android:icon="@drawable/sym_videocam"
+            android:label="@string/tile_record_screen"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.ScreenshotTile"
+            android:exported="true"
+            android:icon="@drawable/sym_screenshot"
+            android:label="@string/tile_screenshot"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.CleanScreenshotTile"
+            android:exported="true"
+            android:icon="@drawable/sym_screenshot_monitor"
+            android:label="@string/tile_clean_screenshot"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.PerformanceOverlayTile"
+            android:exported="true"
+            android:icon="@drawable/sym_monitor_heart"
+            android:label="@string/tile_performance_overlay"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
+            android:name=".surface.CaptureViewsTile"
+            android:exported="true"
+            android:icon="@drawable/sym_account_tree"
+            android:label="@string/tile_capture_views"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service
             android:name=".surface.NetworkSpeedTile"
             android:exported="true"
             android:icon="@drawable/sym_speed"

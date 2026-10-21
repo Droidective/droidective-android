@@ -218,6 +218,17 @@ class DemoModeTile : FixedTileService("demo-mode")
 
 class TrafficProxyTile : FixedTileService("traffic-proxy")
 
+// The capture actions, a tap away from whatever app is being captured.
+class RecordScreenTile : FixedTileService("record-screen")
+
+class ScreenshotTile : FixedTileService("screenshot")
+
+class CleanScreenshotTile : FixedTileService("clean-screenshot")
+
+class PerformanceOverlayTile : FixedTileService("perf-overlay")
+
+class CaptureViewsTile : FixedTileService("capture-views")
+
 class WirelessDebuggingTile : FixedTileService("wireless-debugging")
 
 /** Live network speed while Quick Settings is open; a tap opens the Network Speed tool. */

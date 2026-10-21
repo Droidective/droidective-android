@@ -4,9 +4,12 @@ import android.content.Context
 import android.provider.Settings
 import com.droidective.android.droidective
 import com.droidective.android.performance.PerformanceOverlayService
+import com.droidective.android.proxy.ProxyRun
+import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.screenrecord.RecordRequest
 import com.droidective.android.screenrecord.ScreenRecorder
 import com.droidective.android.uiinspect.UiCaptures
+import com.droidective.core.AccessLevel
 import com.droidective.core.Grants
 import com.droidective.core.device.RecordOptions
 import com.droidective.core.shell.ShellUnavailableException
@@ -16,8 +19,8 @@ import com.droidective.core.toggles.PlatformToggles
 
 /**
  * The toggles that are this app's own features, answered here so a tile, a widget slot or an
- * automation can start a screen recording, show the performance overlay or capture the screen's
- * views. Everything else goes on to the platform's toggles.
+ * automation can start a screen recording, show the performance overlay, capture the screen's views
+ * or run the debugging proxy. Everything else goes on to the platform's toggles.
  */
 class AppPlatformToggles(private val context: Context, private val platform: PlatformToggles) :
     PlatformToggles {
@@ -26,6 +29,10 @@ class AppPlatformToggles(private val context: Context, private val platform: Pla
             PlatformApi.ScreenRecording -> onOff(ScreenRecorder.recording)
             PlatformApi.PerformanceOverlay -> onOff(PerformanceOverlayService.isRunning.value)
             PlatformApi.CaptureViews -> null
+            PlatformApi.TrafficProxy ->
+                onOff(
+                    TrafficProxy.state.value.let { it !is ProxyRun.Off && it !is ProxyRun.Failed }
+                )
             else -> platform.read(api)
         }
 
@@ -39,6 +46,12 @@ class AppPlatformToggles(private val context: Context, private val platform: Pla
             PlatformApi.PerformanceOverlay -> overlay(state == ON)
             PlatformApi.CaptureViews -> {
                 UiCaptures.capture(context, CAPTURE_DELAY_SECONDS)
+                Outcome.Applied(state, confirmed = false)
+            }
+            PlatformApi.TrafficProxy -> {
+                // Pointed here when the app can change the setting, as the tool's Start does.
+                val point = context.droidective.access.access.value.allows(AccessLevel.Granted)
+                if (state == ON) TrafficProxy.start(context, point) else TrafficProxy.stop(context)
                 Outcome.Applied(state, confirmed = false)
             }
             else -> platform.write(api, state)

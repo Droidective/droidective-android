@@ -442,6 +442,13 @@ object Toggles {
                         ),
                     ),
             ),
+            api(
+                "traffic-proxy",
+                "Debugging proxy",
+                ToggleGroup.Network,
+                "travel_explore",
+                PlatformApi.TrafficProxy,
+            ),
             ToggleDef(
                 id = "http-proxy",
                 title = "HTTP proxy",

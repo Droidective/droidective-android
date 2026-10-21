@@ -15,6 +15,7 @@ import com.droidective.android.MainActivity
 import com.droidective.android.R
 import com.droidective.android.droidective
 import com.droidective.android.surface.Launch
+import com.droidective.android.surface.Surfaces
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -62,6 +63,7 @@ class ProxyService : Service() {
     override fun onDestroy() {
         scope.cancel()
         TrafficProxy.shutDown()
+        Surfaces.refreshBehind(this)
         // Ended some other way than Stop: the phone still has to come off the proxy.
         if (TrafficProxy.refreshPointing(this)) {
             val context = applicationContext
@@ -74,10 +76,13 @@ class ProxyService : Service() {
         TrafficProxy.run(this)
         if (!TrafficProxy.running) {
             // The screen says why; a notification that stays up for a proxy that isn't would not.
+            Surfaces.refreshBehind(this)
             stopSelf()
             return
         }
         if (point) TrafficProxy.point(this, here = true)
+        // A Debugging proxy tile or widget slot shows whether it runs.
+        Surfaces.refreshBehind(this)
         TrafficProxy.changes.collect {
             notify(running())
             delay(NOTIFY_GAP)

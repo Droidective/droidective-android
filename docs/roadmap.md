@@ -1,29 +1,14 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.6.0**.
+another machine. Current release: **0.7.0**.
 
-## Shipped since 0.6.0, waiting for a release
+## Shipped since 0.7.0, waiting for a release
 
-All merged to `main`, all unreleased:
-
-- **Record screen, Performance overlay and Capture views** as toggles, so they can sit
-  in a Quick Settings slot, a widget, the notification bar or an automation (#64).
-- **App Links** in the Deep Links tool (#65).
-- **Alarms** in Background Work (#66).
-- **App ops** in the Apps tool (#67) — the special accesses beyond runtime permissions,
-  each set in a tap.
-- **Notification Inspector** (#68) — why a notification shows or doesn't: what an app has
-  showing now, each channel's importance, whether notifications are off as a whole, and
-  Do Not Disturb.
-- **Network Traffic** (#69–#74, #76, #78–#87) — an HTTPS debugging proxy on the phone
-  itself: every request the phone's apps make, decoded, searchable, attributed to its app;
-  reading only the apps chosen while the rest pass through; HAR export; a Quick Settings
-  tile and a toggle. See [network-traffic-proxy.md](network-traffic-proxy.md), which also
-  lists what is worth doing next for it.
-
-**Next release is 0.7.0**: bump `versionName`/`versionCode` in `gradle.properties`, add a
-`RELEASE_NOTES.md` section, PR, merge, tag `v0.7.0`.
+Nothing yet. 0.7.0 carried Network Traffic (#69–#88), the Notification Inspector (#68), app ops
+(#67), alarms (#66), App Links (#65) and the capture actions as toggles (#64); see
+`RELEASE_NOTES.md`. For what is worth doing next in the proxy, see
+[network-traffic-proxy.md](network-traffic-proxy.md).
 
 ## Then: make the app reach further than its own screen
 

@@ -37,7 +37,8 @@ and more of what an app has set up on the phone.
 - **Alarms** in Background Work: the alarms an app has set, when each fires, and whether it
   wakes the phone or is exact.
 - **Record screen, Performance overlay and Capture views** as toggles, so they can sit in a
-  Quick Settings slot, a widget, the notification bar or an automation.
+  widget, the notification bar or an automation, and **Quick Settings tiles of their own** for
+  Record screen, Screenshot, Clean screenshot, Performance overlay and Capture views.
 
 ## 0.6.0
 

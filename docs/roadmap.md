@@ -6,7 +6,7 @@ another machine. Current release: **0.7.0**.
 ## Shipped since 0.7.0, waiting for a release
 
 Nothing yet. 0.7.0 carried Network Traffic (#69–#88), the Notification Inspector (#68), app ops
-(#67), alarms (#66), App Links (#65) and the capture actions as toggles (#64); see
+(#67), alarms (#66), App Links (#65) and the capture actions as toggles and tiles (#64, #90); see
 `RELEASE_NOTES.md`. For what is worth doing next in the proxy, see
 [network-traffic-proxy.md](network-traffic-proxy.md).
 
@@ -16,19 +16,14 @@ A review of the newer features found the same gap in all of them — they work w
 you are in the app, and are hard to reach from anywhere else. A phone tool that needs you
 to open an app first has already lost to the thing you were doing instead.
 
-1. **Quick Settings tiles for the capture actions.** Seven tools have a tile of their own
-   (Layout bounds, Show taps, Animation scale, Demo mode, Network speed, Wireless
-   debugging, Current activity). Screen record, Screenshot, Performance overlay and
-   Capture views do not — they can only be reached by first assigning them to one of the
-   twelve generic slots in Widgets. The system recorder has a tile; so should ours.
-2. **Launcher shortcuts.** Long-pressing the app icon offers nothing. The most-used tools
+1. **Launcher shortcuts.** Long-pressing the app icon offers nothing. The most-used tools
    belong there, plus "add this tool to the home screen" from the tool itself.
-3. **Open with, and Share.** Tapping an APK in Files, or sharing a link to try as a deep
+2. **Open with, and Share.** Tapping an APK in Files, or sharing a link to try as a deep
    link, never reaches Droidective.
-4. **A floating control over other apps.** Only the performance overlay floats today. To
+3. **A floating control over other apps.** Only the performance overlay floats today. To
    capture or inspect a screen you have to leave the app you are inspecting, which is the
    one moment you cannot.
-5. **Pinned and recent tools.** Thirty-seven tools sit in one list behind a search box.
+4. **Pinned and recent tools.** Thirty-eight tools sit in one list behind a search box.
 
 ## Standing constraints
 

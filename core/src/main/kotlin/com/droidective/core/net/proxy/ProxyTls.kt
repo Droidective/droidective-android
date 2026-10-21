@@ -1,7 +1,6 @@
 package com.droidective.core.net.proxy
 
 import com.droidective.core.net.tls.KeyedCertificate
-import java.net.InetSocketAddress
 import java.net.Socket
 import java.security.KeyStore
 import java.security.cert.X509Certificate
@@ -43,8 +42,7 @@ internal object ProxyTls {
      * quietly made every connection through it weaker than it was without one.
      */
     fun connect(origin: Origin, timeout: Int): SSLSocket {
-        val plain = Socket()
-        plain.connect(InetSocketAddress(origin.host, origin.port), timeout)
+        val plain = Dial.connect(origin.host, origin.port, timeout)
         val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
         val socket = factory.createSocket(plain, origin.host, origin.port, true) as SSLSocket
         socket.sslParameters =

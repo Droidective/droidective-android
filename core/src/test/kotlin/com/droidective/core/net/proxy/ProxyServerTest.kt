@@ -20,6 +20,7 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLException
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.TrustManagerFactory
 import kotlin.concurrent.thread
@@ -27,6 +28,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -269,6 +271,38 @@ class ProxyServerTest {
             assertTrue(flow.requestBody.isEmpty)
             assertEquals("https://localhost:${origin.port}", flow.url)
         }
+    }
+
+    @Test
+    fun aRequestIsOnRecordBeforeTheServerIsReached() {
+        val closed = ServerSocket(0).use { it.localPort }
+        val port = proxy()
+        assertFailsWith<IOException> { get("http://127.0.0.1:$closed/slow", port) }
+
+        val failed = sink.next()
+        assertNotNull(failed.failure)
+        // It was there, waiting, while the dial was still going.
+        val waiting = sink.begun.single { it.id == failed.id }
+        assertNull(waiting.response)
+        assertNull(waiting.failure)
+    }
+
+    @Test
+    fun anAppThatRefusesTheCertificateIsRecordedAsRefusingIt() {
+        // A client with the JDK's own trust store, which has never heard of the proxy's authority.
+        val port = proxy()
+        val socket = Socket("127.0.0.1", port)
+        socket.getOutputStream().write(wire("CONNECT localhost:443 HTTP/1.1\r\n\r\n"))
+        socket.getOutputStream().flush()
+        assertEquals(200, assertNotNull(HttpReader(socket.getInputStream()).readResponse()).status)
+        val untrusting = SSLContext.getDefault().socketFactory
+        val tls = untrusting.createSocket(socket, "localhost", 443, true) as SSLSocket
+        assertFailsWith<SSLException> { tls.use { it.startHandshake() } }
+
+        val flow = sink.next()
+        assertEquals("the app refused the certificate (certificate unknown)", flow.failure)
+        assertEquals("https://localhost", flow.url)
+        assertNull(flow.response)
     }
 
     /** CONNECT to the proxy, then TLS inside it, then one request — the client's whole job. */

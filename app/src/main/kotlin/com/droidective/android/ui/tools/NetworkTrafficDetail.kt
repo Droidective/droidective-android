@@ -5,6 +5,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -16,10 +18,12 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -27,6 +31,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.ui.copy
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
@@ -36,6 +42,7 @@ import com.droidective.core.net.proxy.Curl
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowLabels
 import com.droidective.core.net.proxy.TlsFailure
+import com.droidective.core.net.proxy.TrafficRules
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -49,7 +56,7 @@ fun FlowDetail(flow: Flow, tool: ToolContext) {
     val say = rememberSay(tool)
     val labels = remember { AppLabels(context) }
     var side by rememberSaveable { mutableIntStateOf(if (flow.response != null) 1 else 0) }
-    ToolScaffold("${flow.request.method} ${flow.host}", tool) {
+    ToolScaffold(if (flow.opening) flow.host else "${flow.request.method} ${flow.host}", tool) {
         Text(
             flow.url,
             fontFamily = FontFamily.Monospace,
@@ -101,6 +108,41 @@ fun FlowDetail(flow: Flow, tool: ToolContext) {
                 enabled = !flow.opening,
             ) {
                 Text("Copy as cURL")
+            }
+        }
+        RuleShortcuts(flow, labels, say)
+    }
+}
+
+/** The two rules most often made while looking at one flow, a tap away from it. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RuleShortcuts(flow: Flow, labels: AppLabels, say: (String) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { TrafficProxy.loadRules(context) } }
+    val rules by TrafficProxy.rules.collectAsStateWithLifecycle()
+    val host = TrafficRules.pattern(flow.host)
+    val app = flow.app
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (host != null && host !in rules.passThrough) {
+            OutlinedButton(
+                onClick = {
+                    scope.saveRules(context, rules.passingThrough(host))
+                    say("$host is passed through from now on")
+                }
+            ) {
+                Text("Pass $host through")
+            }
+        }
+        if (app != null && rules.apps != listOf(app)) {
+            OutlinedButton(
+                onClick = {
+                    scope.saveRules(context, rules.copy(apps = listOf(app)))
+                    say("Reading only ${labels.of(app)} from now on")
+                }
+            ) {
+                Text("Read only ${labels.of(app)}")
             }
         }
     }

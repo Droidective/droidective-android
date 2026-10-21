@@ -11,10 +11,10 @@ class ToggleRegistryTest {
 
     @Test
     fun hasTheTogglesThePlanListsAndReactNativesKeys() {
-        assertEquals(58, all.size)
+        assertEquals(59, all.size)
         assertEquals(
             mapOf(
-                ToggleGroup.Network to 15,
+                ToggleGroup.Network to 16,
                 ToggleGroup.Sound to 3,
                 ToggleGroup.Display to 11,
                 ToggleGroup.Device to 7,

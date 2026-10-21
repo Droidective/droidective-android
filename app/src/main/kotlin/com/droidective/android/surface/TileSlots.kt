@@ -216,6 +216,8 @@ class AnimationScaleTile : FixedTileService("animation-scale")
 
 class DemoModeTile : FixedTileService("demo-mode")
 
+class TrafficProxyTile : FixedTileService("traffic-proxy")
+
 class WirelessDebuggingTile : FixedTileService("wireless-debugging")
 
 /** Live network speed while Quick Settings is open; a tap opens the Network Speed tool. */

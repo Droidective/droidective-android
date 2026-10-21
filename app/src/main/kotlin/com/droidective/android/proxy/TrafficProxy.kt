@@ -140,6 +140,9 @@ object TrafficProxy {
 
     /** Stops listening and puts the phone's proxy setting back the way it was. */
     fun stop(context: Context) {
+        // At once, so a tile reading the state straight after its tap sees it stopped; putting the
+        // setting back is the service's, while it is still in the foreground.
+        shutDown()
         context.startService(service(context).setAction(ProxyService.ACTION_STOP))
     }
 

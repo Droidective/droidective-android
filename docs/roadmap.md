@@ -1,25 +1,20 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.14.0**.
+another machine. Current release: **0.15.0**.
 
-## Shipped since 0.14.0, waiting for a release
+## Shipped since 0.15.0, waiting for a release
 
-- **gRPC read with the app's schema** (#129): descriptor sets pushed to the `protos`
-  folder name each call's fields, types and enums as `protoc --decode` does, open the
-  `Any`s in error details, and fall back to reading without when a type isn't there.
-- **zstd answers read** (#130): Chrome and its WebView ask for zstd, and an answer in it now
-  shows and exports decoded, through a decoder of the app's own (`core/zstd`).
-
-- **Reactotron on the phone** (#131, #132): a React Native app's Reactotron client reports to
-  the phone it runs on — logs, API calls, state, benchmarks — with no computer; see
-  [reactotron.md](reactotron.md).
+Nothing yet. 0.15.0 carried Reactotron on the phone (#131, #132), zstd (#130) and gRPC read
+with the app's schema (#129); see `RELEASE_NOTES.md`.
 
 ## Next
 
 - **The proxy's next steps** — the certificate in the system store with root, schemas from
   a server's reflection — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
+- **Reactotron talking back** — state requests, an app's custom commands, the REPL — is in
+  [reactotron.md](reactotron.md).
 - **The Mac tools not yet on the phone**: none on the list. `app-info` stays the Apps tool's
   detail screen, which already is that.
 - **Real-device passes on the OnePlus Pad** need the person there: OxygenOS holds every

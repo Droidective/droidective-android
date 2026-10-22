@@ -19,6 +19,7 @@ object NoticeIds {
     const val UI_CAPTURE = 7_432
     const val SCREENSHOT = 7_433
     const val FLOATING = 7_440
+    const val REACTOTRON = 7_450
 
     val all =
         listOf(
@@ -34,5 +35,6 @@ object NoticeIds {
             UI_CAPTURE,
             SCREENSHOT,
             FLOATING,
+            REACTOTRON,
         )
 }

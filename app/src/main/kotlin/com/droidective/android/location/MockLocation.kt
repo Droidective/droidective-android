@@ -7,6 +7,7 @@ import android.os.Process
 import com.droidective.android.proxy.KeptList
 import com.droidective.core.location.Coordinates
 import com.droidective.core.location.Place
+import com.droidective.core.location.Route
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,8 +23,16 @@ object MockLocation {
     sealed interface State {
         data object Off : State
 
-        /** The phone says it is at [where], [name] when the place has one. */
-        data class On(val where: Coordinates, val name: String?) : State
+        /**
+         * The phone says it is at [where], [name] when the place has one — moving along [route]
+         * when it was given one, until it has [arrived].
+         */
+        data class On(
+            val where: Coordinates,
+            val name: String?,
+            val route: Route? = null,
+            val arrived: Boolean = false,
+        ) : State
 
         /** It couldn't stand in; [notChosen] when Droidective isn't the mock location app. */
         data class Failed(val why: String, val notChosen: Boolean) : State
@@ -39,6 +48,24 @@ object MockLocation {
             Intent(context, MockLocationService::class.java)
                 .putExtra(MockLocationService.EXTRA_LATITUDE, where.latitude)
                 .putExtra(MockLocationService.EXTRA_LONGITUDE, where.longitude)
+                .putExtra(MockLocationService.EXTRA_NAME, name)
+        )
+    }
+
+    /** Sets the phone off along [route], from its first place. */
+    fun move(context: Context, route: Route, name: String?) {
+        context.startForegroundService(
+            Intent(context, MockLocationService::class.java)
+                .putExtra(
+                    MockLocationService.EXTRA_LATITUDES,
+                    route.points.map { it.latitude }.toDoubleArray(),
+                )
+                .putExtra(
+                    MockLocationService.EXTRA_LONGITUDES,
+                    route.points.map { it.longitude }.toDoubleArray(),
+                )
+                .putExtra(MockLocationService.EXTRA_SPEED, route.metresPerSecond)
+                .putExtra(MockLocationService.EXTRA_LOOP, route.loop)
                 .putExtra(MockLocationService.EXTRA_NAME, name)
         )
     }

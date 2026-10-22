@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,8 +41,10 @@ import com.droidective.android.location.MockLocation
 import com.droidective.android.ui.Symbols
 import com.droidective.core.apps.AppOps
 import com.droidective.core.location.Coordinates
+import com.droidective.core.location.Pace
 import com.droidective.core.location.Place
 import com.droidective.core.location.Places
+import com.droidective.core.location.Route
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,6 +63,7 @@ fun MockLocationTool(tool: ToolContext) {
         NowSection()
         ChosenSection(tool)
         WhereSection(tool)
+        MoveSection()
         KeptSection()
         ReadySection()
         ToolNote(
@@ -76,6 +81,12 @@ private fun NowSection() {
     ToolSection("Now") {
         when (val now = state) {
             is MockLocation.State.On -> {
+                now.route?.let { route ->
+                    val pace =
+                        Pace.entries.firstOrNull { it.metresPerSecond == route.metresPerSecond }
+                    val doing = if (now.arrived) "Arrived" else pace?.title ?: "Moving"
+                    InfoRow(doing, route.summary())
+                }
                 InfoRow(
                     "The phone is at",
                     listOfNotNull(now.name, now.where.toString()).joinToString("\n"),
@@ -192,6 +203,58 @@ private fun WhereSection(tool: ToolContext) {
             ) {
                 Text("Keep it")
             }
+        }
+    }
+}
+
+/** Places a line, or a GPX track: the phone goes from one to the next at a person's pace. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MoveSection() {
+    val context = LocalContext.current
+    var text by rememberSaveable { mutableStateOf("") }
+    var paceName by rememberSaveable { mutableStateOf(Pace.Walk.name) }
+    var loop by rememberSaveable { mutableStateOf(false) }
+    val pace = Pace.valueOf(paceName)
+    val points = remember(text) { if (text.isBlank()) null else Route.points(text) }
+    val route = points?.takeIf { it.size >= 2 }?.let { Route(it, pace.metresPerSecond, loop) }
+    ToolSection("Move") {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            label = { Text("A place a line, or a GPX track") },
+            supportingText = {
+                Text(
+                    when {
+                        text.isBlank() -> "The phone goes from each to the next, as a person would"
+                        points == null -> "A line there isn't a place"
+                        route == null -> "Two places at least"
+                        else -> route.summary()
+                    }
+                )
+            },
+            isError = text.isNotBlank() && points == null,
+            minLines = 3,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pace.entries.forEach { each ->
+                FilterChip(
+                    selected = pace == each,
+                    onClick = { paceName = each.name },
+                    label = { Text(each.title) },
+                )
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Round and round", Modifier.weight(1f))
+            Switch(checked = loop, onCheckedChange = { loop = it })
+        }
+        Button(
+            onClick = { route?.let { MockLocation.move(context, it, null) } },
+            enabled = route != null,
+        ) {
+            Text("Start moving")
         }
     }
 }

@@ -73,7 +73,7 @@ class Repeater(
     }
 
     private fun open(server: Server): Socket =
-        if (server.secure) upstream.connect(server.origin, CONNECT_MILLIS)
+        if (server.secure) upstream.connect(server.origin, CONNECT_MILLIS, ProxyTls.HTTP_1_1)
         else Dial.connect(server.origin.host, server.origin.port, CONNECT_MILLIS)
 
     private fun exchange(flow: Flow, head: RequestHead, body: ByteArray, socket: Socket): Flow {

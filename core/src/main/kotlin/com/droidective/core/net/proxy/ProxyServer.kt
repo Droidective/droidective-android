@@ -28,6 +28,7 @@ import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicLong
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLException
+import javax.net.ssl.SSLSocket
 import kotlin.concurrent.thread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -207,6 +208,7 @@ class ProxyServer(
             )
             return
         }
+        if (tls.applicationProtocol == ProxyTls.H2) return relay(origin, head, tls, record)
         exchanges(
             BufferedInputStream(tls.inputStream),
             BufferedOutputStream(tls.outputStream),
@@ -470,6 +472,44 @@ class ProxyServer(
         }
     }
 
+    /**
+     * A connection the app would speak only HTTP/2 on, carried to a server that speaks it too. None
+     * of it is read yet, so no rule that rewrites a request reaches it — but the app works, where
+     * without this it could not get a word out while it was being read.
+     */
+    private fun relay(origin: Origin, head: RequestHead, app: SSLSocket, record: FlowSink) {
+        val flow =
+            begin(head, origin, secure = true).copy(tunnelled = true, passing = Passing.Http2)
+        record.started(flow)
+        var server: SSLSocket? = null
+        try {
+            val dialled = dialTls(origin, ProxyTls.H2)
+            server = dialled
+            // The app was promised HTTP/2; a server that would not agree has nothing it can read.
+            if (dialled.applicationProtocol != ProxyTls.H2) {
+                record.finished(flow.copy(finishedAt = clock(), failure = NO_HTTP2))
+                return
+            }
+            // Like a tunnel, an HTTP/2 connection sits idle between calls and is still alive.
+            app.soTimeout = 0
+            dialled.soTimeout = 0
+            val slow = throttle
+            delay(slow)
+            bothWays(
+                app.inputStream,
+                Paced.of(app.outputStream, slow.downBytesPerSecond),
+                dialled.inputStream,
+                Paced.of(dialled.outputStream, slow.upBytesPerSecond),
+            )
+            record.finished(flow.copy(finishedAt = clock()))
+        } catch (e: IOException) {
+            val why = if (e is SSLException) TlsFailure.upstream(e.message) else e.reason()
+            record.finished(flow.copy(finishedAt = clock(), failure = why))
+        } finally {
+            server?.closeQuietly()
+        }
+    }
+
     /** A request held at a breakpoint, decided on: what goes to the server, and what came in. */
     private class Decided(
         val flow: Flow,
@@ -645,13 +685,23 @@ class ProxyServer(
 
     private fun dial(server: Server): Socket {
         val (secure, origin) = server
-        // Sent to itself, by an app or by a remap, a request would ask the proxy again, for ever.
-        if (origin.port == port && loopback(origin.host)) throw IOException(ITSELF)
         return if (secure) {
-            upstream.connect(origin, CONNECT_MILLIS)
+            dialTls(origin, ProxyTls.HTTP_1_1)
         } else {
+            notItself(origin)
             Dial.connect(origin.host, origin.port, CONNECT_MILLIS).apply { soTimeout = IDLE_MILLIS }
         }
+    }
+
+    /** The real server, over TLS, asked to speak [protocol]. */
+    private fun dialTls(origin: Origin, protocol: String): SSLSocket {
+        notItself(origin)
+        return upstream.connect(origin, CONNECT_MILLIS, protocol)
+    }
+
+    /** Sent to itself, by an app or by a remap, a request would ask the proxy again, for ever. */
+    private fun notItself(origin: Origin) {
+        if (origin.port == port && loopback(origin.host)) throw IOException(ITSELF)
     }
 
     /**
@@ -733,6 +783,7 @@ class ProxyServer(
         const val WEBSOCKET = "websocket"
         const val EXTENSIONS = "Sec-WebSocket-Extensions"
         const val ITSELF = "that is this proxy, which would only ask itself again"
+        const val NO_HTTP2 = "the app speaks only HTTP/2, and the server would not"
         const val ACCEPT_ENCODING = "Accept-Encoding"
         const val SWITCHING = 101
         const val BACKLOG = 50

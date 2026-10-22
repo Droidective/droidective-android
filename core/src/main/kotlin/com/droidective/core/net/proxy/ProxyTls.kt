@@ -24,14 +24,15 @@ internal object ProxyTls {
     /**
      * Takes over [client] as the server it dialled.
      *
-     * Only HTTP/1.1 is offered: a client that would rather speak HTTP/2 settles for what this can
-     * read, instead of opening streams nothing here understands.
+     * HTTP/1.1 comes first, and the server's order is the one that counts: a client that can speak
+     * either settles for what this reads. HTTP/2 is there for the client that speaks nothing else —
+     * gRPC, for one — which would otherwise be told there is nothing in common and stop working.
      */
     fun accept(context: SSLContext, client: Socket, origin: Origin): SSLSocket =
         (context.socketFactory.createSocket(client, origin.host, origin.port, false) as SSLSocket)
             .apply {
                 useClientMode = false
-                sslParameters = sslParameters.apply { applicationProtocols = arrayOf(HTTP_1_1) }
+                sslParameters = sslParameters.apply { applicationProtocols = arrayOf(HTTP_1_1, H2) }
             }
 
     /**
@@ -41,20 +42,22 @@ internal object ProxyTls {
      * handed it the job of deciding whether the server is genuine; a proxy that skips the check has
      * quietly made every connection through it weaker than it was without one.
      */
-    fun connect(origin: Origin, timeout: Int): SSLSocket {
+    fun connect(origin: Origin, timeout: Int, protocol: String): SSLSocket {
         val plain = Dial.connect(origin.host, origin.port, timeout)
         val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
         val socket = factory.createSocket(plain, origin.host, origin.port, true) as SSLSocket
         socket.sslParameters =
             socket.sslParameters.apply {
                 endpointIdentificationAlgorithm = "HTTPS"
-                applicationProtocols = arrayOf(HTTP_1_1)
+                applicationProtocols = arrayOf(protocol)
             }
         socket.startHandshake()
         return socket
     }
 
+    const val HTTP_1_1 = "http/1.1"
+    const val H2 = "h2"
+
     private const val ALIAS = "leaf"
-    private const val HTTP_1_1 = "http/1.1"
     private val PASSWORD = "proxy".toCharArray()
 }

@@ -3,12 +3,7 @@ package com.droidective.core.net.proxy
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
-import com.droidective.core.net.tls.ProxyCertificates
 import java.net.ServerSocket
-import java.security.KeyStore
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSocket
-import javax.net.ssl.TrustManagerFactory
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -145,42 +140,18 @@ class RepeaterTest {
 
     @Test
     fun anHttpsRequestGoesAgainOverTls() {
-        FakeServer(
-                ProxyTls.serverContext(
-                    certificates.certificateFor("localhost"),
-                    certificates.caCertificate,
-                )
-            )
-            .use { origin ->
-                origin.reply = { ok("secret") }
-                val flow =
-                    captured(port = origin.port, secure = true, target = "/private")
-                        .copy(host = "localhost")
-                val again = Repeater(trusting).send(ready(flow), id = 5, of = 7)
-                assertEquals(200, again.status)
-                assertContentEquals("secret".toByteArray(), assertNotNull(again.responseBody).bytes)
-            }
+        FakeServer(TestAuthority.serverContext()).use { origin ->
+            origin.reply = { ok("secret") }
+            val flow =
+                captured(port = origin.port, secure = true, target = "/private")
+                    .copy(host = "localhost")
+            val again = Repeater(TestAuthority.upstream).send(ready(flow), id = 5, of = 7)
+            assertEquals(200, again.status)
+            assertContentEquals("secret".toByteArray(), assertNotNull(again.responseBody).bytes)
+        }
     }
 
     private companion object {
-        val certificates: ProxyCertificates by lazy { ProxyCertificates.create("Droidective Test") }
-
-        /** The real server's end, trusting the test authority, as the proxy's tests do. */
-        val trusting = UpstreamTls { origin, timeout ->
-            val plain = Dial.connect(origin.host, origin.port, timeout)
-            (context.socketFactory.createSocket(plain, origin.host, origin.port, true) as SSLSocket)
-                .apply { startHandshake() }
-        }
-
-        val context: SSLContext by lazy {
-            val store = KeyStore.getInstance(KeyStore.getDefaultType())
-            store.load(null)
-            store.setCertificateEntry("ca", certificates.caCertificate)
-            val factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
-            factory.init(store)
-            SSLContext.getInstance("TLS").apply { init(null, factory.trustManagers, null) }
-        }
-
         fun ok(body: String) = "HTTP/1.1 200 OK\r\nContent-Length: ${body.length}\r\n\r\n$body"
     }
 }

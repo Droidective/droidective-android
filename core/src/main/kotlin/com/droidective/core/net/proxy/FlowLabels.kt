@@ -57,6 +57,7 @@ object FlowLabels {
             Passing.Rule -> "passed through by a rule"
             Passing.OtherApp -> "passed through: not an app being read"
             Passing.Refused -> "passed through: the app refused the certificate before"
+            Passing.Http2 -> "passed on unread: it speaks only HTTP/2"
             null -> "passed through"
         }
     }

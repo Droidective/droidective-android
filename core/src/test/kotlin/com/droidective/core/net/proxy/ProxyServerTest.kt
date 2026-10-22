@@ -4,7 +4,8 @@ import com.droidective.core.net.http.BodyFraming
 import com.droidective.core.net.http.HttpBody
 import com.droidective.core.net.http.HttpReader
 import com.droidective.core.net.http.ResponseHead
-import com.droidective.core.net.tls.ProxyCertificates
+import com.droidective.core.net.proxy.TestAuthority.certificates
+import com.droidective.core.net.proxy.TestAuthority.trust
 import com.droidective.core.net.ws.FrameReader
 import com.droidective.core.net.ws.Negotiated
 import com.droidective.core.net.ws.SocketMessage
@@ -18,7 +19,6 @@ import java.net.Proxy
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URI
-import java.security.KeyStore
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicLong
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLException
 import javax.net.ssl.SSLSocket
-import javax.net.ssl.TrustManagerFactory
 import kotlin.concurrent.thread
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -64,7 +63,7 @@ class ProxyServerTest {
             ProxyServer(
                 certificates,
                 sink,
-                trustingUpstream,
+                TestAuthority.upstream,
                 owners,
                 refusals,
                 breaker = breaker,
@@ -185,10 +184,10 @@ class ProxyServerTest {
         // again, and replaced the first run's.
         val ids = AtomicLong()
         FakeServer().use { origin ->
-            val first = ProxyServer(certificates, sink, trustingUpstream, ids = ids)
+            val first = ProxyServer(certificates, sink, TestAuthority.upstream, ids = ids)
             get("http://127.0.0.1:${origin.port}/one", first.start())
             first.stop()
-            val second = ProxyServer(certificates, sink, trustingUpstream, ids = ids)
+            val second = ProxyServer(certificates, sink, TestAuthority.upstream, ids = ids)
             server = second
             get("http://127.0.0.1:${origin.port}/two", second.start())
             assertEquals(listOf(1L, 2L), sink.all(2).map { it.id })
@@ -1011,13 +1010,7 @@ class ProxyServerTest {
         }
     }
 
-    private fun secureServer() =
-        FakeServer(
-            ProxyTls.serverContext(
-                certificates.certificateFor("localhost"),
-                certificates.caCertificate,
-            )
-        )
+    private fun secureServer() = FakeServer(TestAuthority.serverContext())
 
     private fun connect(url: String, proxyPort: Int): HttpURLConnection {
         val through = Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", proxyPort))
@@ -1039,35 +1032,6 @@ class ProxyServerTest {
     private companion object {
         /** Long enough for an answered future to have finished completing. */
         const val SETTLE_MILLIS = 200L
-
-        /** Generating keys is slow, so every test in the class shares one authority. */
-        val certificates: ProxyCertificates by lazy { ProxyCertificates.create("Droidective Test") }
-
-        /**
-         * A client, and the proxy's own upstream, that trust the test authority and nothing else.
-         */
-        val trust: SSLContext by lazy {
-            val store = KeyStore.getInstance(KeyStore.getDefaultType())
-            store.load(null)
-            store.setCertificateEntry("ca", certificates.caCertificate)
-            val factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
-            factory.init(store)
-            SSLContext.getInstance("TLS").apply { init(null, factory.trustManagers, null) }
-        }
-
-        val trustingUpstream = UpstreamTls { origin, timeout ->
-            val plain = Socket()
-            plain.connect(InetSocketAddress(origin.host, origin.port), timeout)
-            val socket =
-                trust.socketFactory.createSocket(plain, origin.host, origin.port, true) as SSLSocket
-            socket.sslParameters =
-                socket.sslParameters.apply {
-                    endpointIdentificationAlgorithm = "HTTPS"
-                    applicationProtocols = arrayOf("http/1.1")
-                }
-            socket.startHandshake()
-            socket
-        }
 
         fun ok(body: String) = "HTTP/1.1 200 OK\r\nContent-Length: ${body.length}\r\n\r\n$body"
 

@@ -10,9 +10,12 @@ import javax.net.ssl.SSLSocket
  * server's certificate the way a browser would — see [ProxyTls.connect] for why that matters.
  */
 fun interface UpstreamTls {
-    fun connect(origin: Origin, timeoutMillis: Int): SSLSocket
+    /** A connection to [origin] that asks to speak [protocol], an ALPN name. */
+    fun connect(origin: Origin, timeoutMillis: Int, protocol: String): SSLSocket
 
     companion object {
-        val SYSTEM = UpstreamTls { origin, timeout -> ProxyTls.connect(origin, timeout) }
+        val SYSTEM = UpstreamTls { origin, timeout, protocol ->
+            ProxyTls.connect(origin, timeout, protocol)
+        }
     }
 }

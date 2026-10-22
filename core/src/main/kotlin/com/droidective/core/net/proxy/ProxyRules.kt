@@ -65,4 +65,7 @@ enum class Passing {
 
     /** The app refused the certificate for this host before. */
     Refused,
+
+    /** The app would speak only HTTP/2, which is carried to the server but not read. */
+    Http2,
 }

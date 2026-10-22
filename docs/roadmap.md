@@ -5,12 +5,14 @@ another machine. Current release: **0.13.0**.
 
 ## Shipped since 0.13.0, waiting for a release
 
-Nothing yet. 0.13.0 carried Permissions (#121), API Testing (#122, #123) and the WebSocket
-"not read" note (#120); see `RELEASE_NOTES.md`.
+- **Apps that speak only HTTP/2 work while they are read** (#125). gRPC, offered only
+  HTTP/1.1, couldn't connect at all; it is now relayed to its server, shown as one row
+  "passed on unread".
 
 ## Next
 
-- **The proxy's next steps** — the certificate in the system store with root, zstd, HTTP/2 — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
+- **The proxy's next steps** — reading HTTP/2, the certificate in the system store with
+  root, zstd — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
 - **The Mac tools not yet on the phone**: none on the list. `app-info` stays the Apps tool's
   detail screen, which already is that.

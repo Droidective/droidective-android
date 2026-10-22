@@ -114,7 +114,9 @@ Roughly in the order people reach for them after the list itself:
   approach), redone after each reboot. `CertificateTrust.System` already reads the result.
 - **zstd.** Chrome asks for it, and a body in it is shown and exported as it arrived: it
   needs a decoder the app doesn't carry. brotli is read (`org.brotli:dec`).
-- **HTTP/2.** Only HTTP/1.1 is offered in ALPN, so clients fall back; gRPC can't.
+- **Reading HTTP/2.** An app that speaks only HTTP/2 (gRPC) is carried to its server and
+  works, but shows as one row "passed on unread". Its frames could be read the way a
+  WebSocket's are, one flow per stream.
 
 ## What stops this working, and what to tell people
 
@@ -155,8 +157,12 @@ does exactly this.
   RSA key generation — milliseconds instead of seconds on a phone.
 - **The real server's certificate is checked**, hostname and all. An app that trusts the
   proxy has handed it that decision.
-- **Only HTTP/1.1 is offered in ALPN**, so clients fall back from HTTP/2 to something this
-  can read.
+- **HTTP/1.1 comes first in ALPN, and the server's order is the one TLS honours**, so a
+  client that can speak either falls back to something this reads. HTTP/2 is offered
+  second, for the client that speaks nothing else: offered only HTTP/1.1, gRPC fails the
+  handshake on the JVM and, on Android, finishes it with no protocol agreed and hangs up,
+  with nothing on record either way. Such a connection is relayed to a server asked for
+  HTTP/2 alone; mocks, remaps and breakpoints don't reach it.
 - **It listens on `127.0.0.1`, by name.** A proxy on every interface is an open proxy for
   everyone else on that Wi-Fi. And not `InetAddress.getLoopbackAddress()`: on Android that
   is `::1`, and a socket there never hears a connection to `127.0.0.1` (#79). `core`'s tests

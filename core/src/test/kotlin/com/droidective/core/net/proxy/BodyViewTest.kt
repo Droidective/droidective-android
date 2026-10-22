@@ -5,6 +5,7 @@ import com.droidective.core.net.http.Header
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
 import java.io.ByteArrayOutputStream
+import java.util.HexFormat
 import java.util.zip.GZIPOutputStream
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -78,10 +79,40 @@ class BodyViewTest {
     fun aCompressionThisCannotReadSaysSoRatherThanShowingRubbish() {
         val shape =
             BodyView.of(
-                headers("Content-Type" to "application/json", "Content-Encoding" to "br"),
-                body("not really brotli"),
+                headers("Content-Type" to "application/json", "Content-Encoding" to "zstd"),
+                body("not really zstd"),
             )
-        assertContains(assertIs<BodyShape.Binary>(shape).reason, "br")
+        assertContains(assertIs<BodyShape.Binary>(shape).reason, "zstd")
+    }
+
+    @Test
+    fun brotliIsUndoneAsGzipIs() {
+        val shape =
+            BodyView.of(
+                headers("Content-Type" to "application/json", "Content-Encoding" to "br"),
+                CapturedBody(BROTLI, BROTLI.size.toLong(), truncated = false),
+            )
+        val pretty = assertIs<BodyShape.Json>(shape).pretty
+        assertEquals(40, Regex("\"fish\"").findAll(pretty).count())
+        assertEquals(1_121, BodyView.decode("br", BROTLI)?.size)
+    }
+
+    @Test
+    fun brotliThatIsntIsNotPretendedTo() {
+        assertNull(BodyView.decode("br", "not really brotli".toByteArray()))
+        // Cut short, it gives back what it could, if anything, and never throws.
+        val cut = BodyView.decode("br", BROTLI.copyOf(20))
+        assertTrue(cut == null || cut.size < 1_121)
+    }
+
+    @Test
+    fun aBodyThatUnpacksToGigabytesStopsAtTheBound() {
+        val zeros = ByteArrayOutputStream()
+        GZIPOutputStream(zeros).use { out ->
+            val chunk = ByteArray(1024 * 1024)
+            repeat(64) { out.write(chunk) }
+        }
+        assertEquals(BodyView.MAX_DECODED, BodyView.decode("gzip", zeros.toByteArray())?.size)
     }
 
     @Test
@@ -156,6 +187,15 @@ class BodyViewTest {
     fun prettyJsonRefusesWhatIsNotJson() {
         assertNull(BodyView.prettyJson("{"))
         assertNull(BodyView.prettyJson(""))
+    }
+
+    private companion object {
+        /** `brotli -q 11` of forty copies of one JSON item: 46 bytes for 1,121. */
+        val BROTLI: ByteArray =
+            HexFormat.of()
+                .parseHex(
+                    "b10023c0ef387063adf908058dd049284568b69245a7ab5d6af6fab4229a6c529b5e018a3274e1519942efaf7030"
+                )
     }
 }
 

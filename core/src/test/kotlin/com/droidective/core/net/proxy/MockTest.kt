@@ -233,13 +233,13 @@ class MockTest {
         val base =
             Flow(1, 0, true, "a.example", 443, RequestHead("GET", "/", "HTTP/1.1", Headers()))
         assertTrue("Nothing" in Mock.whyNot(base)!!)
-        val brotli =
+        val zstd =
             base.copy(
                 response =
-                    ResponseHead("HTTP/1.1", 200, "OK", Headers().add("Content-Encoding", "br")),
-                responseBody = CapturedBody(byteArrayOf(0x1b, 0x0e), 2, false),
+                    ResponseHead("HTTP/1.1", 200, "OK", Headers().add("Content-Encoding", "zstd")),
+                responseBody = CapturedBody(byteArrayOf(0x28, 0xb5.toByte()), 2, false),
             )
-        assertTrue("Send again" in Mock.whyNot(brotli)!!)
+        assertTrue("Send again" in Mock.whyNot(zstd)!!)
         val plain =
             base.copy(
                 response = ResponseHead("HTTP/1.1", 200, "OK", Headers()),

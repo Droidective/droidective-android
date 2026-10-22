@@ -130,8 +130,8 @@ class Repeater(
 
         /**
          * The codings asked for, less the ones whose answer couldn't be read here, or null when
-         * nothing needs leaving out. A browser asks for brotli, and a repeat whose answer comes
-         * back in it shows nothing; a repeat is sent to be looked at.
+         * nothing needs leaving out. A browser asks for zstd, and a repeat whose answer comes back
+         * in it shows nothing; a repeat is sent to be looked at.
          */
         internal fun readable(accepted: String?): String? {
             if (accepted == null) return null
@@ -145,7 +145,7 @@ class Repeater(
 
         private const val ACCEPT_ENCODING = "Accept-Encoding"
         private const val IDENTITY = "identity"
-        private val DECODABLE = setOf("gzip", "x-gzip", "deflate", IDENTITY, "*")
+        private val DECODABLE = setOf("gzip", "x-gzip", "deflate", "br", IDENTITY, "*")
         private const val CONNECTION = "Connection"
         private const val CLOSE = "close"
         private const val SWITCHING = 101

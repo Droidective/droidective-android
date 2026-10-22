@@ -76,6 +76,9 @@ enum class PlatformApi(val opensScreen: Boolean = false) {
     /** A UI Inspector capture of whatever is on screen in a few seconds. */
     CaptureViews,
 
+    /** A screenshot of whatever is on screen in a moment, opened to mark up. */
+    MarkupScreenshot,
+
     /** Network Traffic's debugging proxy, started and stopped like a switch. */
     TrafficProxy,
 

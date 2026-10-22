@@ -98,6 +98,7 @@ class AndroidPlatformToggles(private val context: Context) : PlatformToggles {
             PlatformApi.ScreenRecording,
             PlatformApi.PerformanceOverlay,
             PlatformApi.CaptureViews,
+            PlatformApi.MarkupScreenshot,
             PlatformApi.TrafficProxy,
             PlatformApi.FloatingControls -> null
         }

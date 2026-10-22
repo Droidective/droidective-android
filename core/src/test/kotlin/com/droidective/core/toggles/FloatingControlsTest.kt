@@ -19,7 +19,7 @@ class FloatingControlsTest {
     @Test
     fun whatCapturesTheScreenGetsTheControlsOutOfIt() {
         val hides = FloatingControls.controls.associate { it.toggleId to it.hide }
-        listOf("screenshot", "clean-screenshot", "capture-views").forEach {
+        listOf("screenshot", "clean-screenshot", "capture-views", "markup-screenshot").forEach {
             assertTrue(hides.getValue(it) is FloatingControls.Hide.For, it)
         }
         // A recording would film them for as long as it runs.

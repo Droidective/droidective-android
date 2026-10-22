@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.provider.Settings
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.droidective.android.MainActivity
@@ -155,8 +156,17 @@ class ScreenshotService : Service() {
         running = false
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
         notify(notification(shot))
+        // Straight to the editor when Android lets an app open itself from the background, which
+        // the floating controls' permission does; otherwise the notice is a tap away from it.
+        if (shot is Shot.Taken && Settings.canDrawOverlays(this)) startActivity(editor())
         stopSelf()
     }
+
+    private fun editor(): Intent =
+        Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            .putExtra(Launch.EXTRA_DESTINATION, Launch.DESTINATION_TOOL)
+            .putExtra(Launch.EXTRA_TOOL, Screenshots.TOOL)
 
     private fun notify(notification: Notification) {
         try {
@@ -177,9 +187,7 @@ class ScreenshotService : Service() {
             PendingIntent.getActivity(
                 this,
                 NoticeIds.SCREENSHOT,
-                Intent(this, MainActivity::class.java)
-                    .putExtra(Launch.EXTRA_DESTINATION, Launch.DESTINATION_TOOL)
-                    .putExtra(Launch.EXTRA_TOOL, Screenshots.TOOL),
+                editor(),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         val builder =

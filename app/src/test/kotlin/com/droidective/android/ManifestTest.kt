@@ -35,6 +35,7 @@ class ManifestTest {
                     "CleanScreenshot",
                     "PerformanceOverlay",
                     "CaptureViews",
+                    "MarkupScreenshot",
                     "FloatingControls",
                 )
                 .map { "com.droidective.android.surface.${it}Tile" }

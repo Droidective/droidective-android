@@ -32,6 +32,7 @@
     <string name="tile_clean_screenshot">Clean screenshot</string>
     <string name="tile_performance_overlay">Performance overlay</string>
     <string name="tile_capture_views">Capture views</string>
+    <string name="tile_markup_screenshot">Screenshot to mark up</string>
     <string name="tile_floating_controls">Floating controls</string>
     <string name="tile_wireless_debugging">Wireless debugging</string>
     <string name="tile_network_speed">Network speed</string>

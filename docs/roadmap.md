@@ -1,17 +1,12 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.15.0**.
+another machine. Current release: **0.16.0**.
 
-## Shipped since 0.15.0, waiting for a release
+## Shipped since 0.16.0, waiting for a release
 
-- **Reactotron talks back** (#134): an app's custom commands run from the phone, arguments
-  and all, and its state is read by path or whole.
-- **Mock Location** (#135): the phone anywhere, for every app that asks where it is —
-  coordinates, a Google Maps or OpenStreetMap link, a kept place or a ready city — through
-  test providers for GPS, the network and fused location, as the mock location app.
-- **…and moving** (#136): along waypoints or a pasted GPX track at a walk, a run, a ride or a
-  drive, once or round and round, with the bearing and speed a tracking screen reads.
+Nothing yet. 0.16.0 carried Mock Location (#135, #136) and Reactotron talking back (#134); see
+`RELEASE_NOTES.md`.
 
 ## Next
 

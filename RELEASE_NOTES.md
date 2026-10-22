@@ -3,6 +3,22 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.16.0
+
+Put the phone anywhere, or set it moving; and Reactotron answers back.
+
+- **Mock Location.** Every app that asks where the phone is gets the place you choose: typed
+  coordinates, a Google Maps or OpenStreetMap link pasted in, a `geo:` link, a place you kept,
+  or one of ten cities ready for testing what changes by country. Droidective becomes the mock
+  location app in one tap with Shizuku or root, or from Developer options where the shell can't
+  set it, and Stop gives the phone its own location back.
+- **Moving.** Give it waypoints, one a line, or a GPX track, and a pace — walk, run, cycle,
+  drive, highway — and the phone travels them with the bearing and speed a delivery app's
+  tracking screen or a run tracker reads, once or round and round.
+- **Reactotron talks back.** Commands your app registers with `Reactotron.onCustomCommand`
+  show as buttons, with a field for each argument, and run in the app from the phone. Its state
+  can be read too, at a path or whole, with reactotron-redux or reactotron-mst.
+
 ## 0.15.0
 
 Reactotron comes to the phone, and Network Traffic reads two more things it couldn't.

@@ -41,8 +41,10 @@ import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.automations.AppChooser
 import com.droidective.core.AccessLevel
 import com.droidective.core.net.proxy.Flow
+import com.droidective.core.net.proxy.Mock
 import com.droidective.core.net.proxy.Refusals
 import com.droidective.core.net.proxy.TrafficRules
+import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -51,7 +53,7 @@ import kotlinx.coroutines.withContext
 /** Which apps and hosts are read and which are left alone, kept across runs. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun RulesSection(flows: List<Flow>) {
+internal fun RulesSection(flows: List<Flow>, onEditMock: (Mock, Boolean) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) { TrafficProxy.loadRules(context) } }
@@ -99,6 +101,7 @@ internal fun RulesSection(flows: List<Flow>) {
         )
         StepAsideRow(rules.stepAside) { change(rules.copy(stepAside = it)) }
         Refused(flows, labels)
+        Mocks(onEditMock)
     }
     if (choosing) {
         AppChooser(
@@ -239,4 +242,32 @@ private fun describe(context: Context, refusal: Refusals.Refusal, labels: AppLab
 
 internal fun CoroutineScope.saveRules(context: Context, rules: TrafficRules) {
     launch(Dispatchers.IO) { TrafficProxy.setRules(context, rules) }
+}
+
+/** The answers given instead of the server's, each to edit or switch off, and a way to add one. */
+@Composable
+private fun Mocks(onEdit: (Mock, Boolean) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { TrafficProxy.loadMocks(context) } }
+    val mocks by TrafficProxy.mocks.collectAsStateWithLifecycle()
+    Label("Mocked answers")
+    ToolNote(
+        if (mocks.isEmpty()) "None yet. Mock a response from a request in the list, or start one."
+        else "Matching requests are answered here and never reach the server."
+    )
+    mocks.forEach { mock ->
+        MockRow(
+            mock,
+            onEdit = { onEdit(mock, false) },
+            onEnable = { on ->
+                scope.launch(Dispatchers.IO) {
+                    TrafficProxy.saveMock(context, mock.copy(enabled = on))
+                }
+            },
+        )
+    }
+    TextButton(onClick = { onEdit(Mock(UUID.randomUUID().toString(), url = "https://"), true) }) {
+        Text("New mock")
+    }
 }

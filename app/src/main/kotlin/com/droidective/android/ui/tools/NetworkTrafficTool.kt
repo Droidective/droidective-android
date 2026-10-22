@@ -33,6 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +65,7 @@ import com.droidective.core.net.proxy.FlowFilter
 import com.droidective.core.net.proxy.FlowLabels
 import com.droidective.core.net.proxy.FlowOutcome
 import com.droidective.core.net.proxy.FlowSummary
+import com.droidective.core.net.proxy.Mock
 import java.io.IOException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -84,6 +86,12 @@ fun NetworkTrafficTool(tool: ToolContext) {
         }
     }
     var open by rememberSaveable { mutableStateOf<Long?>(null) }
+    var mocking by remember { mutableStateOf<Editing?>(null) }
+    mocking?.let { editing ->
+        val back = ToolContext(tool.snackbar, onBack = { mocking = null }, tool.onOpenSetup)
+        key(editing.mock.id) { MockEditor(editing.mock, editing.isNew, back) }
+        return
+    }
     // The list catches up four times a second; a flow just made, a repeat, is in the store first.
     val opened = open?.let { id -> flows.firstOrNull { it.id == id } ?: TrafficProxy.flows.get(id) }
     if (opened != null) {
@@ -91,6 +99,7 @@ fun NetworkTrafficTool(tool: ToolContext) {
             opened,
             ToolContext(tool.snackbar, onBack = { open = null }, tool.onOpenSetup),
             onOpen = { open = it },
+            onMock = { mocking = Editing(it, isNew = true) },
         )
         return
     }
@@ -109,7 +118,7 @@ fun NetworkTrafficTool(tool: ToolContext) {
             item { TitleRow(tool, flows.isNotEmpty(), visible) }
             item { ProxySection(tool) }
             item { CertificateSection(tool) }
-            item { RulesSection(flows) }
+            item { RulesSection(flows) { mock, isNew -> mocking = Editing(mock, isNew) } }
             item { SearchRow(query, flows, labels) { query = it } }
             item {
                 ToolNote(
@@ -494,6 +503,7 @@ private fun rowDetails(flow: Flow, operation: String?, labels: AppLabels): Strin
         return parts.joinToString(" · ")
     }
     FlowLabels.passed(flow)?.let { parts += it }
+    if (flow.mocked != null) parts += "mocked"
     flow.repeatOf?.let { parts += "repeat of #$it" }
     flow.durationMillis?.let { parts += FlowLabels.duration(it) }
     if (flow.wireLength > 0) parts += FlowLabels.size(flow.wireLength)
@@ -547,3 +557,6 @@ internal val DEBUG_OVERRIDES =
 private const val PACE_MILLIS = 250L
 private const val MAX_APP_CHIPS = 6
 private const val STATUS_WIDTH = 52
+
+/** A mock open in the editor, and whether saving it makes a new one. */
+private class Editing(val mock: Mock, val isNew: Boolean)

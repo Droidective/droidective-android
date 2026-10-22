@@ -3,6 +3,28 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.9.0
+
+Network Traffic stops being only a window onto what apps send: send a request again, change it,
+answer it yourself, slow it down, or hold it on its way and decide what happens to it.
+
+- **Send again, and edit and send.** Any captured request can be sent again as it was, or changed
+  first — method, URL, headers and body — and the repeat shows in the list beside the original.
+  Charles calls these *Repeat* and *Compose*.
+- **Mocks.** Answer a URL here instead of the server: a status, headers and a body, matched by a
+  URL pattern with `*` and, if you like, a method. "Mock this response" on any request starts one
+  from the answer it got, so changing one field is one edit. Mocked requests never reach the
+  server, and the list marks them.
+- **Network speed.** Play a slower network through the proxy — Chrome's Fast 4G, Slow 4G and 3G
+  — to see an app's loading states without leaving the desk.
+- **Breakpoints.** Hold a request before it goes, or its answer before the app sees it, and
+  change it, let it go or stop it. A notice pops up over the app that's waiting, with Let it go
+  on it, and the held one sits at the top of Network Traffic. Make one from Rules, or with "Hold
+  requests like this" on any request. A hold that nobody decides goes on as it was after five
+  minutes, and stopping the proxy lets everything go. Search with `is:held` and `is:changed`.
+- **Fixed:** in Network Traffic, coming back from a request or an editor folded the rules up and
+  scrolled the list back to the top.
+
 ## 0.8.0
 
 Droidective from wherever you are: over the app you're working on, from the app's icon, and from

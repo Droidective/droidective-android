@@ -1,17 +1,12 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.8.0**.
+another machine. Current release: **0.9.0**.
 
-## Shipped since 0.8.0, waiting for a release
+## Shipped since 0.9.0, waiting for a release
 
-The proxy's next steps, each merged on its own:
-
-- Flow ids unique across runs of the proxy (#95).
-- Send a captured request again, and edit it first (#96, #97).
-- Mocks: answer a URL here instead of the server (#98).
-- Network speed: a slower network played through the proxy (#99).
-- Breakpoints: hold a request or its answer, change it, let it go or stop it (#100, #101).
+Nothing yet. 0.9.0 carried the proxy's next steps: send again and edit and send (#96, #97), mocks
+(#98), network speed (#99) and breakpoints (#100, #101); see `RELEASE_NOTES.md`.
 
 ## Next
 

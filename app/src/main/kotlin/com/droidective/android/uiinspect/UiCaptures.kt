@@ -23,6 +23,7 @@ import com.droidective.core.device.UiHierarchy
 import com.droidective.core.device.UiNode
 import com.droidective.core.shell.Parse
 import com.droidective.core.shell.ShellUnavailableException
+import com.droidective.core.toggles.Screenshot
 import com.droidective.platform.SharedStorage
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -137,7 +138,7 @@ class UiCaptureService : Service() {
                 )
             }
             val picture = SharedStorage.handover(this)?.let { File(it, SCREENSHOT) }
-            val shot = picture?.let { shell.run(UiHierarchy.screenshot(it.path)) }
+            val shot = picture?.let { shell.run(Screenshot.toFile(it.path)) }
             val app = nodes.firstOrNull { it.packageName.isNotEmpty() }?.packageName
             UiCapture.Captured(
                 nodes,

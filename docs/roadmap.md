@@ -5,16 +5,18 @@ another machine. Current release: **0.11.0**.
 
 ## Shipped since 0.11.0, waiting for a release
 
-Nothing yet. 0.11.0 carried mocks from a file (#111), brotli (#112) and streamed answers passed
-on as they arrive (#113); see `RELEASE_NOTES.md`.
+- Every notice has an id of its own: a UI capture no longer replaced the debugging proxy's
+  notice, nor an update notice a monkey run's (#115).
+- Screenshot, the Mac's `screenshot` tool: counted down, taken through the shell, and marked up
+  with a pen, highlight, arrows, boxes, text, black-out and pixelation before it's saved (#116).
 
 ## Next
 
 - **The proxy's next steps** — the certificate in the system store with root, zstd, HTTP/2 — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
 - **The Mac tools not yet on the phone**, by the Mac's ids: `api-client` (an HTTP client, which
-  the proxy's repeat would share), `permissions` and `app-info` as their own screens (the Apps
-  tool covers most of both), and `screenshot` as a tool with markup rather than only an action.
+  the proxy's repeat would share), and `permissions` and `app-info` as their own screens (the
+  Apps tool covers most of both).
 - **Real-device passes on the OnePlus Pad** need the person there: OxygenOS holds every
   `adb install` for a tap on the device (see Standing constraints).
 

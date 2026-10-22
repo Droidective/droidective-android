@@ -50,6 +50,16 @@ object Screenshot {
         )
     }
 
+    /**
+     * The screen saved as [path], readable by this app, which a file the shell writes otherwise
+     * isn't: the UI Inspector's picture beside its dump, and one to mark up.
+     */
+    fun toFile(path: String): ShellCommand {
+        require(path.endsWith(".png") && ".." !in path) { "\"$path\" isn’t a screenshot's path" }
+        val quotedPath = shellQuote(path)
+        return ShellCommand("screencap -p $quotedPath && chmod 644 $quotedPath")
+    }
+
     /** One demo-mode broadcast, as the shell sends it. */
     private fun broadcast(extras: Map<String, String>): String =
         "am broadcast -a ${DemoMode.ACTION}" +

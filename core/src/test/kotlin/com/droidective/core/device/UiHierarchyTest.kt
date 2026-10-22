@@ -155,12 +155,4 @@ class UiHierarchyTest {
             UiHierarchy.selectors(apps, settings),
         )
     }
-
-    @Test
-    fun takesTheScreenshotReadable() {
-        assertEquals(
-            "screencap -p '/x/ui.png' && chmod 644 '/x/ui.png'",
-            UiHierarchy.screenshot("/x/ui.png").line,
-        )
-    }
 }

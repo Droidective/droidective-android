@@ -2,7 +2,6 @@ package com.droidective.core.device
 
 import com.droidective.core.shell.Parse
 import com.droidective.core.shell.ShellCommand
-import com.droidective.core.shell.shellQuote
 
 /** A rectangle on the screen, in pixels, as `[left,top][right,bottom]`. */
 data class Bounds(val left: Int, val top: Int, val right: Int, val bottom: Int) {
@@ -178,13 +177,6 @@ object UiHierarchy {
 
     private fun quoted(value: String): String =
         "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-
-    /** Saves the screen beside the dump, readable by this app, which the shell can't be. */
-    fun screenshot(path: String): ShellCommand {
-        require(path.endsWith(".png") && ".." !in path) { "\"$path\" isn’t a screenshot's path" }
-        val quotedPath = shellQuote(path)
-        return ShellCommand("screencap -p $quotedPath && chmod 644 $quotedPath")
-    }
 
     private fun node(values: Map<String, String>, depth: Int, parent: Int): UiNode {
         fun flag(name: String) = values[name] == "true"

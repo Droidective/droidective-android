@@ -198,6 +198,14 @@
                 android:value="Captures the screen's view hierarchy when the person asks the UI Inspector to: counts down a few seconds so they can open the app to inspect, then runs uiautomator and takes a screenshot through the shell they set up. Runs only for those few seconds." />
         </service>
         <service
+            android:name=".screenshot.ScreenshotService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Takes a screenshot when the person asks the Screenshot tool to: counts down a few seconds so they can open the screen to capture, then takes it through the shell they set up, for them to mark up. Runs only for those few seconds." />
+        </service>
+        <service
             android:name=".proxy.ProxyService"
             android:exported="false"
             android:foregroundServiceType="specialUse">

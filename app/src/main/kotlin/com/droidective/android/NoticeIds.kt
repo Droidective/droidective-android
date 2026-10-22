@@ -17,6 +17,7 @@ object NoticeIds {
     const val PROXY = 7_430
     const val PROXY_HELD = 7_431
     const val UI_CAPTURE = 7_432
+    const val SCREENSHOT = 7_433
     const val FLOATING = 7_440
 
     val all =
@@ -31,6 +32,7 @@ object NoticeIds {
             PROXY,
             PROXY_HELD,
             UI_CAPTURE,
+            SCREENSHOT,
             FLOATING,
         )
 }

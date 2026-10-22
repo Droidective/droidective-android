@@ -72,6 +72,8 @@ object HttpBody {
                 break
             }
             record.write(buffer, read)
+            // On its way as it comes: a stream of events, or a long poll, is read as it arrives.
+            record.flush()
             moved += read
         }
         return moved
@@ -95,6 +97,7 @@ object HttpBody {
             wire += copy(source, record, size)
             endOfChunk(source)
             record.frame(CRLF)
+            record.flush()
             wire += CRLF.length
         }
     }
@@ -126,6 +129,10 @@ object HttpBody {
             decoded += length
             val room = limit - kept.size()
             if (room > 0) kept.write(buffer, 0, minOf(room, length))
+        }
+
+        fun flush() {
+            sink?.flush()
         }
 
         /** Framing bytes: they go on to the far side but are not part of the body. */

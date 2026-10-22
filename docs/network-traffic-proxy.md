@@ -54,6 +54,7 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/net/proxy/Throttle.kt` | Network speed: Chrome's presets, and `Paced` streams |
 | `core/net/proxy/Breakpoints.kt` | Breakpoints, what is held, the verdicts, and the `Breaker` that decides |
 | `core/net/proxy/Remaps.kt` | Remaps (Map Remote), and `Server`: where a request is sent, and its `Host` |
+| `core/net/ws/SocketFrames.kt` | WebSocket frames read out of a copy of each direction: messages, permessage-deflate |
 
 `core/net` carries **272 tests**, nearly all of them this work.
 

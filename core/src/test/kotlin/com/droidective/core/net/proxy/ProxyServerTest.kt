@@ -234,6 +234,33 @@ class ProxyServerTest {
     }
 
     @Test
+    fun aHeldRequestGoesOutOnAFreshConnection() {
+        FakeServer().use { origin ->
+            val port = proxy(breaker = Scripted())
+            // Held for minutes, the server could have closed the one it had been sharing.
+            server?.breakpoints = stopAt("http://127.0.0.1:${origin.port}/call1")
+            Socket("127.0.0.1", port).use { socket ->
+                val reader = HttpReader(socket.getInputStream())
+                repeat(2) { index ->
+                    origin.reply = { ok("body$index") }
+                    val target = "http://127.0.0.1:${origin.port}/call$index"
+                    socket
+                        .getOutputStream()
+                        .write(
+                            wire("GET $target HTTP/1.1\r\nHost: 127.0.0.1:${origin.port}\r\n\r\n")
+                        )
+                    socket.getOutputStream().flush()
+                    val head = assertNotNull(reader.readResponse())
+                    val body =
+                        HttpBody.relay(BodyFraming.of(head, "GET"), socket.getInputStream(), null)
+                    assertEquals("body$index", String(body.bytes))
+                }
+            }
+            assertEquals(2, origin.connections.get())
+        }
+    }
+
+    @Test
     fun aServerThatCannotBeReachedIsAnswered502AndStillRecorded() {
         val closed = ServerSocket(0).use { it.localPort }
         val port = proxy()
@@ -421,7 +448,13 @@ class ProxyServerTest {
         FakeServer().use { origin ->
             val port = proxy(breaker = Scripted(onRequest = { RequestVerdict.Stop }))
             server?.breakpoints = stopAt("http://127.0.0.1:${origin.port}/*")
-            assertFailsWith<IOException> { get("http://127.0.0.1:${origin.port}/x", port) }
+            val connection = connect("http://127.0.0.1:${origin.port}/x", port)
+            assertEquals(502, connection.responseCode)
+            // Said as what it is: the server was never the problem.
+            assertEquals(
+                "Droidective: stopped at a breakpoint.",
+                connection.errorStream.use { String(it.readBytes()) },
+            )
 
             assertEquals(emptyList(), origin.received.toList())
             assertEquals(Holding.STOPPED, sink.next().failure)
@@ -471,6 +504,88 @@ class ProxyServerTest {
             assertEquals("gzip", connection.getHeaderField("Content-Encoding"))
             assertContentEquals(bytes, connection.inputStream.use { it.readBytes() })
             assertContentEquals("hello".toByteArray(), breaker.responses.single().body)
+            assertNull(breaker.responses.single().compressed)
+        }
+    }
+
+    @Test
+    fun anAnswerToBeHeldIsAskedForInCodingsThatCanBeRead() {
+        FakeServer().use { origin ->
+            val port = proxy(breaker = Scripted())
+            server?.breakpoints =
+                stopAt("http://127.0.0.1:${origin.port}/page", requests = false, responses = true)
+            val connection = connect("http://127.0.0.1:${origin.port}/page", port)
+            connection.setRequestProperty("Accept-Encoding", "gzip, deflate, br, zstd")
+            connection.inputStream.use { it.readBytes() }
+
+            assertEquals("gzip, deflate", origin.received.single().headers["accept-encoding"])
+        }
+    }
+
+    @Test
+    fun aRequestHeldOnItsOwnAsksForWhatItAskedFor() {
+        FakeServer().use { origin ->
+            val port = proxy(breaker = Scripted())
+            server?.breakpoints = stopAt("http://127.0.0.1:${origin.port}/page")
+            val connection = connect("http://127.0.0.1:${origin.port}/page", port)
+            connection.setRequestProperty("Accept-Encoding", "gzip, br")
+            connection.inputStream.use { it.readBytes() }
+
+            assertEquals("gzip, br", origin.received.single().headers["accept-encoding"])
+        }
+    }
+
+    @Test
+    fun anAnswerThatCantBeDecodedSaysWhatItIsStillIn() {
+        FakeServer().use { origin ->
+            val squeezed = byteArrayOf(0x1b, 0x0e, 0x00)
+            origin.replyBytes = {
+                ("HTTP/1.1 200 OK\r\nContent-Encoding: br\r\nContent-Length: 3\r\n\r\n")
+                    .toByteArray(Charsets.ISO_8859_1) + squeezed
+            }
+            val breaker = Scripted()
+            val port = proxy(breaker = breaker)
+            server?.breakpoints =
+                stopAt("http://127.0.0.1:${origin.port}/b", requests = false, responses = true)
+            connect("http://127.0.0.1:${origin.port}/b", port).inputStream.use { it.readBytes() }
+
+            val held = breaker.responses.single()
+            assertEquals("br", held.compressed)
+            assertContentEquals(squeezed, held.body)
+        }
+    }
+
+    @Test
+    fun anAnswerHeldPastTheAppGivingUpIsStillOnRecord() {
+        FakeServer().use { origin ->
+            val holding = CountDownLatch(1)
+            val gone = CountDownLatch(1)
+            val breaker =
+                Scripted(
+                    onResponse = {
+                        holding.countDown()
+                        gone.await(10, TimeUnit.SECONDS)
+                        ResponseVerdict.Go
+                    }
+                )
+            val port = proxy(breaker = breaker)
+            server?.breakpoints =
+                stopAt("http://127.0.0.1:${origin.port}/slow", requests = false, responses = true)
+            Socket("127.0.0.1", port).use { socket ->
+                val target = "http://127.0.0.1:${origin.port}/slow"
+                socket
+                    .getOutputStream()
+                    .write(wire("GET $target HTTP/1.1\r\nHost: 127.0.0.1:${origin.port}\r\n\r\n"))
+                socket.getOutputStream().flush()
+                assertTrue(holding.await(10, TimeUnit.SECONDS))
+                // The app hangs up, hard, while its answer is held.
+                socket.setSoLinger(true, 0)
+            }
+            gone.countDown()
+
+            val flow = sink.next()
+            assertEquals(Holding.HUNG_UP, flow.failure)
+            assertEquals(200, flow.response?.status)
         }
     }
 

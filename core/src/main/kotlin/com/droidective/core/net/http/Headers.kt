@@ -68,5 +68,10 @@ data class Headers(val all: List<Header> = emptyList()) : Iterable<Header> {
                 "Transfer-Encoding",
                 "Upgrade",
             )
+
+        /** Whether [text] is an RFC 9110 token: what a method or a header's name may be made of. */
+        fun isToken(text: String): Boolean = TOKEN.matches(text)
+
+        private val TOKEN = Regex("""[!#$%&'*+\-.^_`|~0-9A-Za-z]+""")
     }
 }

@@ -5,15 +5,19 @@ another machine. Current release: **0.8.0**.
 
 ## Shipped since 0.8.0, waiting for a release
 
-Nothing yet. 0.8.0 carried the four ways in from outside the app: floating controls (#93), pinned
-and recent tools with launcher shortcuts (#91), and Open with and Share (#92); see
-`RELEASE_NOTES.md`.
+The proxy's next steps, each merged on its own:
+
+- Flow ids unique across runs of the proxy (#95).
+- Send a captured request again, and edit it first (#96, #97).
+- Mocks: answer a URL here instead of the server (#98).
+- Network speed: a slower network played through the proxy (#99).
+- Breakpoints: hold a request or its answer, change it, let it go or stop it (#100, #101).
 
 ## Next
 
-- **The proxy's next steps** — repeat and edit a request, breakpoints, map local and remote, and
-  the certificate in the system store with root — are in
-  [network-traffic-proxy.md](network-traffic-proxy.md), in the order people reach for them.
+- **The proxy's next steps** — map remote, the certificate in the system store with root,
+  WebSocket frames, brotli, HTTP/2 — are in [network-traffic-proxy.md](network-traffic-proxy.md),
+  in the order people reach for them.
 - **The Mac tools not yet on the phone**, by the Mac's ids: `api-client` (an HTTP client, which
   the proxy's repeat would share), `permissions` and `app-info` as their own screens (the Apps
   tool covers most of both), and `screenshot` as a tool with markup rather than only an action.

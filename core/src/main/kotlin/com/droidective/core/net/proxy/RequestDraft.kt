@@ -35,7 +35,7 @@ data class RequestDraft(
      */
     fun build(): Built {
         val verb = method.trim().uppercase()
-        if (!TOKEN.matches(verb)) return Built.Invalid("\"$method\" isn't a method.")
+        if (!Headers.isToken(verb)) return Built.Invalid("\"$method\" isn't a method.")
         val target =
             target(url.trim()) ?: return Built.Invalid("\"$url\" isn't an http or https URL.")
         val parsed = mutableListOf<Header>()
@@ -87,7 +87,7 @@ data class RequestDraft(
         if (colon <= 0) return null
         val name = line.substring(0, colon).trim()
         val value = line.substring(colon + 1).trim()
-        if (!TOKEN.matches(name) || value.any { it == '\r' || it == '\n' }) return null
+        if (!Headers.isToken(name) || value.any { it == '\r' || it == '\n' }) return null
         return Header(name, value)
     }
 
@@ -124,8 +124,6 @@ data class RequestDraft(
                 null
             }
 
-        /** RFC 9110's token: what a method or a header's name may be made of. */
-        private val TOKEN = Regex("""[!#$%&'*+\-.^_`|~0-9A-Za-z]+""")
         private const val ACCEPT_ENCODING = "Accept-Encoding"
         private const val HTTP_1_1 = "HTTP/1.1"
         private const val CONNECTION = "Connection"

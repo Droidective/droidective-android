@@ -1,5 +1,6 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
 import com.droidective.core.net.http.ResponseHead
 import com.droidective.core.store.JsonFileStore
@@ -29,12 +30,33 @@ data class Breakpoint(
         return UrlPattern.matches(url, requestUrl)
     }
 
+    /** What is wrong with this breakpoint as it was typed, or null when it can be kept. */
+    fun problem(): String? =
+        when {
+            !UrlPattern.isPattern(url) -> "The URL needs http:// or https:// and a host."
+            method != null && !Headers.isToken(method) -> "\"$method\" isn't a method."
+            !requests && !responses -> "Hold the request, the answer or both."
+            else -> null
+        }
+
     companion object {
-        /** The first enabled breakpoint for [method] [url], in the order they were made. */
-        fun find(points: List<Breakpoint>, method: String, url: String): Breakpoint? =
-            points.firstOrNull {
-                it.matches(method, url)
-            }
+        /** A breakpoint for requests like [flow]'s: its method, to its URL without the query. */
+        fun of(flow: Flow, id: String): Breakpoint =
+            Breakpoint(id, flow.url.substringBefore('?'), flow.request.method.uppercase())
+
+        /**
+         * Where [method] [url] stops: the first enabled breakpoint for it, in the order they were
+         * made, holding whatever any of the ones it matches holds. Two that overlap, one for the
+         * request and one for the answer, both stop it.
+         */
+        fun find(points: List<Breakpoint>, method: String, url: String): Breakpoint? {
+            val matching = points.filter { it.matches(method, url) }
+            val first = matching.firstOrNull() ?: return null
+            return first.copy(
+                requests = matching.any { it.requests },
+                responses = matching.any { it.responses },
+            )
+        }
     }
 }
 
@@ -42,13 +64,23 @@ data class Breakpoint(
 object Holding {
     const val STOPPED = "stopped at a breakpoint"
     const val TOO_BIG = "too big to hold at a breakpoint"
+    const val HUNG_UP = "the app's connection closed while it was held"
 }
 
 /** A request held at a breakpoint: as it would go to the server, head and whole body. */
 class HeldRequest(val flow: Flow, val head: RequestHead, val body: ByteArray)
 
-/** An answer held at a breakpoint: as it would reach the app, head and whole body, decoded. */
-class HeldResponse(val flow: Flow, val head: ResponseHead, val body: ByteArray)
+/**
+ * An answer held at a breakpoint: as it would reach the app, head and whole body, decoded.
+ *
+ * @property compressed the coding the body is still in, when the proxy couldn't undo it.
+ */
+class HeldResponse(
+    val flow: Flow,
+    val head: ResponseHead,
+    val body: ByteArray,
+    val compressed: String? = null,
+)
 
 /** What to do with a held request. */
 sealed interface RequestVerdict {

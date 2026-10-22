@@ -237,18 +237,27 @@ class ProxyServer(
                     head = reader.readRequest()
                     continue
                 }
+                val point = Breakpoint.find(breakpoints, head.method, flow.url)
+                var decided: Decided? = null
+                if (point != null) {
+                    decided = decide(flow, head, point, source, out, record) ?: break
+                    // Someone may have taken minutes, and a server closes a connection left idle.
+                    if (point.requests) {
+                        upstream?.close()
+                        upstream = null
+                    }
+                }
                 if (upstream == null) {
                     upstream =
                         try {
                             Upstream(origin, dial(origin, secure))
                         } catch (e: IOException) {
-                            return failed(flow, out, e, record)
+                            return failed(decided?.flow ?: flow, out, e, record)
                         }
                 }
                 val ends = Ends(source, out, upstream)
-                val point = Breakpoint.find(breakpoints, head.method, flow.url)
                 val more =
-                    if (point != null) held(flow, head, point, ends, record)
+                    if (point != null && decided != null) held(decided, head, point, ends, record)
                     else exchange(flow, head, ends, record)
                 if (!more) break
                 head = reader.readRequest()
@@ -387,31 +396,66 @@ class ProxyServer(
         }
     }
 
+    /** A request held at a breakpoint, decided on: what goes to the server, and what came in. */
+    private class Decided(
+        val flow: Flow,
+        val forward: RequestHead,
+        val head: RequestHead,
+        val body: ByteArray,
+    )
+
     /**
-     * An exchange held at [point]: the request read whole and handed to the [breaker] before it
-     * goes on, and its answer before it reaches the app, as [point] says. Each goes on in one piece
-     * with its length stated. Returns whether the connection can carry another.
+     * A request matching [point], read whole and, when [point] holds requests, handed to the
+     * [breaker] before the server is reached. An answer that will be held is asked for only in
+     * codings the proxy can undo, so whoever it is held for can read it. Null when it won't go on,
+     * the app told why.
+     */
+    private fun decide(
+        flow: Flow,
+        head: RequestHead,
+        point: Breakpoint,
+        source: InputStream,
+        client: OutputStream,
+        record: FlowSink,
+    ): Decided? {
+        val read = HttpBody.relay(BodyFraming.of(head), source, null, HOLD_LIMIT)
+        val asked = flow.copy(requestBody = read, paused = point.id)
+        if (read.truncated) {
+            refuse(asked, client, Holding.TOO_BIG, record)
+            return null
+        }
+        val passed = forwardable(head.headers)
+        val forward =
+            head.with(
+                target = head.path,
+                headers = if (point.responses) readable(passed) else passed,
+            )
+        if (!point.requests) return Decided(asked, forward, forward, read.bytes)
+        return when (val verdict = breaker.request(HeldRequest(asked, forward, read.bytes))) {
+            RequestVerdict.Go -> Decided(asked, forward, forward, read.bytes)
+            is RequestVerdict.Send -> Decided(asked, forward, verdict.head, verdict.body)
+            RequestVerdict.Stop -> {
+                refuse(asked, client, Holding.STOPPED, record)
+                null
+            }
+        }
+    }
+
+    /**
+     * An exchange held at [point], its request [decided]: sent in one piece with its length stated,
+     * and its answer handed to the [breaker] before it reaches the app when [point] holds answers.
+     * Returns whether the connection can carry another.
      */
     private fun held(
-        flow: Flow,
+        decided: Decided,
         head: RequestHead,
         point: Breakpoint,
         ends: Ends,
         record: FlowSink,
     ): Boolean {
         val (source, client, upstream) = ends
-        val read = HttpBody.relay(BodyFraming.of(head), source, null, HOLD_LIMIT)
-        val asked = flow.copy(requestBody = read, paused = point.id)
-        if (read.truncated) return refuse(asked, client, Holding.TOO_BIG, record)
-        val forward = head.with(target = head.path, headers = forwardable(head.headers))
-        val (sentHead, sentBody) =
-            if (!point.requests) forward to read.bytes
-            else
-                when (val verdict = breaker.request(HeldRequest(asked, forward, read.bytes))) {
-                    RequestVerdict.Go -> forward to read.bytes
-                    is RequestVerdict.Send -> verdict.head to verdict.body
-                    RequestVerdict.Stop -> return refuse(asked, client, Holding.STOPPED, record)
-                }
+        val sentHead = decided.head
+        val sentBody = decided.body
         val slow = throttle
         delay(slow)
         val toServer = Paced.of(upstream.sink, slow.upBytesPerSecond)
@@ -419,10 +463,10 @@ class ProxyServer(
         toServer.write(sentBody)
         toServer.flush()
         val sent =
-            asked.copy(
+            decided.flow.copy(
                 request = sentHead,
                 requestBody = CapturedBody(sentBody, sentBody.size.toLong(), truncated = false),
-                edited = sentHead !== forward,
+                edited = sentHead !== decided.forward,
             )
         record.started(sent)
         val response =
@@ -455,24 +499,39 @@ class ProxyServer(
         val decoded = BodyView.decode(coding, read.bytes)
         val shown = decoded ?: read.bytes
         val (answered, body, edited) =
-            when (val verdict = breaker.response(HeldResponse(flow, response, shown))) {
+            when (
+                val verdict =
+                    breaker.response(
+                        HeldResponse(
+                            flow,
+                            response,
+                            shown,
+                            compressed = coding.takeIf { decoded == null },
+                        )
+                    )
+            ) {
                 ResponseVerdict.Go -> Triple(whole(response, read.bytes.size), read.bytes, false)
                 // Written as the person wrote it: plain, whatever the server compressed it as.
                 is ResponseVerdict.Answer ->
                     Triple(plain(verdict.head, verdict.body.size), verdict.body, true)
                 ResponseVerdict.Stop -> return refuse(flow, out, Holding.STOPPED, record)
             }
-        out.write(answered.bytes())
-        out.write(body)
-        out.flush()
-        record.finished(
+        val given =
             flow.copy(
                 response = answered,
                 responseBody = CapturedBody(body, body.size.toLong(), truncated = false),
-                finishedAt = clock(),
                 edited = flow.edited || edited,
             )
-        )
+        try {
+            out.write(answered.bytes())
+            out.write(body)
+            out.flush()
+        } catch (_: IOException) {
+            // An app that waited long enough gives up, and stopping the proxy hangs up on it.
+            record.finished(given.copy(finishedAt = clock(), failure = Holding.HUNG_UP))
+            return false
+        }
+        record.finished(given.copy(finishedAt = clock()))
         return framing != BodyFraming.UntilClose &&
             !closes(head.headers) &&
             !closes(answered.headers)
@@ -481,7 +540,7 @@ class ProxyServer(
     /** Ends a held exchange that won't go on, telling the app it failed and why. */
     private fun refuse(flow: Flow, out: OutputStream, why: String, record: FlowSink): Boolean {
         record.finished(flow.copy(finishedAt = clock(), failure = why))
-        out.writeQuietly(badGateway(IOException(why)))
+        out.writeQuietly(badGateway("Droidective: $why."))
         return false
     }
 
@@ -533,6 +592,7 @@ class ProxyServer(
 
     private companion object {
         const val CONNECT = "CONNECT"
+        const val ACCEPT_ENCODING = "Accept-Encoding"
         const val SWITCHING = 101
         const val BACKLOG = 50
         const val IDLE_MILLIS = 120_000
@@ -560,6 +620,12 @@ class ProxyServer(
                         .without(Headers.CONTENT_LENGTH, Headers.TRANSFER_ENCODING)
                         .add(Headers.CONTENT_LENGTH, length.toString())
             )
+
+        /** [headers] asking the server only for codings the proxy can undo. */
+        fun readable(headers: Headers): Headers {
+            val kept = Repeater.readable(headers[ACCEPT_ENCODING]) ?: return headers
+            return headers.without(ACCEPT_ENCODING).add(ACCEPT_ENCODING, kept)
+        }
 
         /** An answer written out as text: no compression claimed, whatever it had before. */
         fun plain(head: ResponseHead, length: Int): ResponseHead =
@@ -603,13 +669,15 @@ class ProxyServer(
                 value.split(',').any { it.trim().equals("close", ignoreCase = true) }
             }
 
-        fun badGateway(error: Throwable): ByteArray {
-            val body = "Droidective could not reach the server: ${error.reason()}"
-            return wire(
+        fun badGateway(error: Throwable): ByteArray =
+            badGateway("Droidective could not reach the server: ${error.reason()}")
+
+        /** A 502 saying [body]: the proxy answering for a server it couldn't, or wouldn't, ask. */
+        fun badGateway(body: String): ByteArray =
+            wire(
                 "HTTP/1.1 502 Bad Gateway\r\nContent-Type: text/plain\r\n" +
                     "Content-Length: ${body.toByteArray().size}\r\nConnection: close\r\n\r\n$body"
             )
-        }
 
         fun wire(text: String) = text.toByteArray(StandardCharsets.ISO_8859_1)
     }

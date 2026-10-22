@@ -49,10 +49,48 @@ class BreakpointTest {
     }
 
     @Test
+    fun overlappingBreakpointsHoldWhatEitherHolds() {
+        val answers =
+            Breakpoint("b2", "https://api.example.com/*", requests = false, responses = true)
+        val off = Breakpoint("b3", "https://api.example.com/*", responses = true, enabled = false)
+
+        val found =
+            Breakpoint.find(listOf(answers, orders, off), "GET", "https://api.example.com/orders/1")
+
+        assertEquals("b2", found?.id)
+        assertTrue(found!!.requests && found.responses)
+        // One that is off holds nothing, whatever it says it would hold.
+        assertEquals(
+            answers,
+            Breakpoint.find(listOf(answers, off), "GET", "https://api.example.com/menu"),
+        )
+    }
+
+    @Test
     fun theBreakpointsAreKept() {
         val repository = BreakpointRepository(createTempDirectory("points").toFile())
         assertEquals(emptyList(), repository.all())
         repository.save(listOf(orders))
         assertEquals(listOf(orders), repository.all())
+    }
+
+    @Test
+    fun oneMadeFromAFlowStopsAtItsRequestsWhateverTheirQuery() {
+        val made = Breakpoint.of(flow(method = "post", path = "/orders/42?coupon=x"), "b2")
+        assertEquals(Breakpoint("b2", "https://api.example.com/orders/42", "POST"), made)
+        assertNull(made.problem())
+        assertTrue(made.matches("POST", "https://api.example.com/orders/42?coupon=y"))
+    }
+
+    @Test
+    fun oneThatCantBeKeptSaysWhy() {
+        listOf(
+                orders.copy(url = "api.example.com/orders"),
+                orders.copy(url = "https:///orders"),
+                orders.copy(method = "GET /"),
+                orders.copy(requests = false, responses = false),
+            )
+            .forEach { assertTrue(it.problem() != null, it.toString()) }
+        assertNull(orders.copy(method = "PATCH", requests = false, responses = true).problem())
     }
 }

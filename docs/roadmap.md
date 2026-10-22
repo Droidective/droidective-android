@@ -9,14 +9,15 @@ another machine. Current release: **0.12.0**.
   making sense — says so in its Messages, rather than going quiet (#120).
 - Permissions, the Mac's `permissions`: each kind of runtime permission, every app that asks for
   it, and a switch to grant or revoke it (#121).
+- API Testing, the Mac's `api-client`: requests written by hand and kept by name, `{{variables}}`,
+  and a cURL command pasted in — sent from the phone, shown in Network Traffic too (#122, #123).
 
 ## Next
 
 - **The proxy's next steps** — the certificate in the system store with root, zstd, HTTP/2 — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
-- **The Mac tools not yet on the phone**, by the Mac's ids: `api-client` (an HTTP client, which
-  the proxy's repeat would share). `app-info` stays the Apps tool's detail screen, which already
-  is that.
+- **The Mac tools not yet on the phone**: none on the list. `app-info` stays the Apps tool's
+  detail screen, which already is that.
 - **Real-device passes on the OnePlus Pad** need the person there: OxygenOS holds every
   `adb install` for a tap on the device (see Standing constraints).
 

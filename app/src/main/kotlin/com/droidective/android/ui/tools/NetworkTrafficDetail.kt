@@ -266,7 +266,7 @@ private fun FailureSection(failure: String) {
 
 /** A message's headers and its body, decoded. */
 @Composable
-private fun Message(headers: Headers, body: CapturedBody?, what: String) {
+internal fun Message(headers: Headers, body: CapturedBody?, what: String) {
     val context = LocalContext.current
     ToolSection("Headers") {
         if (headers.all.isEmpty()) ToolNote("None.")

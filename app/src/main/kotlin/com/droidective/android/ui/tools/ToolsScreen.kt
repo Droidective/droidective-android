@@ -90,6 +90,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "screen-record" to { ScreenRecordTool(it) },
         "screenshot" to { ScreenshotTool(it) },
         "permissions" to { PermissionsTool(it) },
+        "api-client" to { ApiClientTool(it) },
         "root-status" to { RootStatusTool(it) },
     )
 

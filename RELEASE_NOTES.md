@@ -3,6 +3,22 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.12.0
+
+Screenshots you can mark up before anyone sees them, taken from wherever you are.
+
+- **Screenshot.** Take a screenshot and mark it up: a pen, a highlighter, arrows, boxes and
+  text in six colours, and black-out or pixelation for what nobody should see. Undo and redo go
+  back and forth through every change, clearing included. Save and share writes it to
+  Pictures/Droidective at its full size and opens the share sheet; leaving with marks unsaved
+  asks first. Pixelation averages every pixel in each block, so what's under it can't be read
+  back out.
+- **From anywhere.** A *Screenshot to mark up* tile in Quick Settings, a button in the floating
+  controls, a widget slot or an automation takes it in two seconds and opens the editor — by
+  itself when Droidective may draw over other apps, or from its notice.
+- **Fixed:** capturing views in the UI Inspector while the debugging proxy ran took the proxy's
+  notice, and its Stop button, away; an update notice and a monkey run's took turns the same way.
+
 ## 0.11.0
 
 Network Traffic reads what Chrome is usually sent, answers mocks from files on the phone, and

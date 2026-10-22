@@ -1,16 +1,12 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.11.0**.
+another machine. Current release: **0.12.0**.
 
-## Shipped since 0.11.0, waiting for a release
+## Shipped since 0.12.0, waiting for a release
 
-- Every notice has an id of its own: a UI capture no longer replaced the debugging proxy's
-  notice, nor an update notice a monkey run's (#115).
-- Screenshot, the Mac's `screenshot` tool: counted down, taken through the shell, and marked up
-  with a pen, highlight, arrows, boxes, text, black-out and pixelation before it's saved (#116).
-- A screenshot to mark up from anywhere: a Quick Settings tile, a floating-controls button, a
-  widget slot or an automation takes it in 2 s and opens the editor (#118).
+Nothing yet. 0.12.0 carried Screenshot with markup (#116, #118) and the notice id fix (#115);
+see `RELEASE_NOTES.md`.
 
 ## Next
 

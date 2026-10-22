@@ -25,6 +25,7 @@ import com.droidective.core.net.proxy.ProxyRules
 import com.droidective.core.net.proxy.ProxyServer
 import com.droidective.core.net.proxy.ProxySetting
 import com.droidective.core.net.proxy.Refusals
+import com.droidective.core.net.proxy.Remap
 import com.droidective.core.net.proxy.Repeat
 import com.droidective.core.net.proxy.Repeater
 import com.droidective.core.net.proxy.Throttle
@@ -288,6 +289,8 @@ object TrafficProxy {
             running.rules = proxyRules(context, chosen.value)
             loadMocks(context)
             running.mocks = mocks.value
+            loadRemaps(context)
+            running.remaps = remaps.value
             running.throttle = speed.value
             Holds.load(context)
             running.breakpoints = Holds.breakpoints.value
@@ -312,10 +315,17 @@ object TrafficProxy {
         return send(context, ready.outgoing, of = flow.id)
     }
 
-    /** Sends [outgoing] — a repeat, or an edited one — and records it as sent by this app. */
+    /**
+     * Sends [outgoing] — a repeat, or an edited one — and records it as sent by this app. A remap
+     * sends it elsewhere as it would the app's own request, so a repeat goes where the app's went.
+     */
     suspend fun send(context: Context, outgoing: Outgoing, of: Long): Flow {
         val sent =
-            withContext(Dispatchers.IO) { Repeater().send(outgoing, ids.incrementAndGet(), of) }
+            withContext(Dispatchers.IO) {
+                loadRemaps(context)
+                val via = Remap.route(remaps.value, outgoing.url)
+                Repeater().send(outgoing, ids.incrementAndGet(), of, via)
+            }
         val recorded = sent.copy(uid = Process.myUid(), app = context.packageName)
         flows.put(recorded)
         revision.update { it + 1 }
@@ -350,6 +360,19 @@ object TrafficProxy {
     fun saveMock(context: Context, mock: Mock) = keptMocks.save(context, mock)
 
     fun removeMock(context: Context, id: String) = keptMocks.remove(context, id)
+
+    private val keptRemaps =
+        KeptList("traffic-remaps.json", Remap.serializer(), Remap::id) { server?.remaps = it }
+
+    /** Which requests go to another server, in the order they were made. */
+    val remaps: StateFlow<List<Remap>> = keptRemaps.items
+
+    fun loadRemaps(context: Context) = keptRemaps.load(context)
+
+    /** Keeps [remap], replacing the one with its id, and applies it at once. */
+    fun saveRemap(context: Context, remap: Remap) = keptRemaps.save(context, remap)
+
+    fun removeRemap(context: Context, id: String) = keptRemaps.remove(context, id)
 
     /** Reads the kept rules, once; after that [rules] is the truth. */
     fun loadRules(context: Context) {

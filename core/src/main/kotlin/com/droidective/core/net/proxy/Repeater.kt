@@ -14,7 +14,16 @@ import java.net.Socket
 import javax.net.ssl.SSLException
 
 /** A request ready to go out again: where to, the head as the server will see it, the body. */
-class Outgoing(val secure: Boolean, val origin: Origin, val head: RequestHead, val body: ByteArray)
+class Outgoing(
+    val secure: Boolean,
+    val origin: Origin,
+    val head: RequestHead,
+    val body: ByteArray,
+) {
+    /** Where it is aimed, as a remap is matched against. */
+    val url: String
+        get() = Server(secure, origin).url + head.target
+}
 
 /** Whether a flow's request can be sent again, and if not, why not. */
 sealed interface Repeat {
@@ -34,8 +43,11 @@ class Repeater(
     private val upstream: UpstreamTls = UpstreamTls.SYSTEM,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
-    /** Sends [outgoing] and returns the exchange, as flow [id], a repeat of flow [of]. */
-    fun send(outgoing: Outgoing, id: Long, of: Long?): Flow {
+    /**
+     * Sends [outgoing] and returns the exchange, as flow [id], a repeat of flow [of]. Sent [via]
+     * another server when a remap says so, as the app's own request would be.
+     */
+    fun send(outgoing: Outgoing, id: Long, of: Long?, via: Server? = null): Flow {
         val body = outgoing.body
         val flow =
             Flow(
@@ -47,9 +59,12 @@ class Repeater(
                 request = outgoing.head,
                 requestBody = CapturedBody(body, body.size.toLong(), truncated = false),
                 repeatOf = of,
+                sentTo = via?.url,
             )
+        val server = via ?: Server(outgoing.secure, outgoing.origin)
+        val head = via?.hosting(outgoing.head) ?: outgoing.head
         return try {
-            open(outgoing).use { exchange(flow, body, it) }
+            open(server).use { exchange(flow, head, body, it) }
         } catch (e: SSLException) {
             flow.copy(finishedAt = clock(), failure = TlsFailure.upstream(e.message))
         } catch (e: IOException) {
@@ -57,14 +72,14 @@ class Repeater(
         }
     }
 
-    private fun open(outgoing: Outgoing): Socket =
-        if (outgoing.secure) upstream.connect(outgoing.origin, CONNECT_MILLIS)
-        else Dial.connect(outgoing.origin.host, outgoing.origin.port, CONNECT_MILLIS)
+    private fun open(server: Server): Socket =
+        if (server.secure) upstream.connect(server.origin, CONNECT_MILLIS)
+        else Dial.connect(server.origin.host, server.origin.port, CONNECT_MILLIS)
 
-    private fun exchange(flow: Flow, body: ByteArray, socket: Socket): Flow {
+    private fun exchange(flow: Flow, head: RequestHead, body: ByteArray, socket: Socket): Flow {
         socket.soTimeout = IDLE_MILLIS
         val out = BufferedOutputStream(socket.getOutputStream())
-        out.write(flow.request.bytes())
+        out.write(head.bytes())
         out.write(body)
         out.flush()
         val input = BufferedInputStream(socket.getInputStream())

@@ -56,11 +56,7 @@ data class RequestDraft(
 
     private class Target(val secure: Boolean, val origin: Origin, val path: String) {
         val authority: String
-            get() {
-                val standard = if (secure) Origin.HTTPS_PORT else Origin.HTTP_PORT
-                val host = if (':' in origin.host) "[${origin.host}]" else origin.host
-                return if (origin.port == standard) host else "$host:${origin.port}"
-            }
+            get() = Server(secure, origin).authority
     }
 
     private fun target(text: String): Target? {

@@ -590,6 +590,76 @@ class ProxyServerTest {
     }
 
     @Test
+    fun aRemappedRequestGoesToTheOtherServerAsTheAppAskedIt() {
+        FakeServer().use { asked ->
+            FakeServer().use { local ->
+                local.reply = { ok("from the laptop") }
+                val port = proxy()
+                server?.remaps =
+                    listOf(
+                        Remap(
+                            "r",
+                            "http://127.0.0.1:${asked.port}/*",
+                            "http://127.0.0.1:${local.port}",
+                        )
+                    )
+
+                assertEquals(
+                    "from the laptop",
+                    get("http://127.0.0.1:${asked.port}/menu?x=1", port),
+                )
+
+                assertEquals(emptyList(), asked.received.toList())
+                val there = local.received.single()
+                assertEquals("/menu?x=1", there.target)
+                assertEquals("127.0.0.1:${local.port}", there.headers["host"])
+                val flow = sink.next()
+                assertEquals(asked.port, flow.port)
+                assertEquals("http://127.0.0.1:${local.port}", flow.sentTo)
+            }
+        }
+    }
+
+    @Test
+    fun aHeldRequestGoesWhereARemapSendsIt() {
+        FakeServer().use { asked ->
+            FakeServer().use { local ->
+                val port = proxy(breaker = Scripted())
+                val url = "http://127.0.0.1:${asked.port}/orders"
+                server?.breakpoints = stopAt(url)
+                server?.remaps = listOf(Remap("r", url, "http://127.0.0.1:${local.port}"))
+                post(url, port, "{}")
+
+                assertEquals(emptyList(), asked.received.toList())
+                assertEquals("127.0.0.1:${local.port}", local.received.single().headers["host"])
+                assertEquals("http://127.0.0.1:${local.port}", sink.next().sentTo)
+            }
+        }
+    }
+
+    @Test
+    fun aMockAnswersBeforeARemapSendsAnywhere() {
+        FakeServer().use { local ->
+            val port = proxy()
+            val url = "http://127.0.0.1:1/menu"
+            server?.mocks = listOf(Mock("m", url, body = "mocked"))
+            server?.remaps = listOf(Remap("r", url, "http://127.0.0.1:${local.port}"))
+
+            assertEquals("mocked", get(url, port))
+            assertEquals(emptyList(), local.received.toList())
+        }
+    }
+
+    @Test
+    fun theProxyNeverAsksItself() {
+        val port = proxy()
+        val connection = connect("http://127.0.0.1:$port/again", port)
+
+        assertEquals(502, connection.responseCode)
+        assertTrue("this proxy" in assertNotNull(sink.next().failure))
+    }
+
+    @Test
     fun aRequestNoBreakpointMatchesIsNotHeld() {
         FakeServer().use { origin ->
             val breaker = Scripted()

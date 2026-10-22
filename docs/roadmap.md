@@ -5,8 +5,8 @@ another machine. Current release: **0.9.0**.
 
 ## Shipped since 0.9.0, waiting for a release
 
-Nothing yet. 0.9.0 carried the proxy's next steps: send again and edit and send (#96, #97), mocks
-(#98), network speed (#99) and breakpoints (#100, #101); see `RELEASE_NOTES.md`.
+- Map remote: a URL's requests sent to another server — staging, or a server on the laptop —
+  with repeats following (#104).
 
 ## Next
 

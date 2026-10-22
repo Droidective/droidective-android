@@ -45,6 +45,7 @@ import com.droidective.core.net.proxy.Breakpoint
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.Mock
 import com.droidective.core.net.proxy.Refusals
+import com.droidective.core.net.proxy.Remap
 import com.droidective.core.net.proxy.TrafficRules
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -61,6 +62,7 @@ internal fun RulesSection(
     onExpand: (Boolean) -> Unit,
     onEditMock: (Mock, Boolean) -> Unit,
     onEditBreakpoint: (Breakpoint, Boolean) -> Unit,
+    onEditRemap: (Remap, Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -107,6 +109,7 @@ internal fun RulesSection(
         StepAsideRow(rules.stepAside) { change(rules.copy(stepAside = it)) }
         Refused(flows, labels)
         Mocks(onEditMock)
+        Remaps(onEditRemap)
         Breakpoints(onEditBreakpoint)
     }
     if (choosing) {
@@ -303,5 +306,36 @@ private fun Breakpoints(onEdit: (Breakpoint, Boolean) -> Unit) {
         onClick = { onEdit(Breakpoint(UUID.randomUUID().toString(), url = "https://"), true) }
     ) {
         Text("New breakpoint")
+    }
+}
+
+/** The requests sent to another server, each to edit or switch off, and a way to add one. */
+@Composable
+private fun Remaps(onEdit: (Remap, Boolean) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { TrafficProxy.loadRemaps(context) } }
+    val remaps by TrafficProxy.remaps.collectAsStateWithLifecycle()
+    Label("Sent to another server")
+    ToolNote(
+        if (remaps.isEmpty())
+            "None yet. Send a request's server elsewhere from the list, or start one."
+        else "Matching requests go to the server named, unless a mock answers them first."
+    )
+    remaps.forEach { remap ->
+        RemapRow(
+            remap,
+            onEdit = { onEdit(remap, false) },
+            onEnable = { on ->
+                scope.launch(Dispatchers.IO) {
+                    TrafficProxy.saveRemap(context, remap.copy(enabled = on))
+                }
+            },
+        )
+    }
+    TextButton(
+        onClick = { onEdit(Remap(UUID.randomUUID().toString(), from = "https://", to = ""), true) }
+    ) {
+        Text("New remap")
     }
 }

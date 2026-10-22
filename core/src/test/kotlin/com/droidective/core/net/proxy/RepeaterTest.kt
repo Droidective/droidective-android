@@ -59,6 +59,19 @@ class RepeaterTest {
     }
 
     @Test
+    fun aRepeatGoesWhereARemapSendsItAndSaysSo() {
+        FakeServer().use { local ->
+            val via = Server(false, Origin("127.0.0.1", local.port))
+            val again = Repeater().send(ready(captured(port = 1)), id = 43, of = 7, via = via)
+
+            assertEquals(200, again.status)
+            assertEquals(1, again.port)
+            assertEquals("http://127.0.0.1:${local.port}", again.sentTo)
+            assertEquals("127.0.0.1:${local.port}", local.received.single().headers["host"])
+        }
+    }
+
+    @Test
     fun aBodyGoesWholeWithItsLengthStated() {
         FakeServer().use { origin ->
             val body = """{"order":42}""".toByteArray()

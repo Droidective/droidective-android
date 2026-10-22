@@ -36,6 +36,8 @@ data class Flow(
     val paused: String? = null,
     /** Whether what was held went on changed. */
     val edited: Boolean = false,
+    /** The server a remap sent it to, instead of the one the app asked for. */
+    val sentTo: String? = null,
 ) {
     val scheme: String
         get() = if (secure) "https" else "http"

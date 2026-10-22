@@ -259,6 +259,13 @@ class FlowSummaryTest {
     }
 
     @Test
+    fun remappedOnesAreFoundByWhereTheyWent() {
+        val sent = flow(id = 15).copy(sentTo = "http://10.0.2.2:3000")
+        assertTrue(FlowFilter.parse("is:remapped").matches(sent))
+        assertFalse(FlowFilter.parse("is:remapped").matches(flow(id = 16)))
+    }
+
+    @Test
     fun aChipAddsItsWordAndTakesItBackOut() {
         val added = FlowFilter.toggled("login", "app:com.example.shop")
         assertEquals("login app:com.example.shop", added)

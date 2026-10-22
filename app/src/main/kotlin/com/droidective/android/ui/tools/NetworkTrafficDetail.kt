@@ -45,6 +45,7 @@ import com.droidective.core.net.proxy.Curl
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowLabels
 import com.droidective.core.net.proxy.Mock
+import com.droidective.core.net.proxy.Remap
 import com.droidective.core.net.proxy.Repeat
 import com.droidective.core.net.proxy.Repeater
 import com.droidective.core.net.proxy.RequestDraft
@@ -66,6 +67,7 @@ fun FlowDetail(
     onOpen: (Long) -> Unit,
     onMock: (Mock) -> Unit,
     onBreak: (Breakpoint) -> Unit,
+    onRemap: (Remap) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -107,6 +109,7 @@ fun FlowDetail(
             InfoRow("Connection", connection(flow))
             flow.repeatOf?.let { InfoRow("Repeat of", "#$it") }
             if (flow.mocked != null) InfoRow("Answered by", "A mock, not the server")
+            flow.sentTo?.let { InfoRow("Sent to", "$it, by a remap") }
             if (flow.paused != null) {
                 InfoRow("Breakpoint", if (flow.edited) "Held, and sent on changed" else "Held")
             }
@@ -177,6 +180,9 @@ fun FlowDetail(
                 onClick = { onBreak(Breakpoint.of(flow, UUID.randomUUID().toString())) }
             ) {
                 Text("Hold requests like this")
+            }
+            OutlinedButton(onClick = { onRemap(Remap.of(flow, UUID.randomUUID().toString())) }) {
+                Text("Send this server's requests elsewhere")
             }
         }
         (repeat as? Repeat.Refused)?.let { ToolNote(it.reason) }

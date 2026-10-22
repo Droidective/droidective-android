@@ -34,6 +34,7 @@ import java.net.BindException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -86,6 +87,9 @@ object TrafficProxy {
     val changes: StateFlow<Long> = revision.asStateFlow()
 
     val flows = FlowStore()
+
+    /** Flow ids for every run, so a run never reuses one the store still holds. */
+    private val ids = AtomicLong()
 
     /**
      * The hosts apps have turned the certificate down for, which are passed through for them from
@@ -270,6 +274,7 @@ object TrafficProxy {
                     Recorder(context),
                     owners = ShellOwners(context),
                     refusals = refusals,
+                    ids = ids,
                 )
             loadRules(context)
             running.rules = proxyRules(context, chosen.value)

@@ -136,10 +136,10 @@ class RequestDraftTest {
                     "GET",
                     "/",
                     "HTTP/1.1",
-                    Headers().add("Accept-Encoding", "gzip, deflate, br, zstd"),
+                    Headers().add("Accept-Encoding", "gzip, deflate, br, zstd, dcz"),
                 ),
             )
-        assertEquals("Accept-Encoding: gzip, deflate, br", RequestDraft.of(flow)!!.headers)
+        assertEquals("Accept-Encoding: gzip, deflate, br, zstd", RequestDraft.of(flow)!!.headers)
     }
 
     @Test

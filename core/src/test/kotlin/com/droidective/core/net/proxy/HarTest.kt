@@ -110,15 +110,16 @@ class HarTest {
 
     @Test
     fun aBodyThatCannotBeDecodedSaysItIsStillCompressed() {
-        val zstd = byteArrayOf(0x28, 0xb5.toByte(), 0x2f, 0xfd.toByte())
+        // Dictionary-compressed: a header, then zstd that needs a dictionary nobody here has.
+        val dcz = byteArrayOf(0x5e, 0x2a, 0x4d, 0x18, 0x28, 0xb5.toByte(), 0x2f, 0xfd.toByte())
         val flow =
             exchange(
-                responseHeaders = Headers().add("Content-Encoding", "zstd"),
-                responseBody = zstd,
+                responseHeaders = Headers().add("Content-Encoding", "dcz"),
+                responseBody = dcz,
             )
         val content = entries(har(flow)).single().obj("response").obj("content")
-        assertEquals("still zstd-compressed, as it arrived", content.text("comment"))
-        assertTrue(Base64.getDecoder().decode(content.text("text")).contentEquals(zstd))
+        assertEquals("still dcz-compressed, as it arrived", content.text("comment"))
+        assertTrue(Base64.getDecoder().decode(content.text("text")).contentEquals(dcz))
     }
 
     @Test

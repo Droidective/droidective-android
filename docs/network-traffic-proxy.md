@@ -62,11 +62,13 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/net/h2/Http2Reader.kt` | Both directions into one `Http2Exchange` a stream, whichever arrives first |
 | `core/net/proxy/Http2Flows.kt` | A stream as a `Flow`: pseudo-headers to method, path and status; trailers kept |
 | `core/net/grpc/Grpc.kt` | gRPC: a body's length-prefixed messages, `grpc-status` in words, the method's name |
+| `core/zstd/Zstd.kt` | Zstandard decompression (RFC 8878): frames, blocks, literals, sequences |
+| `core/zstd/ZstdTables.kt` | zstd's bitstreams read backwards, FSE tables, Huffman tables from weights |
 | `core/net/grpc/ProtoWire.kt` | The protobuf wire format, nothing guessed: fields, varints, packed runs |
 | `core/net/grpc/ProtoRaw.kt` | Protobuf read without its schema, printed as `protoc --decode_raw` prints it |
 | `core/net/grpc/ProtoSchema.kt` | A descriptor set read: messages, enums, methods; a message printed as `protoc --decode` would, `Any` opened |
 
-`core/net` carries **392 tests**, nearly all of them this work.
+`core/net` and `core/zstd` carry **400 tests**, nearly all of them this work.
 
 The Android side is in `app`:
 
@@ -122,8 +124,6 @@ Roughly in the order people reach for them after the list itself:
   Android 14 and later the store lives in the Conscrypt APEX, so it means a tmpfs mounted
   over `/apex/com.android.conscrypt/cacerts` in every app's mount namespace (HTTP Toolkit's
   approach), redone after each reboot. `CertificateTrust.System` already reads the result.
-- **zstd.** Chrome asks for it, and a body in it is shown and exported as it arrived: it
-  needs a decoder the app doesn't carry. brotli is read (`org.brotli:dec`).
 - **Schemas from the server.** A gRPC server with reflection on would give its schema to
   whoever asks, so no file would need pushing; asking means an HTTP/2 client of its own.
 - **Sending a gRPC call again.** A repeat goes out as HTTP/1.1, so gRPC is refused it;
@@ -204,15 +204,19 @@ does exactly this.
 - **Step aside is on by default**, keyed by app and host, kept for one run, and cleared when
   the certificate's trust changes.
 - **HAR is written decoded**, an entry at a time, and leaves out connections never read.
-- **A body is decoded up to 32 MB** (`BodyView.MAX_DECODED`). A few kept megabytes of gzip or
-  brotli can unpack to gigabytes; past the bound the rest is left undone.
+- **A body is decoded up to 32 MB** (`BodyView.MAX_DECODED`). A few kept megabytes of gzip,
+  brotli or zstd can unpack to gigabytes; past the bound the rest is left undone.
+- **zstd is decoded by code of its own** (`core/zstd`), not a library: the pure-Java decoders
+  lean on `sun.misc.Unsafe`, which Android only partly has, and the native one needs a library
+  per ABI. It is held to the reference — every fixture was written by libzstd, and
+  `fixtures.py` writes them again — and a frame that needs a dictionary is refused by name.
 - **A held exchange waits five minutes for a person**, then goes on as it was, so a phone left
   alone never ends up with an app waiting forever. Stopping the proxy lets everything go.
 - **A request held for a person goes out on a new connection to the server.** The one it
   was sharing may have been closed while it waited, and the edit would fail as "the server
   answered nothing".
-- **An answer that will be held is asked for in gzip or deflate**, never brotli or zstd, so
-  it can be read and changed. A changed answer is written out plain, its length restated.
+- **An answer that will be held is asked for only in codings this can undo** — gzip,
+  deflate, brotli, zstd — so it can be read and changed. A changed answer is written out plain, its length restated.
 - **A held request keeps its host.** The app is talking to that host, over TLS made for it;
   sending its request elsewhere is map remote's job. Edit and send, from the list, goes
   anywhere.

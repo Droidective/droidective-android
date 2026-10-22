@@ -97,7 +97,7 @@ data class Mock(
          * body as the app read it, decoded. Null when there is no whole text answer to start from.
          */
         fun of(flow: Flow, id: String): Mock? {
-            if (flow.socket) return null
+            if (flow.socket || flow.http2) return null
             val response = flow.response ?: return null
             val body = flow.responseBody
             if (body?.truncated == true) return null
@@ -124,6 +124,7 @@ data class Mock(
          */
         fun whyNot(flow: Flow): String? {
             val response = flow.response ?: return "Nothing came back to mock."
+            if (flow.http2) return FlowLabels.HTTP2_UNTOUCHED
             if (flow.socket)
                 return "A socket's answer is what it says after the 101, not a response."
             if (flow.responseBody?.truncated == true) {

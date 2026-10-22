@@ -1,5 +1,6 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.grpc.Grpc
 import com.droidective.core.net.http.Header
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
@@ -94,6 +95,8 @@ data class RequestDraft(
          */
         fun of(flow: Flow): RequestDraft? {
             if (flow.opening || flow.socket || flow.requestBody.truncated) return null
+            // Its body is framed protobuf, and it would go out as HTTP/1.1, which gRPC refuses.
+            if (Grpc.carries(flow.request.headers.contentType)) return null
             val body = text(flow.requestBody.bytes) ?: return null
             var shown =
                 flow.request.headers.without(

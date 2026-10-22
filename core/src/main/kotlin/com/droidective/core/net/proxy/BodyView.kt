@@ -1,5 +1,7 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.grpc.Grpc
+import com.droidective.core.net.grpc.ProtoRaw
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
 import java.io.ByteArrayInputStream
@@ -43,8 +45,33 @@ sealed interface BodyShape {
         override fun hashCode() = 31 * reason.hashCode() + bytes.contentHashCode()
     }
 
+    /** A gRPC body, message by message, each read without its schema where it can be. */
+    data class Grpc(val messages: List<GrpcShown>) : BodyShape {
+        /** Every message as it reads, one after another under its number, for copying. */
+        val text: String
+            get() =
+                messages
+                    .mapIndexed { index, message ->
+                        "# Message ${index + 1}\n" +
+                            (message.fields ?: message.text ?: message.problem)
+                    }
+                    .joinToString("\n")
+    }
+
     data object Empty : BodyShape
 }
+
+/**
+ * One message of a gRPC body as it is shown: its fields when it reads as protobuf, its text when it
+ * is text instead, and why when it is neither.
+ */
+data class GrpcShown(
+    val wireLength: Int,
+    val compressed: Boolean,
+    val fields: String? = null,
+    val text: String? = null,
+    val problem: String? = null,
+)
 
 /**
  * Turning what was captured into what is shown.
@@ -55,6 +82,7 @@ sealed interface BodyShape {
 object BodyView {
     fun of(headers: Headers, body: CapturedBody?): BodyShape {
         if (body == null || body.bytes.isEmpty()) return BodyShape.Empty
+        if (Grpc.carries(headers.contentType)) return grpc(headers, body)
         val media = mediaType(headers)
         val decoded =
             decode(headers.contentEncoding, body.bytes) ?: return unreadable(headers, body)
@@ -76,6 +104,32 @@ object BodyView {
                 return BodyShape.Json(it)
             }
         return if (text.isEmpty()) BodyShape.Binary(NOT_TEXT, decoded) else BodyShape.Text(text)
+    }
+
+    private fun grpc(headers: Headers, body: CapturedBody): BodyShape {
+        val shown =
+            Grpc.messages(body.bytes, headers[GRPC_ENCODING]).map { message ->
+                val problem = message.problem
+                val bytes = message.bytes
+                when {
+                    problem != null ->
+                        GrpcShown(message.wireLength, message.compressed, problem = problem)
+                    bytes.isEmpty() ->
+                        GrpcShown(message.wireLength, message.compressed, fields = "")
+                    else -> {
+                        val fields = ProtoRaw.parse(bytes)?.let(ProtoRaw::render)
+                        val text = if (fields == null) text(bytes, StandardCharsets.UTF_8) else null
+                        GrpcShown(
+                            message.wireLength,
+                            message.compressed,
+                            fields = fields,
+                            text = text,
+                            problem = if (fields == null && text == null) NOT_PROTOBUF else null,
+                        )
+                    }
+                }
+            }
+        return BodyShape.Grpc(shown)
     }
 
     private fun unreadable(headers: Headers, body: CapturedBody): BodyShape {
@@ -198,5 +252,7 @@ object BodyView {
 
     private const val FORM = "application/x-www-form-urlencoded"
     private const val NOT_TEXT = "not text"
+    private const val NOT_PROTOBUF = "neither protobuf nor text"
+    private const val GRPC_ENCODING = "grpc-encoding"
     private const val BUFFER = 16 * 1024
 }

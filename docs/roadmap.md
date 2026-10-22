@@ -9,11 +9,15 @@ another machine. Current release: **0.13.0**.
   HTTP/1.1, couldn't connect at all; it is now relayed to its server.
 - **…and what they say is read** (#126): each HTTP/2 stream is a flow of its own, its
   trailers (gRPC's `grpc-status`) kept, through `core/net/h2` — frames, HPACK, Huffman.
+- **gRPC calls read as calls** (#127): listed by `Service/Method`, judged by
+  `grpc-status` rather than their 200, their messages and `-bin` trailers
+  (`grpc-status-details-bin`) read field by field without a `.proto`. Mocks,
+  breakpoints, remaps and repeats say why they don't reach HTTP/2.
 
 ## Next
 
-- **The proxy's next steps** — gRPC messages read without a `.proto`, the certificate in
-  the system store with root, zstd — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
+- **The proxy's next steps** — gRPC with its `.proto`, the certificate in the system
+  store with root, zstd — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
 - **The Mac tools not yet on the phone**: none on the list. `app-info` stays the Apps tool's
   detail screen, which already is that.

@@ -1,5 +1,6 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.grpc.Grpc
 import com.droidective.core.net.http.BodyFraming
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.HTTP_1_1
@@ -104,6 +105,7 @@ class Repeater(
         fun prepare(flow: Flow): Repeat {
             if (flow.opening) return Repeat.Refused(NEVER_READ)
             if (flow.socket) return Repeat.Refused(SOCKET)
+            if (Grpc.carries(flow.request.headers.contentType)) return Repeat.Refused(GRPC)
             if (flow.requestBody.truncated) return Repeat.Refused(CLIPPED)
             val body = flow.requestBody.bytes
             val head =
@@ -160,5 +162,6 @@ class Repeater(
         private const val NEVER_READ = "Nothing was read on this connection, so there's no request."
         private const val CLIPPED =
             "Only part of the body was kept, so sending it again would send something else."
+        private const val GRPC = "gRPC needs HTTP/2, and a request sent again goes out as HTTP/1.1."
     }
 }

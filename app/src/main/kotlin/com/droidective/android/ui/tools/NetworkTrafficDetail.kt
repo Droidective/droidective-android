@@ -36,7 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.ui.copy
+import com.droidective.core.net.grpc.Grpc
 import com.droidective.core.net.http.CapturedBody
+import com.droidective.core.net.http.Header
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.proxy.BodyShape
 import com.droidective.core.net.proxy.BodyView
@@ -111,6 +113,7 @@ fun FlowDetail(
         )
         ToolSection("Overview") {
             InfoRow("Status", FlowLabels.status(flow))
+            FlowLabels.grpc(flow)?.let { InfoRow("gRPC", it.toString()) }
             flow.app?.let { InfoRow("App", "${labels.of(it)}\n$it") }
             InfoRow("Started", TIME.format(Instant.ofEpochMilli(flow.startedAt)))
             flow.durationMillis?.let { InfoRow("Took", FlowLabels.duration(it)) }
@@ -187,7 +190,8 @@ fun FlowDetail(
             }
         }
         if (mock == null && !flow.opening) Mock.whyNot(flow)?.let { ToolNote(it) }
-        if (!flow.opening && !flow.tunnelled) {
+        // Neither reaches an HTTP/2 connection, which Mock.whyNot has already said.
+        if (!flow.opening && !flow.tunnelled && !flow.http2) {
             OutlinedButton(
                 onClick = { onBreak(Breakpoint.of(flow, UUID.randomUUID().toString())) }
             ) {
@@ -276,7 +280,7 @@ internal fun Message(
     val context = LocalContext.current
     ToolSection("Headers") {
         if (headers.all.isEmpty()) ToolNote("None.")
-        headers.forEach { header -> NameValue(header.name, header.value) }
+        headers.forEach { header -> HeaderValue(header) }
     }
     val shape by
         produceState<BodyShape?>(null, headers, body) {
@@ -290,6 +294,7 @@ internal fun Message(
             is BodyShape.Text -> TextBody(shown.text, what)
             is BodyShape.Form -> shown.fields.forEach { (name, value) -> NameValue(name, value) }
             is BodyShape.Image -> ImageBody(shown)
+            is BodyShape.Grpc -> GrpcBody(shown, what)
             is BodyShape.Binary ->
                 ToolNote("${FlowLabels.size(shown.bytes.size.toLong())}, ${shown.reason}.")
         }
@@ -299,13 +304,14 @@ internal fun Message(
                     "${FlowLabels.size(body.wireLength)} was kept. The app got all of it."
             )
         }
-        if (shape is BodyShape.Json || shape is BodyShape.Text) {
+        if (shape is BodyShape.Json || shape is BodyShape.Text || shape is BodyShape.Grpc) {
             OutlinedButton(
                 onClick = {
                     val text =
                         when (val shown = shape) {
                             is BodyShape.Json -> shown.pretty
                             is BodyShape.Text -> shown.text
+                            is BodyShape.Grpc -> shown.text
                             else -> ""
                         }
                     context.copy("The $what body", text)
@@ -316,8 +322,35 @@ internal fun Message(
         }
     }
     if (trailers.all.isNotEmpty()) {
-        ToolSection("Trailers") { trailers.forEach { NameValue(it.name, it.value) } }
+        ToolSection("Trailers") { trailers.forEach { HeaderValue(it) } }
     }
+}
+
+/**
+ * A gRPC body's messages, each with its fields read without the schema. A stream can carry
+ * thousands, so only the first few are laid out; copying the body takes them all.
+ */
+@Composable
+private fun GrpcBody(body: BodyShape.Grpc, what: String) {
+    if (body.messages.isEmpty()) ToolNote("No messages.")
+    body.messages.take(MAX_SHOWN_MESSAGES).forEachIndexed { index, message ->
+        val compressed = if (message.compressed) ", compressed" else ""
+        Text(
+            "Message ${index + 1} · ${FlowLabels.size(message.wireLength.toLong())}$compressed",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val fields = message.fields
+        val text = message.text
+        when {
+            message.problem != null -> ToolNote("Not shown: ${message.problem}.")
+            fields == "" -> ToolNote("Empty: every field at its default.")
+            fields != null -> TextBody(fields, what)
+            text != null -> TextBody(text, what)
+        }
+    }
+    val rest = body.messages.size - MAX_SHOWN_MESSAGES
+    if (rest > 0) ToolNote("And $rest more. Copy the body for all of them.")
 }
 
 /** Long bodies are cut on screen, not in what is copied: laying out megabytes stalls a phone. */
@@ -336,6 +369,13 @@ private fun TextBody(text: String, what: String) {
                 "it for all of it."
         )
     }
+}
+
+/** A header, a binary one read as the protobuf it carries rather than shown as base64. */
+@Composable
+private fun HeaderValue(header: Header) {
+    val read = remember(header) { Grpc.binaryHeader(header.name, header.value) }
+    NameValue(header.name, read?.trimEnd() ?: header.value)
 }
 
 /** A header or a form field: the name small above the value, copied as `name: value` on a tap. */
@@ -375,6 +415,7 @@ private fun ImageBody(image: BodyShape.Image) {
 }
 
 private const val MAX_SHOWN_CHARS = 100_000
+private const val MAX_SHOWN_MESSAGES = 50
 private const val MAX_IMAGE_HEIGHT = 320
 internal val TIME = DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZoneId.systemDefault())
 

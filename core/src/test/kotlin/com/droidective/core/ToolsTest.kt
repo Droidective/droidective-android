@@ -253,6 +253,7 @@ class ToolsTest {
                 "network-check",
                 "app-snapshots",
                 "notification-inspector",
+                "mock-location",
                 // The Mac's http-proxy only points a device at a proxy; this is the proxy.
                 "network-traffic",
             )

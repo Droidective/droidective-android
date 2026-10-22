@@ -58,6 +58,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "reactotron" to { ReactotronTool(it) },
         "simulate" to { SimulateTool(it) },
         "demo-mode" to { DemoModeTool(it) },
+        "mock-location" to { MockLocationTool(it) },
         "system-restrictions" to { RestrictionsTool(it) },
         "network-traffic" to { NetworkTrafficTool(it) },
         "http-proxy" to { ProxyTool(it) },

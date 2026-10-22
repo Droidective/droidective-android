@@ -7,6 +7,9 @@ another machine. Current release: **0.15.0**.
 
 - **Reactotron talks back** (#134): an app's custom commands run from the phone, arguments
   and all, and its state is read by path or whole.
+- **Mock Location** (#135): the phone anywhere, for every app that asks where it is —
+  coordinates, a Google Maps or OpenStreetMap link, a kept place or a ready city — through
+  test providers for GPS, the network and fused location, as the mock location app.
 
 ## Next
 

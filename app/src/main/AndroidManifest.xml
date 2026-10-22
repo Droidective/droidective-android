@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Install App: Android's installer, which asks the person before each install. -->
@@ -15,6 +16,11 @@
     <!-- The automation service, which runs only while an automation watches the phone. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Mock Location: asking for it is what lists Droidective in Developer options' "Select
+         mock location app"; what it allows is decided there, not by this line. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_MOCK_LOCATION"
+        tools:ignore="MockLocation,ProtectedPermissions" />
 
     <application
         android:name=".DroidectiveApplication"
@@ -220,6 +226,14 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Runs the Reactotron server the person started: listens on the phone's own loopback address, 127.0.0.1, port 9090, where the React Native apps they are developing send their logs, network requests and state while those apps run in debug. Nothing off the device can reach it. Runs only until they press Stop in the app or its notification." />
+        </service>
+        <service
+            android:name=".location.MockLocationService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Gives apps the location the person chose in Mock Location, as the mock location app they picked in Developer options: replaces the phone's GPS, network and fused location with test providers at that place, sending a fresh fix each second, so they can test how their apps behave elsewhere. It reads no real location. Runs only until they press Stop in the app or its notification." />
         </service>
         <service
             android:name=".floating.FloatingControlsService"

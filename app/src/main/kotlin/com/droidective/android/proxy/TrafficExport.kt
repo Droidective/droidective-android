@@ -31,7 +31,9 @@ object TrafficExport {
         val name = "droidective-${STAMP.format(LocalDateTime.now())}.har"
         val file = File(folder, name)
         withContext(Dispatchers.IO) {
-            file.bufferedWriter().use { Har.write(flows, BuildConfig.VERSION_NAME, it) }
+            file.bufferedWriter().use {
+                Har.write(flows, BuildConfig.VERSION_NAME, it, TrafficProxy.messages::of)
+            }
         }
         // Stored as plain bytes: under a JSON type MediaStore would add ".json" to the name.
         val uri = SharedStorage.publish(context, file, STORED_AS, SharedStorage.Place.Downloads)

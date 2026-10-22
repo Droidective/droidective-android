@@ -595,6 +595,7 @@ private fun rowDetails(flow: Flow, operation: String?, labels: AppLabels): Strin
     if (flow.mocked != null) parts += "mocked"
     if (flow.edited) parts += "changed" else if (flow.paused != null) parts += "held"
     flow.sentTo?.let { parts += "sent to ${it.substringAfter("://")}" }
+    if (flow.socket) parts += messages(TrafficProxy.messages.count(flow.id))
     flow.repeatOf?.let { parts += "repeat of #$it" }
     flow.durationMillis?.let { parts += FlowLabels.duration(it) }
     if (flow.wireLength > 0) parts += FlowLabels.size(flow.wireLength)
@@ -615,6 +616,8 @@ internal fun outcomeColor(outcome: FlowOutcome): Color =
     }
 
 private fun held(): String = "${FlowLabels.size(TrafficProxy.flows.heldBytes())} held"
+
+private fun messages(count: Int) = if (count == 1) "1 message" else "$count messages"
 
 internal fun Context.openSettings(action: String) {
     try {

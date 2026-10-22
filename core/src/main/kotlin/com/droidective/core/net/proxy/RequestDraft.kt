@@ -93,7 +93,7 @@ data class RequestDraft(
          * never read, a body kept only in part, or one that isn't text to type over.
          */
         fun of(flow: Flow): RequestDraft? {
-            if (flow.opening || flow.requestBody.truncated) return null
+            if (flow.opening || flow.socket || flow.requestBody.truncated) return null
             val body = text(flow.requestBody.bytes) ?: return null
             var shown =
                 flow.request.headers.without(

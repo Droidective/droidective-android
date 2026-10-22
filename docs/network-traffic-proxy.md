@@ -73,6 +73,7 @@ The Android side is in `app`:
 | `ui/tools/NetworkTrafficMocks.kt` | The mock editor and its rows |
 | `ui/tools/NetworkTrafficHolds.kt` | What is held, its editor, and the breakpoint editor |
 | `ui/tools/NetworkTrafficRemaps.kt` | The remap editor and its rows |
+| `ui/tools/NetworkTrafficSockets.kt` | A socket's messages, live, in its detail |
 | `proxy/Holds.kt` | The breakpoints, and the `Breaker` that waits for a person's decision |
 | `proxy/KeptList.kt` | The mocks, remaps and breakpoints as kept: read once, written on each change |
 | `surface/AppPlatformToggles.kt` | The `traffic-proxy` toggle; `TrafficProxyTile` is in `TileSlots.kt` |
@@ -112,8 +113,8 @@ Roughly in the order people reach for them after the list itself:
   Android 14 and later the store lives in the Conscrypt APEX, so it means a tmpfs mounted
   over `/apex/com.android.conscrypt/cacerts` in every app's mount namespace (HTTP Toolkit's
   approach), redone after each reboot. `CertificateTrust.System` already reads the result.
-- **WebSocket frames.** An upgrade is carried as bytes (`tunnelled`); reading the frames
-  would show what a socket.io or GraphQL subscription says.
+- **A socket that stops making sense.** When a direction's `FrameReader` gives up, its
+  messages just stop; the screen could say so rather than leave a gap.
 - **brotli and zstd.** Browsers ask for them, and a body in either is shown and exported as
   it arrived: it needs a decoder the app doesn't carry.
 - **HTTP/2.** Only HTTP/1.1 is offered in ALPN, so clients fall back; gRPC can't.

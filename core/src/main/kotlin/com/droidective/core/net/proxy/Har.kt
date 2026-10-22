@@ -2,6 +2,7 @@ package com.droidective.core.net.proxy
 
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
+import com.droidective.core.net.ws.SocketMessage
 import java.net.URLDecoder
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
@@ -30,9 +31,15 @@ object Har {
     const val VERSION = "1.2"
 
     /**
-     * Writes [flows] to [out] as one HAR log. [creator] is the app's own version, for the header.
+     * Writes [flows] to [out] as one HAR log. [creator] is the app's own version, for the header;
+     * [messagesOf] is what a socket among them said, written as Chrome writes it.
      */
-    fun write(flows: List<Flow>, creator: String, out: Appendable) {
+    fun write(
+        flows: List<Flow>,
+        creator: String,
+        out: Appendable,
+        messagesOf: (Long) -> List<SocketMessage> = { emptyList() },
+    ) {
         out.append("{\"log\":{\"version\":\"$VERSION\",")
         out.append("\"creator\":").append(json(creatorOf(creator))).append(",")
         out.append("\"pages\":[],\"entries\":[")
@@ -40,24 +47,54 @@ object Har {
         for (flow in flows) {
             if (flow.opening) continue
             if (!first) out.append(",")
-            out.append(json(entry(flow)))
+            out.append(json(entry(flow, messagesOf(flow.id))))
             first = false
         }
         out.append("]}}")
     }
 
-    /** One exchange as a HAR entry. */
-    fun entry(flow: Flow): JsonObject = buildJsonObject {
-        put("startedDateTime", Instant.ofEpochMilli(flow.startedAt).toString())
-        put("time", flow.durationMillis ?: 0)
-        put("request", request(flow))
-        put("response", response(flow))
-        put("cache", JsonObject(emptyMap()))
-        put("timings", timings(flow))
-        // HAR lets a writer add its own fields, prefixed with an underscore.
-        flow.app?.let { put("_app", it) }
-        flow.failure?.let { put("_error", it) }
-    }
+    /** One exchange as a HAR entry, with what it said when it became a socket. */
+    fun entry(flow: Flow, messages: List<SocketMessage> = emptyList()): JsonObject =
+        buildJsonObject {
+            put("startedDateTime", Instant.ofEpochMilli(flow.startedAt).toString())
+            put("time", flow.durationMillis ?: 0)
+            put("request", request(flow))
+            put("response", response(flow))
+            put("cache", JsonObject(emptyMap()))
+            put("timings", timings(flow))
+            // HAR lets a writer add its own fields, prefixed with an underscore.
+            flow.app?.let { put("_app", it) }
+            flow.failure?.let { put("_error", it) }
+            socketMessages(messages)?.let { put("_webSocketMessages", it) }
+        }
+
+    /**
+     * A socket's messages as Chrome's DevTools writes and reads them: text and binary only, the
+     * time in seconds, binary data in base64.
+     */
+    private fun socketMessages(messages: List<SocketMessage>) =
+        messages
+            .filter { it.kind == SocketMessage.Kind.Text || it.kind == SocketMessage.Kind.Binary }
+            .takeIf { it.isNotEmpty() }
+            ?.let { said ->
+                buildJsonArray {
+                    said.forEach { message ->
+                        add(
+                            buildJsonObject {
+                                put("type", if (message.fromApp) "send" else "receive")
+                                put("time", message.at / MILLIS_PER_SECOND)
+                                val text = message.kind == SocketMessage.Kind.Text
+                                put("opcode", if (text) TEXT_OPCODE else BINARY_OPCODE)
+                                put(
+                                    "data",
+                                    if (text) message.text
+                                    else Base64.getEncoder().encodeToString(message.data),
+                                )
+                            }
+                        )
+                    }
+                }
+            }
 
     private fun creatorOf(version: String) = buildJsonObject {
         put("name", "Droidective")
@@ -189,4 +226,8 @@ object Har {
 
     private fun json(element: JsonObject): String =
         Json.encodeToString(JsonObject.serializer(), element)
+
+    private const val MILLIS_PER_SECOND = 1000.0
+    private const val TEXT_OPCODE = 1
+    private const val BINARY_OPCODE = 2
 }

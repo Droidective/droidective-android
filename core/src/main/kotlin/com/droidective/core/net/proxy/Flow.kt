@@ -53,13 +53,19 @@ data class Flow(
     /**
      * Whether this records the `CONNECT` itself rather than a request inside it: a host passed
      * through, or one whose app refused the certificate before asking anything. Its target names
-     * the host and port, not a path.
+     * the host and port, not a path. A request upgraded to something else is still a request.
      */
     val opening: Boolean
-        get() = tunnelled || request.method.equals(CONNECT, ignoreCase = true)
+        get() = request.method.equals(CONNECT, ignoreCase = true)
 
     val status: Int?
         get() = response?.status
+
+    /** Whether it became a WebSocket, whose messages the socket log holds under its id. */
+    val socket: Boolean
+        get() =
+            response?.status == SWITCHING &&
+                response.headers[UPGRADE].equals(WEBSOCKET, ignoreCase = true)
 
     val durationMillis: Long?
         get() = finishedAt?.let { it - startedAt }
@@ -75,6 +81,9 @@ data class Flow(
         const val HTTP_PORT = 80
         const val HTTPS_PORT = 443
         const val CONNECT = "CONNECT"
+        const val SWITCHING = 101
+        const val UPGRADE = "Upgrade"
+        const val WEBSOCKET = "websocket"
     }
 }
 

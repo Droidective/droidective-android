@@ -29,7 +29,8 @@ class FlowLabelsTest {
 
     @Test
     fun aHostPassedThroughHasNoStatusOrPath() {
-        val passed = flow(status = null, tunnelled = true)
+        val passed =
+            flow(method = "CONNECT", path = "api.example.com:443", status = null, tunnelled = true)
         assertEquals(FlowOutcome.PassedThrough, FlowLabels.outcome(passed))
         assertEquals("Passed", FlowLabels.status(passed))
         assertEquals("", FlowLabels.path(passed))
@@ -55,7 +56,8 @@ class FlowLabelsTest {
 
     @Test
     fun aPassedConnectionSaysWhy() {
-        val passed = flow(status = null, tunnelled = true)
+        val passed =
+            flow(method = "CONNECT", path = "api.example.com:443", status = null, tunnelled = true)
         assertEquals(
             "passed through: the app refused the certificate before",
             FlowLabels.passed(passed.copy(passing = Passing.Refused)),

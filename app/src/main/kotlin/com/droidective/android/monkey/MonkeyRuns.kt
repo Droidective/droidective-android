@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import com.droidective.android.NoticeIds
 import com.droidective.android.R
 import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
@@ -40,7 +41,7 @@ sealed interface MonkeyRun {
  */
 object MonkeyRuns {
     private const val CHANNEL = "monkey"
-    private const val NOTIFICATION_ID = 7_401
+    private const val NOTIFICATION_ID = NoticeIds.MONKEY
     private const val PROGRESS_EVERY = 25
 
     private val current = MutableStateFlow<MonkeyRun?>(null)

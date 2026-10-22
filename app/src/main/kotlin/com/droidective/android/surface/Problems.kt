@@ -87,7 +87,7 @@ object Problems {
                 .setAutoCancel(true)
                 .build()
         try {
-            manager.notify(tag, NOTIFICATION_ID, notification)
+            manager.notify(tag, BESIDE_TAG, notification)
         } catch (_: SecurityException) {
             // Notifications are off for the app; Setup says so, and the widget shows the badge.
         }
@@ -111,5 +111,6 @@ object Problems {
             is Outcome.Failed -> Intent(context, MainActivity::class.java)
         }
 
-    private const val NOTIFICATION_ID = 1
+    /** Each problem's notice is told apart by its tag, so it needs no id of its own. */
+    private const val BESIDE_TAG = 1
 }

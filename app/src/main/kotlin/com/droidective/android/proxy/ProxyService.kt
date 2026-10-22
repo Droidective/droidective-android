@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
 import com.droidective.android.MainActivity
+import com.droidective.android.NoticeIds
 import com.droidective.android.R
 import com.droidective.android.droidective
 import com.droidective.android.surface.Launch
@@ -162,9 +163,9 @@ class ProxyService : Service() {
 
 /** The proxy's notifications: the one its service keeps up, and the ones left behind. */
 internal object ProxyNotices {
-    const val ID = 7_430
+    const val ID = NoticeIds.PROXY
     private const val CHANNEL = "traffic-proxy"
-    private const val HELD_ID = 7_431
+    private const val HELD_ID = NoticeIds.PROXY_HELD
     private const val HELD_CHANNEL = "traffic-holds"
 
     /**

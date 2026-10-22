@@ -27,6 +27,7 @@ import android.os.PowerManager
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.droidective.android.MainActivity
+import com.droidective.android.NoticeIds
 import com.droidective.android.R
 import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
@@ -306,7 +307,7 @@ class AutomationService : Service() {
 
     companion object {
         private const val CHANNEL = "automation-service"
-        private const val NOTIFICATION_ID = 7_302
+        private const val NOTIFICATION_ID = NoticeIds.AUTOMATION
         private const val APP_POLL_MILLIS = 2_000L
         private const val TOGGLE_POLL_MILLIS = 30_000L
 

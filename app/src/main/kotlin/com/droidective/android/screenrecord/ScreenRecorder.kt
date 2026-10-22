@@ -17,6 +17,7 @@ import android.os.SystemClock
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.droidective.android.MainActivity
+import com.droidective.android.NoticeIds
 import com.droidective.android.R
 import com.droidective.android.droidective
 import com.droidective.android.surface.Launch
@@ -422,7 +423,7 @@ class ScreenRecordService : Service() {
     companion object {
         internal const val ACTION_STOP = "com.droidective.android.action.STOP_RECORDING"
         private const val CHANNEL = "screen-record"
-        private const val NOTIFICATION_ID = 7_420
+        private const val NOTIFICATION_ID = NoticeIds.SCREEN_RECORD
         private const val SECOND = 1_000L
         private const val SHOW_TAPS_SETTING = "show_touches"
         private const val DEMO_ALLOWED_SETTING = "sysui_demo_allowed"

@@ -16,6 +16,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.droidective.android.BuildConfig
+import com.droidective.android.NoticeIds
 import com.droidective.android.R
 import com.droidective.core.update.GitHubReleases
 import com.droidective.core.update.Latest
@@ -47,7 +48,7 @@ object Updates {
     private const val PREFS = "updates"
     private const val WORK = "update-check"
     private const val CHANNEL = "updates"
-    private const val NOTIFICATION_ID = 7_401
+    private const val NOTIFICATION_ID = NoticeIds.UPDATE
     private const val KEY_AUTOMATIC = "automatic"
     private const val KEY_KIND = "kind"
     private const val KEY_AT = "at"

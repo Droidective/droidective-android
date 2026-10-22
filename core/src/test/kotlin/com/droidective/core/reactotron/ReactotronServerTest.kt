@@ -78,9 +78,12 @@ class ReactotronServerTest {
     fun aFrameLargerThanOneReadIsStillOneCommand() {
         val app = App(start())
         val big = "x".repeat(300_000)
-        app.send("""{"type":"log","payload":{"message":"$big"}}""")
+        val frame = """{"type":"log","payload":{"message":"$big"}}"""
+        app.send(frame)
         val (_, command) = heard.commands.poll(5, TimeUnit.SECONDS)!!
         assertEquals(big.length, command.payload["message"].text?.length)
+        // Counted as it crossed: the whole frame, envelope and all.
+        assertEquals(frame.length, heard.sizes.poll(5, TimeUnit.SECONDS))
     }
 
     @Test
@@ -238,8 +241,11 @@ class ReactotronServerTest {
             connected += Triple(connection, clientId, intro)
         }
 
-        override fun command(connection: Int, command: ReactotronCommand) {
+        val sizes = LinkedBlockingQueue<Int>()
+
+        override fun command(connection: Int, command: ReactotronCommand, size: Int) {
             commands += connection to command
+            sizes += size
         }
 
         override fun disconnected(connection: Int, why: String?) {

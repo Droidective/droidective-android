@@ -32,7 +32,8 @@ interface ReactotronSink {
     /** Connection [connection] said who it is, and is client [clientId] from now on. */
     fun connected(connection: Int, clientId: String, intro: ReactotronEvent.ClientIntro)
 
-    fun command(connection: Int, command: ReactotronCommand)
+    /** [command] from [connection], [size] bytes as it crossed: what a bounded timeline counts. */
+    fun command(connection: Int, command: ReactotronCommand, size: Int)
 
     /** [connection] is gone, [why] in words; null when its own app's reload took its place. */
     fun disconnected(connection: Int, why: String?)
@@ -243,7 +244,11 @@ class ReactotronServer(
                             else message.text.take(PREVIEW)
                         ),
                     )
-            if (command.type == INTRO) introduced(this, command) else sink.command(id, command)
+            if (command.type == INTRO) {
+                introduced(this, command)
+            } else {
+                sink.command(id, command, message.length.toInt())
+            }
         }
 
         @Synchronized

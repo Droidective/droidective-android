@@ -30,7 +30,8 @@ toggles Android keeps from ordinary apps. The macOS app lives in
   APKS, XAPK and APKM, with only this phone's splits), Developer Settings, Memory Usage, Current
   Activity, Simulate, Demo Mode, HTTP Proxy, Private DNS, Wireless ADB, Wi-Fi, Network Speed,
   Apps, Permissions (which apps hold the camera, the microphone, location and the rest, to
-  grant or revoke), Device Info and more.
+  grant or revoke), API Testing (requests kept by name, with variables and cURL pasted in),
+  Device Info and more.
 - **Automations.** When something happens, run actions once; while something holds, keep
   toggles set and put each one back when it ends. Schedules, restarts, Bluetooth, Wi-Fi, apps
   opening, charging, crashes, a run from the Mac, and more.

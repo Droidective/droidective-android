@@ -323,10 +323,11 @@ object TrafficProxy {
     }
 
     /**
-     * Sends [outgoing] — a repeat, or an edited one — and records it as sent by this app. A remap
-     * sends it elsewhere as it would the app's own request, so a repeat goes where the app's went.
+     * Sends [outgoing] — a repeat of flow [of], an edited one, or one written in API Testing — and
+     * records it as sent by this app. A remap sends it elsewhere as it would the app's own request,
+     * so a repeat goes where the app's went.
      */
-    suspend fun send(context: Context, outgoing: Outgoing, of: Long): Flow {
+    suspend fun send(context: Context, outgoing: Outgoing, of: Long? = null): Flow {
         val sent =
             withContext(Dispatchers.IO) {
                 loadRemaps(context)

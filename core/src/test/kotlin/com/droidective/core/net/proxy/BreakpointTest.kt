@@ -1,6 +1,5 @@
 package com.droidective.core.net.proxy
 
-import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -64,14 +63,6 @@ class BreakpointTest {
             answers,
             Breakpoint.find(listOf(answers, off), "GET", "https://api.example.com/menu"),
         )
-    }
-
-    @Test
-    fun theBreakpointsAreKept() {
-        val repository = BreakpointRepository(createTempDirectory("points").toFile())
-        assertEquals(emptyList(), repository.all())
-        repository.save(listOf(orders))
-        assertEquals(listOf(orders), repository.all())
     }
 
     @Test

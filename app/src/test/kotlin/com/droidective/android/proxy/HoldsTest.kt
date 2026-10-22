@@ -9,7 +9,6 @@ import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
 import com.droidective.core.net.http.ResponseHead
 import com.droidective.core.net.proxy.Breakpoint
-import com.droidective.core.net.proxy.BreakpointRepository
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.HeldRequest
 import com.droidective.core.net.proxy.HeldResponse
@@ -158,13 +157,20 @@ class HoldsTest {
 
         val kept = listOf(orders.copy(enabled = false), menu)
         assertEquals(kept, Holds.breakpoints.value)
-        assertEquals(kept, BreakpointRepository(context.filesDir).all())
+        assertEquals(kept, onDisk())
 
         Holds.remove(context, "b1")
 
-        assertEquals(listOf(menu), BreakpointRepository(context.filesDir).all())
+        assertEquals(listOf(menu), onDisk())
         Holds.remove(context, "b2")
     }
+
+    /** The breakpoints as the next run of the app would read them. */
+    private fun onDisk(): List<Breakpoint> =
+        KeptList("traffic-breakpoints.json", Breakpoint.serializer(), Breakpoint::id) {}
+            .apply { load(context) }
+            .items
+            .value
 
     private fun flow(id: Long) =
         Flow(

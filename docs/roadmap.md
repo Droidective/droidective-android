@@ -1,23 +1,18 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.9.0**.
+another machine. Current release: **0.10.0**.
 
-## Shipped since 0.9.0, waiting for a release
+## Shipped since 0.10.0, waiting for a release
 
-- Map remote: a URL's requests sent to another server — staging, or a server on the laptop —
-  with repeats following (#104).
-- Network Traffic keeps its search, scroll and open cards while a request or an editor has the
-  screen (#105).
-- WebSockets: what each one says, live, in its detail and in HAR exports (#106, #108, #109).
-- A tunnel or socket the app hangs up on is hung up on at the server too (#108), and a flow no
-  longer loses its app when that is learned while it is being recorded (#107).
+Nothing yet. 0.10.0 carried WebSockets (#106, #108, #109), map remote (#104) and three fixes
+(#105, #107, #108); see `RELEASE_NOTES.md`.
 
 ## Next
 
-- **The proxy's next steps** — map remote, the certificate in the system store with root,
-  WebSocket frames, brotli, HTTP/2 — are in [network-traffic-proxy.md](network-traffic-proxy.md),
-  in the order people reach for them.
+- **The proxy's next steps** — map local from a file, the certificate in the system store with
+  root, brotli, HTTP/2 — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
+  order people reach for them.
 - **The Mac tools not yet on the phone**, by the Mac's ids: `api-client` (an HTTP client, which
   the proxy's repeat would share), `permissions` and `app-info` as their own screens (the Apps
   tool covers most of both), and `screenshot` as a tool with markup rather than only an action.

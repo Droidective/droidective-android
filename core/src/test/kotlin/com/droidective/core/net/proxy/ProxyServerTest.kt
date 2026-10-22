@@ -52,8 +52,10 @@ class ProxyServerTest {
     private fun proxy(
         rules: ProxyRules = ProxyRules(),
         owners: FlowOwners = FlowOwners.UNKNOWN,
+        breaker: Breaker = Breaker.GO,
     ): Int {
-        val running = ProxyServer(certificates, sink, trustingUpstream, owners, refusals)
+        val running =
+            ProxyServer(certificates, sink, trustingUpstream, owners, refusals, breaker = breaker)
         running.rules = rules
         server = running
         return running.start()
@@ -356,6 +358,134 @@ class ProxyServerTest {
         }
     }
 
+    /** A breaker that answers as it is told and keeps what it was shown. */
+    private class Scripted(
+        val onRequest: (HeldRequest) -> RequestVerdict = { RequestVerdict.Go },
+        val onResponse: (HeldResponse) -> ResponseVerdict = { ResponseVerdict.Go },
+    ) : Breaker {
+        val requests = CopyOnWriteArrayList<HeldRequest>()
+        val responses = CopyOnWriteArrayList<HeldResponse>()
+
+        override fun request(held: HeldRequest) = onRequest(held).also { requests += held }
+
+        override fun response(held: HeldResponse) = onResponse(held).also { responses += held }
+    }
+
+    private fun stopAt(url: String, requests: Boolean = true, responses: Boolean = false) =
+        listOf(Breakpoint("b1", url, requests = requests, responses = responses))
+
+    @Test
+    fun aHeldRequestGoesOnAsItWasWhenLetGo() {
+        FakeServer().use { origin ->
+            val breaker = Scripted()
+            val port = proxy(breaker = breaker)
+            server?.breakpoints = stopAt("http://127.0.0.1:${origin.port}/orders")
+            post("http://127.0.0.1:${origin.port}/orders", port, "{\"qty\":1}")
+
+            val held = breaker.requests.single()
+            assertEquals("/orders", held.head.target)
+            assertContentEquals("{\"qty\":1}".toByteArray(), held.body)
+            assertEquals("{\"qty\":1}", origin.received.single().body)
+            val flow = sink.next()
+            assertEquals("b1", flow.paused)
+            assertFalse(flow.edited)
+        }
+    }
+
+    @Test
+    fun aHeldRequestGoesOnChanged() {
+        FakeServer().use { origin ->
+            val breaker =
+                Scripted(
+                    onRequest = { held ->
+                        val body = "{\"qty\":5}".toByteArray()
+                        RequestVerdict.Send(held.head.with(target = "/orders?changed=1"), body)
+                    }
+                )
+            val port = proxy(breaker = breaker)
+            server?.breakpoints = stopAt("http://127.0.0.1:${origin.port}/orders")
+            post("http://127.0.0.1:${origin.port}/orders", port, "{\"qty\":1}")
+
+            val asked = origin.received.single()
+            assertEquals("/orders?changed=1", asked.target)
+            assertEquals("{\"qty\":5}", asked.body)
+            assertEquals("9", asked.headers["content-length"])
+            val flow = sink.next()
+            assertTrue(flow.edited)
+            assertEquals("/orders?changed=1", flow.request.target)
+        }
+    }
+
+    @Test
+    fun aStoppedRequestNeverReachesTheServer() {
+        FakeServer().use { origin ->
+            val port = proxy(breaker = Scripted(onRequest = { RequestVerdict.Stop }))
+            server?.breakpoints = stopAt("http://127.0.0.1:${origin.port}/*")
+            assertFailsWith<IOException> { get("http://127.0.0.1:${origin.port}/x", port) }
+
+            assertEquals(emptyList(), origin.received.toList())
+            assertEquals(Holding.STOPPED, sink.next().failure)
+        }
+    }
+
+    @Test
+    fun aHeldAnswerReachesTheAppAsItWasChanged() {
+        FakeServer().use { origin ->
+            origin.reply = {
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 10\r\n\r\n" +
+                    "{\"open\":1}"
+            }
+            val breaker =
+                Scripted(
+                    onResponse = { held ->
+                        ResponseVerdict.Answer(held.head, "{\"open\":0}".toByteArray())
+                    }
+                )
+            val port = proxy(breaker = breaker)
+            server?.breakpoints =
+                stopAt("http://127.0.0.1:${origin.port}/status", requests = false, responses = true)
+            assertEquals("{\"open\":0}", get("http://127.0.0.1:${origin.port}/status", port))
+
+            assertEquals(emptyList(), breaker.requests.toList())
+            assertContentEquals("{\"open\":1}".toByteArray(), breaker.responses.single().body)
+            assertTrue(sink.next().edited)
+        }
+    }
+
+    @Test
+    fun aCompressedAnswerIsShownDecodedAndPassedOnAsItCame() {
+        FakeServer().use { origin ->
+            val zipped = ByteArrayOutputStream()
+            java.util.zip.GZIPOutputStream(zipped).use { it.write("hello".toByteArray()) }
+            val bytes = zipped.toByteArray()
+            origin.replyBytes = {
+                ("HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: ${bytes.size}" +
+                        "\r\n\r\n")
+                    .toByteArray(Charsets.ISO_8859_1) + bytes
+            }
+            val breaker = Scripted()
+            val port = proxy(breaker = breaker)
+            server?.breakpoints =
+                stopAt("http://127.0.0.1:${origin.port}/z", requests = false, responses = true)
+            val connection = connect("http://127.0.0.1:${origin.port}/z", port)
+            assertEquals("gzip", connection.getHeaderField("Content-Encoding"))
+            assertContentEquals(bytes, connection.inputStream.use { it.readBytes() })
+            assertContentEquals("hello".toByteArray(), breaker.responses.single().body)
+        }
+    }
+
+    @Test
+    fun aRequestNoBreakpointMatchesIsNotHeld() {
+        FakeServer().use { origin ->
+            val breaker = Scripted()
+            val port = proxy(breaker = breaker)
+            server?.breakpoints = stopAt("http://127.0.0.1:${origin.port}/other")
+            get("http://127.0.0.1:${origin.port}/thing", port)
+            assertEquals(emptyList(), breaker.requests.toList())
+            assertNull(sink.next().paused)
+        }
+    }
+
     @Test
     fun aRequestIsOnRecordBeforeTheServerIsReached() {
         val closed = ServerSocket(0).use { it.localPort }
@@ -583,6 +713,9 @@ internal class FakeServer(context: SSLContext? = null) : AutoCloseable {
 
     @Volatile var reply: (Asked) -> String = { "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi" }
 
+    /** An answer that isn't text, such as a compressed one; used instead of [reply] when set. */
+    @Volatile var replyBytes: ((Asked) -> ByteArray)? = null
+
     init {
         thread(isDaemon = true, name = "fake-origin") {
             while (true) {
@@ -606,7 +739,9 @@ internal class FakeServer(context: SSLContext? = null) : AutoCloseable {
                 while (true) {
                     val asked = read(input) ?: return
                     received += asked
-                    out.write(reply(asked).toByteArray(Charsets.ISO_8859_1))
+                    out.write(
+                        replyBytes?.invoke(asked) ?: reply(asked).toByteArray(Charsets.ISO_8859_1)
+                    )
                     out.flush()
                 }
             }

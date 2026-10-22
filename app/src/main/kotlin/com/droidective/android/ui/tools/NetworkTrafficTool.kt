@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,7 +86,6 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun NetworkTrafficTool(tool: ToolContext) {
-    val context = LocalContext.current
     var flows by remember { mutableStateOf(TrafficProxy.flows.all()) }
     LaunchedEffect(Unit) {
         TrafficProxy.changes.collect {
@@ -94,11 +94,10 @@ fun NetworkTrafficTool(tool: ToolContext) {
         }
     }
     var open by rememberSaveable { mutableStateOf<Long?>(null) }
-    // Out here, before an editor or a flow takes the screen: the list's own state goes while one
-    // is open, and coming back would fold the rules up and scroll to the top.
-    var rulesOpen by rememberSaveable { mutableStateOf(false) }
-    val listState = rememberLazyListState()
     var editing by remember { mutableStateOf<Editing?>(null) }
+    // The list keeps its own state — the search, the scroll, what is open — while an editor or a
+    // flow has the screen, as a screen further back would.
+    val kept = rememberSaveableStateHolder()
     editing?.let { now ->
         val back = ToolContext(tool.snackbar, onBack = { editing = null }, tool.onOpenSetup)
         when (now) {
@@ -131,33 +130,53 @@ fun NetworkTrafficTool(tool: ToolContext) {
         )
         return
     }
+    kept.SaveableStateProvider(LIST) {
+        TrafficList(
+            tool,
+            flows,
+            onOpen = { open = it },
+            onHold = { holding = it },
+            onEdit = { editing = it },
+        )
+    }
+}
 
+/** The proxy, its certificate and rules, the search, and the flows it finds. */
+@Composable
+private fun TrafficList(
+    tool: ToolContext,
+    flows: List<Flow>,
+    onOpen: (Long) -> Unit,
+    onHold: (Hold) -> Unit,
+    onEdit: (Editing) -> Unit,
+) {
+    val context = LocalContext.current
+    val held by Holds.held.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
     val filter = remember(query) { FlowFilter.parse(query) }
     val visible = remember(flows, filter) { flows.filter(filter::matches).asReversed() }
     val labels = remember { AppLabels(context) }
+    val scrolled = rememberLazyListState()
 
     BackHandler(onBack = tool.onBack)
     Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
-            state = listState,
+            state = scrolled,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item { TitleRow(tool, flows.isNotEmpty(), visible) }
-            if (held.isNotEmpty()) item { HeldCard(held) { holding = it } }
+            if (held.isNotEmpty()) item { HeldCard(held, onHold) }
             item { ProxySection(tool) }
             item { CertificateSection(tool) }
             item {
                 RulesSection(
                     flows,
-                    expanded = rulesOpen,
-                    onExpand = { rulesOpen = it },
-                    onEditMock = { mock, isNew -> editing = Editing.OfMock(mock, isNew) },
+                    onEditMock = { mock, isNew -> onEdit(Editing.OfMock(mock, isNew)) },
                     onEditBreakpoint = { point, isNew ->
-                        editing = Editing.OfBreakpoint(point, isNew)
+                        onEdit(Editing.OfBreakpoint(point, isNew))
                     },
-                    onEditRemap = { remap, isNew -> editing = Editing.OfRemap(remap, isNew) },
+                    onEditRemap = { remap, isNew -> onEdit(Editing.OfRemap(remap, isNew)) },
                 )
             }
             item { SearchRow(query, flows, labels) { query = it } }
@@ -167,7 +186,7 @@ fun NetworkTrafficTool(tool: ToolContext) {
                     else "${visible.size} of ${flows.size} · ${held()}"
                 )
             }
-            items(visible, key = { it.id }) { flow -> FlowRow(flow, labels) { open = flow.id } }
+            items(visible, key = { it.id }) { flow -> FlowRow(flow, labels) { onOpen(flow.id) } }
         }
     }
 }
@@ -364,7 +383,8 @@ private fun ManualPointing(tool: ToolContext) {
 private fun CertificateSection(tool: ToolContext) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var trust by remember { mutableStateOf<CertificateTrust?>(null) }
+    // Kept with the list, so coming back to it lays the card out at its height straight away.
+    var trust by rememberSaveable { mutableStateOf<CertificateTrust?>(null) }
     var resumes by remember { mutableIntStateOf(0) }
     LifecycleResumeEffect(Unit) {
         // Back from Settings, where it may just have been installed.
@@ -626,6 +646,7 @@ internal val DEBUG_OVERRIDES =
         .trimIndent()
 
 private const val PACE_MILLIS = 250L
+private const val LIST = "list"
 private const val MAX_APP_CHIPS = 6
 private const val STATUS_WIDTH = 52
 

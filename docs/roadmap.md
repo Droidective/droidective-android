@@ -7,6 +7,8 @@ another machine. Current release: **0.9.0**.
 
 - Map remote: a URL's requests sent to another server — staging, or a server on the laptop —
   with repeats following (#104).
+- Network Traffic keeps its search, scroll and open cards while a request or an editor has the
+  screen (#105).
 
 ## Next
 

@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Process
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
@@ -21,6 +22,8 @@ import com.droidective.core.net.proxy.ProxyRules
 import com.droidective.core.net.proxy.ProxyServer
 import com.droidective.core.net.proxy.ProxySetting
 import com.droidective.core.net.proxy.Refusals
+import com.droidective.core.net.proxy.Repeat
+import com.droidective.core.net.proxy.Repeater
 import com.droidective.core.net.proxy.TrafficRules
 import com.droidective.core.net.proxy.TrafficRulesRepository
 import com.droidective.core.net.tls.ProxyCertificates
@@ -286,6 +289,24 @@ object TrafficProxy {
         } catch (e: IOException) {
             current.value = ProxyRun.Failed(e.message ?: "The proxy could not start listening.")
         }
+    }
+
+    /**
+     * Sends [flow]'s request again and records the exchange, sent by this app, as a repeat of it.
+     * It needs no running proxy: it goes to the server itself.
+     *
+     * @return the new flow, or null when [flow] has no request that can be sent again.
+     */
+    suspend fun repeat(context: Context, flow: Flow): Flow? {
+        val ready = Repeater.prepare(flow) as? Repeat.Ready ?: return null
+        val sent =
+            withContext(Dispatchers.IO) {
+                Repeater().send(ready.outgoing, ids.incrementAndGet(), of = flow.id)
+            }
+        val recorded = sent.copy(uid = Process.myUid(), app = context.packageName)
+        flows.put(recorded)
+        revision.update { it + 1 }
+        return recorded
     }
 
     /** Reads the kept rules, once; after that [rules] is the truth. */

@@ -28,6 +28,8 @@ data class Flow(
     val passing: Passing? = null,
     val uid: Int? = null,
     val app: String? = null,
+    /** The flow this one sent again, when it is a repeat rather than something an app asked. */
+    val repeatOf: Long? = null,
 ) {
     val scheme: String
         get() = if (secure) "https" else "http"

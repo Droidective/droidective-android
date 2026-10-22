@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
@@ -21,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,19 +43,24 @@ import com.droidective.core.net.proxy.BodyView
 import com.droidective.core.net.proxy.Curl
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowLabels
+import com.droidective.core.net.proxy.Repeat
+import com.droidective.core.net.proxy.Repeater
 import com.droidective.core.net.proxy.TlsFailure
 import com.droidective.core.net.proxy.TrafficRules
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** One exchange: where it went, what was sent, what came back, and a way to send it again. */
 @Composable
-fun FlowDetail(flow: Flow, tool: ToolContext) {
+fun FlowDetail(flow: Flow, tool: ToolContext, onOpen: (Long) -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val say = rememberSay(tool)
+    var sending by remember { mutableStateOf(false) }
     val labels = remember { AppLabels(context) }
     var side by rememberSaveable { mutableIntStateOf(if (flow.response != null) 1 else 0) }
     ToolScaffold(if (flow.opening) flow.host else "${flow.request.method} ${flow.host}", tool) {
@@ -74,6 +81,7 @@ fun FlowDetail(flow: Flow, tool: ToolContext) {
             flow.durationMillis?.let { InfoRow("Took", FlowLabels.duration(it)) }
             if (flow.wireLength > 0) InfoRow("Moved", FlowLabels.size(flow.wireLength))
             InfoRow("Connection", connection(flow))
+            flow.repeatOf?.let { InfoRow("Repeat of", "#$it") }
         }
         flow.failure?.let { FailureSection(it) }
         if (!flow.tunnelled || flow.response != null) {
@@ -99,7 +107,22 @@ fun FlowDetail(flow: Flow, tool: ToolContext) {
                 }
             }
         }
+        val repeat = remember(flow) { Repeater.prepare(flow) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = {
+                    sending = true
+                    scope.launch {
+                        val sent = TrafficProxy.repeat(context, flow)
+                        sending = false
+                        // The repeat is a flow of its own, which is where to look next.
+                        sent?.let { onOpen(it.id) }
+                    }
+                },
+                enabled = repeat is Repeat.Ready && !sending,
+            ) {
+                Text(if (sending) "Sending…" else "Send again")
+            }
             OutlinedButton(
                 onClick = {
                     context.copy("cURL", Curl.of(flow))
@@ -110,6 +133,7 @@ fun FlowDetail(flow: Flow, tool: ToolContext) {
                 Text("Copy as cURL")
             }
         }
+        (repeat as? Repeat.Refused)?.let { ToolNote(it.reason) }
         RuleShortcuts(flow, labels, say)
     }
 }
@@ -150,6 +174,8 @@ private fun RuleShortcuts(flow: Flow, labels: AppLabels, say: (String) -> Unit) 
 
 private fun connection(flow: Flow): String =
     when {
+        flow.repeatOf != null && flow.secure -> "HTTPS, sent again by Droidective"
+        flow.repeatOf != null -> "HTTP, sent again by Droidective"
         flow.tunnelled && flow.response == null ->
             FlowLabels.passed(flow)?.replaceFirstChar { it.uppercase() } ?: "Passed through"
         flow.tunnelled -> "Upgraded, then carried as bytes"

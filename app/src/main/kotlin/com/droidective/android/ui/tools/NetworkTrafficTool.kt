@@ -84,9 +84,14 @@ fun NetworkTrafficTool(tool: ToolContext) {
         }
     }
     var open by rememberSaveable { mutableStateOf<Long?>(null) }
-    val opened = open?.let { id -> flows.firstOrNull { it.id == id } }
+    // The list catches up four times a second; a flow just made, a repeat, is in the store first.
+    val opened = open?.let { id -> flows.firstOrNull { it.id == id } ?: TrafficProxy.flows.get(id) }
     if (opened != null) {
-        FlowDetail(opened, ToolContext(tool.snackbar, onBack = { open = null }, tool.onOpenSetup))
+        FlowDetail(
+            opened,
+            ToolContext(tool.snackbar, onBack = { open = null }, tool.onOpenSetup),
+            onOpen = { open = it },
+        )
         return
     }
 
@@ -489,6 +494,7 @@ private fun rowDetails(flow: Flow, operation: String?, labels: AppLabels): Strin
         return parts.joinToString(" · ")
     }
     FlowLabels.passed(flow)?.let { parts += it }
+    flow.repeatOf?.let { parts += "repeat of #$it" }
     flow.durationMillis?.let { parts += FlowLabels.duration(it) }
     if (flow.wireLength > 0) parts += FlowLabels.size(flow.wireLength)
     return parts.joinToString(" · ")

@@ -10,6 +10,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -66,6 +68,7 @@ import com.droidective.core.net.proxy.FlowLabels
 import com.droidective.core.net.proxy.FlowOutcome
 import com.droidective.core.net.proxy.FlowSummary
 import com.droidective.core.net.proxy.Mock
+import com.droidective.core.net.proxy.Throttle
 import java.io.IOException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -209,6 +212,7 @@ private fun ProxySection(tool: ToolContext) {
         }
         if (run !is ProxyRun.Listening && pointing) StrandedNote(tool)
         if (run is ProxyRun.Listening) {
+            SpeedRow()
             if (canPoint) {
                 PointRow(pointing) { here ->
                     scope.launch {
@@ -227,6 +231,33 @@ private fun ProxySection(tool: ToolContext) {
                     "back the way it was."
             )
         }
+    }
+}
+
+/** How slow a network to play, for seeing an app's loading states. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SpeedRow() {
+    val throttle by TrafficProxy.throttle.collectAsStateWithLifecycle()
+    Text(
+        "Network speed",
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+    )
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Throttle.presets.forEach { preset ->
+            FilterChip(
+                selected = preset.throttle == throttle,
+                onClick = { TrafficProxy.throttle(preset.throttle) },
+                label = { Text(preset.name) },
+            )
+        }
+    }
+    if (!throttle.isOff) {
+        ToolNote(
+            "Every request through the proxy waits ${throttle.latencyMillis} ms and arrives at " +
+                "${FlowLabels.size(throttle.downBytesPerSecond)}/s, the apps passed through too."
+        )
     }
 }
 

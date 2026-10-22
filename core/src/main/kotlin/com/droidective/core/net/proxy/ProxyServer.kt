@@ -65,6 +65,9 @@ class ProxyServer(
     /** Answers given here instead of by the server; may be changed while the proxy is running. */
     @Volatile var mocks: List<Mock> = emptyList()
 
+    /** How slow a network to play; read again for each request, so it applies at once. */
+    @Volatile var throttle: Throttle = Throttle.NONE
+
     private val contexts = ConcurrentHashMap<String, SSLContext>()
     private val open = ConcurrentHashMap.newKeySet<Socket>()
     private var listener: ServerSocket? = null
@@ -260,9 +263,13 @@ class ProxyServer(
     ): Boolean {
         val requestBody = HttpBody.relay(BodyFraming.of(head), source, null)
         val (response, body) = mock.response()
-        out.write(response.bytes())
-        out.write(body)
-        out.flush()
+        // A mock plays the network as slow as the rest, or it would answer faster than anything.
+        val slow = throttle
+        delay(slow)
+        val paced = Paced.of(out, slow.downBytesPerSecond)
+        paced.write(response.bytes())
+        paced.write(body)
+        paced.flush()
         val kept = CapturedBody(body, body.size.toLong(), truncated = false)
         record.finished(
             flow.copy(
@@ -278,12 +285,14 @@ class ProxyServer(
 
     /** One request and its answer. Returns whether the connection can carry another. */
     private fun exchange(flow: Flow, head: RequestHead, ends: Ends, record: FlowSink): Boolean {
-        val (source, out, upstream) = ends
-        upstream.sink.write(
-            head.with(target = head.path, headers = forwardable(head.headers)).bytes()
-        )
-        val requestBody = HttpBody.relay(BodyFraming.of(head), source, upstream.sink)
-        upstream.sink.flush()
+        val (source, client, upstream) = ends
+        val slow = throttle
+        delay(slow)
+        val toServer = Paced.of(upstream.sink, slow.upBytesPerSecond)
+        val out = Paced.of(client, slow.downBytesPerSecond)
+        toServer.write(head.with(target = head.path, headers = forwardable(head.headers)).bytes())
+        val requestBody = HttpBody.relay(BodyFraming.of(head), source, toServer)
+        toServer.flush()
         val asked = flow.copy(requestBody = requestBody)
         record.started(asked)
 
@@ -340,13 +349,26 @@ class ProxyServer(
             // A tunnel may be idle for a long time and still be alive; only a close ends it.
             socket.soTimeout = 0
             upstream.soTimeout = 0
-            bothWays(source, out, upstream.getInputStream(), upstream.getOutputStream())
+            // Passed through is still on this network: as slow as everything else.
+            val slow = throttle
+            delay(slow)
+            bothWays(
+                source,
+                Paced.of(out, slow.downBytesPerSecond),
+                upstream.getInputStream(),
+                Paced.of(upstream.getOutputStream(), slow.upBytesPerSecond),
+            )
             record.finished(flow.copy(finishedAt = clock()))
         } catch (e: IOException) {
             record.finished(flow.copy(finishedAt = clock(), failure = e.reason()))
         } finally {
             upstream?.closeQuietly()
         }
+    }
+
+    /** The round trip a slower network would add, before a request goes on its way. */
+    private fun delay(slow: Throttle) {
+        if (slow.latencyMillis > 0) Thread.sleep(slow.latencyMillis)
     }
 
     private fun begin(head: RequestHead, origin: Origin, secure: Boolean) =

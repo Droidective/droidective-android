@@ -1,23 +1,13 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.7.0**.
+another machine. Current release: **0.8.0**.
 
-## Shipped since 0.7.0, waiting for a release
+## Shipped since 0.8.0, waiting for a release
 
-The four ways the app was hard to reach from outside its own screen, all done:
-
-- **Pinned and recent tools**, and **launcher shortcuts** from them (#91): the Tools list leads
-  with Pinned and Recent, a long press pins a tool or adds it to the home screen, and the app's
-  icon offers the pinned tools, then the recent ones.
-- **Open with, and Share** (#92): an APK, XAPK or APKM opened from Files or shared goes to Install
-  App; shared text with a link in it goes to Deep Links' field.
-- **Floating controls** (#93): a bubble over any app for screenshots, a recording, a views
-  capture, the activity on screen and the debugging proxy; it keeps out of what it captures.
-- The capture actions' own Quick Settings tiles went out in 0.7.0 (#90).
-
-**Next release is 0.8.0**: bump `versionName`/`versionCode` in `gradle.properties`, add a
-`RELEASE_NOTES.md` section, PR, merge, tag `v0.8.0`.
+Nothing yet. 0.8.0 carried the four ways in from outside the app: floating controls (#93), pinned
+and recent tools with launcher shortcuts (#91), and Open with and Share (#92); see
+`RELEASE_NOTES.md`.
 
 ## Next
 

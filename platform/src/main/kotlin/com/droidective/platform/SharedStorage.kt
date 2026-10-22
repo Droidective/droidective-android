@@ -23,6 +23,10 @@ object SharedStorage {
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
             "${Environment.DIRECTORY_MOVIES}/Droidective",
         ),
+        Pictures(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            "${Environment.DIRECTORY_PICTURES}/Droidective",
+        ),
     }
 
     /** This app's own folder on shared storage, which the shell can write and the app read. */

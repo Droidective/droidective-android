@@ -23,7 +23,8 @@ toggles Android keeps from ordinary apps. The macOS app lives in
 - **Developer tools.** Performance Monitor (CPU, memory, temperature and an app's frames, with
   an overlay that shows them over any app), Logcat, Crash Catcher, Terminal, Settings Editor
   (settings, properties and feature flags, with undo), Sandbox Browser (an app's files,
-  preferences and databases), File Explorer, APK Inspector, Screen Record, Bug Report, Background
+  preferences and databases), File Explorer, APK Inspector, Screenshot (taken and marked up:
+  arrows, boxes, text, black-out and pixelation), Screen Record, Bug Report, Background
   Work (Doze, standby buckets, jobs and alarms), UI Inspector, Intent Builder, Network Check, App
   Snapshots, Notification Inspector, Monkey Test, React Native, Language, Install App (APK,
   APKS, XAPK and APKM, with only this phone's splits), Developer Settings, Memory Usage, Current

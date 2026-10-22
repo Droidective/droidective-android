@@ -9,6 +9,7 @@ import com.droidective.android.proxy.ProxyRun
 import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.screenrecord.RecordRequest
 import com.droidective.android.screenrecord.ScreenRecorder
+import com.droidective.android.screenshot.Screenshots
 import com.droidective.android.uiinspect.UiCaptures
 import com.droidective.core.AccessLevel
 import com.droidective.core.Grants
@@ -30,6 +31,7 @@ class AppPlatformToggles(private val context: Context, private val platform: Pla
             PlatformApi.ScreenRecording -> onOff(ScreenRecorder.recording)
             PlatformApi.PerformanceOverlay -> onOff(PerformanceOverlayService.isRunning.value)
             PlatformApi.CaptureViews -> null
+            PlatformApi.MarkupScreenshot -> null
             PlatformApi.FloatingControls -> onOff(FloatingControlsService.isRunning.value)
             PlatformApi.TrafficProxy ->
                 onOff(
@@ -49,6 +51,10 @@ class AppPlatformToggles(private val context: Context, private val platform: Pla
             PlatformApi.FloatingControls -> floatingControls(state == ON)
             PlatformApi.CaptureViews -> {
                 UiCaptures.capture(context, CAPTURE_DELAY_SECONDS)
+                Outcome.Applied(state, confirmed = false)
+            }
+            PlatformApi.MarkupScreenshot -> {
+                Screenshots.take(context, MARKUP_DELAY_SECONDS)
                 Outcome.Applied(state, confirmed = false)
             }
             PlatformApi.TrafficProxy -> {
@@ -106,6 +112,9 @@ class AppPlatformToggles(private val context: Context, private val platform: Pla
         const val ON = "on"
         const val OFF = "off"
         const val CAPTURE_DELAY_SECONDS = 3
+
+        /** Long enough for the shade, or the floating controls, to be out of the picture. */
+        const val MARKUP_DELAY_SECONDS = 2
 
         /**
          * What a tap from a tile or widget records with: the screen tool's defaults, three seconds

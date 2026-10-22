@@ -862,6 +862,15 @@ object Toggles {
                 states = action("Capture in 3 s"),
                 level = AccessLevel.Shell,
             ),
+            api(
+                "markup-screenshot",
+                "Screenshot to mark up",
+                ToggleGroup.Developer,
+                "edit",
+                PlatformApi.MarkupScreenshot,
+                states = action("Take in 2 s"),
+                level = AccessLevel.Shell,
+            ),
             // Display over other apps, which it asks for; each button needs what its toggle needs.
             api(
                 "floating-controls",

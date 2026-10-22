@@ -229,6 +229,8 @@ class PerformanceOverlayTile : FixedTileService("perf-overlay")
 
 class CaptureViewsTile : FixedTileService("capture-views")
 
+class MarkupScreenshotTile : FixedTileService("markup-screenshot")
+
 class FloatingControlsTile : FixedTileService("floating-controls")
 
 class WirelessDebuggingTile : FixedTileService("wireless-debugging")

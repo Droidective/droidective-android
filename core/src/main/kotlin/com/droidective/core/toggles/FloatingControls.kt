@@ -27,10 +27,13 @@ object FloatingControls {
             Control("record-screen", Hide.WhileOn),
             // Its three-second countdown, then uiautomator's dump and the screenshot.
             Control("capture-views", Hide.For(CAPTURE_VIEWS_MILLIS)),
+            // Its two-second wait, then the screenshot.
+            Control("markup-screenshot", Hide.For(MARKUP_MILLIS)),
             Control("traffic-proxy", Hide.Never),
         )
 
     private const val SCREENSHOT_MILLIS = 2_000L
     private const val CLEAN_SCREENSHOT_MILLIS = 3_500L
     private const val CAPTURE_VIEWS_MILLIS = 9_000L
+    private const val MARKUP_MILLIS = 4_500L
 }

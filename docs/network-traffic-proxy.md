@@ -75,6 +75,7 @@ The Android side is in `app`:
 | `ui/tools/NetworkTrafficRemaps.kt` | The remap editor and its rows |
 | `ui/tools/NetworkTrafficSockets.kt` | A socket's messages, live, in its detail |
 | `proxy/Holds.kt` | The breakpoints, and the `Breaker` that waits for a person's decision |
+| `proxy/MockFolder.kt` | The mocks folder, where a mock that answers from a file reads it |
 | `proxy/KeptList.kt` | The mocks, remaps and breakpoints as kept: read once, written on each change |
 | `surface/AppPlatformToggles.kt` | The `traffic-proxy` toggle; `TrafficProxyTile` is in `TileSlots.kt` |
 
@@ -106,8 +107,6 @@ The Android side is in `app`:
 
 Roughly in the order people reach for them after the list itself:
 
-- **Map local from a file.** A mock answers from text typed on the phone; answering from a
-  file — a fixture pushed with `adb push`, a large JSON — is the rest of Charles's *Map Local*.
 - **The system store, with root.** A user certificate is trusted only by apps that opt in.
   With root it can go in the system store, and every app that doesn't pin trusts it. On
   Android 14 and later the store lives in the Conscrypt APEX, so it means a tmpfs mounted
@@ -202,6 +201,11 @@ does exactly this.
   can't make sense of it stops reading rather than touch the connection.
 - **A hang-up at either end is a hang-up at the other.** A tunnel or a socket has no timeout,
   so a server never told the app had gone held a thread and two connections for ever.
+- **A mock's file lives in the app's own folder on shared storage**
+  (`Android/data/com.droidective.android/files/mocks`): the app reads it with no permission,
+  `adb push` writes it, and it is read again for every answer, so pushing a fixture again
+  changes the answer. A name that would leave the folder — `..`, a leading `/`, a link out of
+  it — is refused, and a file over 8 MB answers a 502 that says so.
 - **The proxy never dials itself.** An app asking for `127.0.0.1:8888`, or a remap there,
   would have it ask itself again for ever; it fails as a 502 instead.
 

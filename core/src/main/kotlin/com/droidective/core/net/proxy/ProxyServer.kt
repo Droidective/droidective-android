@@ -63,6 +63,8 @@ class ProxyServer(
     private val ids: AtomicLong = AtomicLong(),
     /** Who decides what happens to an exchange held at a breakpoint. */
     private val breaker: Breaker = Breaker.GO,
+    /** Where a mock that answers from a file finds it. */
+    private val files: MockFiles = MockFiles.NONE,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     /** Which hosts are opened; may be changed while the proxy is running. */
@@ -286,7 +288,22 @@ class ProxyServer(
         record: FlowSink,
     ): Boolean {
         val requestBody = HttpBody.relay(BodyFraming.of(head), source, null)
-        val (response, body) = mock.response()
+        val (response, body) =
+            try {
+                mock.file?.let { mock.response(files.read(it)) } ?: mock.response()
+            } catch (e: IOException) {
+                val why = "the mock's file: ${e.message}"
+                record.finished(
+                    flow.copy(
+                        requestBody = requestBody,
+                        finishedAt = clock(),
+                        failure = why,
+                        mocked = mock.id,
+                    )
+                )
+                out.writeQuietly(badGateway("Droidective: $why."))
+                return false
+            }
         // A mock plays the network as slow as the rest, or it would answer faster than anything.
         val slow = throttle
         delay(slow)

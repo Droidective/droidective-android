@@ -179,6 +179,40 @@ class MockTest {
     }
 
     @Test
+    fun aFileNameStaysInTheMocksFolder() {
+        listOf("menu.json", "shop/menu.json", "a b.png", ".hidden").forEach {
+            assertTrue(Mock.isFileName(it), it)
+        }
+        listOf("", "/sdcard/menu.json", "../secret", "shop/../../x", "shop//menu", "a\\b", "./menu")
+            .forEach { assertFalse(Mock.isFileName(it), it) }
+    }
+
+    @Test
+    fun anAnswerFromAFileIsTypedByItsExtensionUnlessTheMockSays() {
+        val fromFile = menu.copy(file = "menu.JSON")
+        val (head, bytes) = fromFile.response("[1]".toByteArray())
+
+        assertEquals("application/json", head.headers[Headers.CONTENT_TYPE])
+        assertEquals("3", head.headers[Headers.CONTENT_LENGTH])
+        assertEquals("[1]", bytes.decodeToString())
+        val said = fromFile.copy(headers = listOf(MockHeader("Content-Type", "text/plain")))
+        assertEquals("text/plain", said.response(ByteArray(0)).first.headers[Headers.CONTENT_TYPE])
+        assertNull(
+            menu.copy(file = "data.bin").response(ByteArray(0)).first.headers[Headers.CONTENT_TYPE]
+        )
+    }
+
+    @Test
+    fun aDraftNamesItsFile() {
+        val draft = MockDraft.of(menu).copy(file = " fixtures/menu.json ")
+        val mock = (draft.build("m1") as MockDraft.Built.Ready).mock
+        assertEquals("fixtures/menu.json", mock.file)
+        assertEquals("fixtures/menu.json", MockDraft.of(mock).file)
+        assertNull((MockDraft.of(menu).build("m1") as MockDraft.Built.Ready).mock.file)
+        assertTrue(draft.copy(file = "../menu.json").build("m1") is MockDraft.Built.Invalid)
+    }
+
+    @Test
     fun aDraftThatDoesNotDescribeAMockSaysWhy() {
         val good = MockDraft.of(menu)
         listOf(

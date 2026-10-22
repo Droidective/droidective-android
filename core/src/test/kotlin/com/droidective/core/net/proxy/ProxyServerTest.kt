@@ -58,9 +58,18 @@ class ProxyServerTest {
         rules: ProxyRules = ProxyRules(),
         owners: FlowOwners = FlowOwners.UNKNOWN,
         breaker: Breaker = Breaker.GO,
+        files: MockFiles = MockFiles.NONE,
     ): Int {
         val running =
-            ProxyServer(certificates, sink, trustingUpstream, owners, refusals, breaker = breaker)
+            ProxyServer(
+                certificates,
+                sink,
+                trustingUpstream,
+                owners,
+                refusals,
+                breaker = breaker,
+                files = files,
+            )
         running.rules = rules
         server = running
         return running.start()
@@ -391,6 +400,33 @@ class ProxyServerTest {
             assertEquals("real", get("http://127.0.0.1:${origin.port}/menu", port))
             assertNull(sink.next().mocked)
         }
+    }
+
+    @Test
+    fun aMockAnswersFromItsFileAsItIsNow() {
+        val folder = mutableMapOf("menu.json" to """{"v":1}""")
+        val port =
+            proxy(files = { name -> folder[name]?.toByteArray() ?: throw IOException("no $name") })
+        server?.mocks = listOf(Mock("m", "http://127.0.0.1:1/menu", file = "menu.json"))
+
+        assertEquals("""{"v":1}""", get("http://127.0.0.1:1/menu", port))
+        // Pushed again, it answers with what is there now.
+        folder["menu.json"] = """{"v":2}"""
+        val connection = connect("http://127.0.0.1:1/menu", port)
+        assertEquals("""{"v":2}""", connection.inputStream.use { String(it.readBytes()) })
+        assertEquals("application/json", connection.getHeaderField("Content-Type"))
+    }
+
+    @Test
+    fun aMockWhoseFileIsGoneSaysSo() {
+        val port = proxy(files = { name -> throw IOException("no $name in the mocks folder") })
+        server?.mocks = listOf(Mock("m", "http://127.0.0.1:1/menu", file = "menu.json"))
+
+        val connection = connect("http://127.0.0.1:1/menu", port)
+        assertEquals(502, connection.responseCode)
+        val flow = sink.next()
+        assertEquals("m", flow.mocked)
+        assertEquals("the mock's file: no menu.json in the mocks folder", flow.failure)
     }
 
     @Test

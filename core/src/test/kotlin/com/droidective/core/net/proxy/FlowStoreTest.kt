@@ -249,6 +249,16 @@ class FlowSummaryTest {
     }
 
     @Test
+    fun heldAndChangedAreFoundByWhatHappenedToThem() {
+        val held = flow(id = 13).copy(paused = "b1")
+        val changed = held.copy(edited = true)
+        assertTrue(FlowFilter.parse("is:held").matches(held))
+        assertFalse(FlowFilter.parse("is:held").matches(flow(id = 14)))
+        assertTrue(FlowFilter.parse("is:changed").matches(changed))
+        assertFalse(FlowFilter.parse("is:changed").matches(held))
+    }
+
+    @Test
     fun aChipAddsItsWordAndTakesItBackOut() {
         val added = FlowFilter.toggled("login", "app:com.example.shop")
         assertEquals("login app:com.example.shop", added)

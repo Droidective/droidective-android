@@ -36,10 +36,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.droidective
+import com.droidective.android.proxy.Holds
 import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.automations.AppChooser
 import com.droidective.core.AccessLevel
+import com.droidective.core.net.proxy.Breakpoint
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.Mock
 import com.droidective.core.net.proxy.Refusals
@@ -53,7 +55,11 @@ import kotlinx.coroutines.withContext
 /** Which apps and hosts are read and which are left alone, kept across runs. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun RulesSection(flows: List<Flow>, onEditMock: (Mock, Boolean) -> Unit) {
+internal fun RulesSection(
+    flows: List<Flow>,
+    onEditMock: (Mock, Boolean) -> Unit,
+    onEditBreakpoint: (Breakpoint, Boolean) -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) { TrafficProxy.loadRules(context) } }
@@ -102,6 +108,7 @@ internal fun RulesSection(flows: List<Flow>, onEditMock: (Mock, Boolean) -> Unit
         StepAsideRow(rules.stepAside) { change(rules.copy(stepAside = it)) }
         Refused(flows, labels)
         Mocks(onEditMock)
+        Breakpoints(onEditBreakpoint)
     }
     if (choosing) {
         AppChooser(
@@ -269,5 +276,33 @@ private fun Mocks(onEdit: (Mock, Boolean) -> Unit) {
     }
     TextButton(onClick = { onEdit(Mock(UUID.randomUUID().toString(), url = "https://"), true) }) {
         Text("New mock")
+    }
+}
+
+/** Where requests or their answers wait to be looked at, each to edit or switch off. */
+@Composable
+private fun Breakpoints(onEdit: (Breakpoint, Boolean) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { Holds.load(context) } }
+    val points by Holds.breakpoints.collectAsStateWithLifecycle()
+    Label("Breakpoints")
+    ToolNote(
+        if (points.isEmpty()) "None yet. Hold requests like one in the list, or start one."
+        else "Matching requests, or their answers, wait for you to let them go or change them."
+    )
+    points.forEach { point ->
+        BreakpointRow(
+            point,
+            onEdit = { onEdit(point, false) },
+            onEnable = { on ->
+                scope.launch(Dispatchers.IO) { Holds.save(context, point.copy(enabled = on)) }
+            },
+        )
+    }
+    TextButton(
+        onClick = { onEdit(Breakpoint(UUID.randomUUID().toString(), url = "https://"), true) }
+    ) {
+        Text("New breakpoint")
     }
 }

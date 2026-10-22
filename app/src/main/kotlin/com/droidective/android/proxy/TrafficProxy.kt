@@ -13,6 +13,7 @@ import androidx.core.content.edit
 import com.droidective.android.droidective
 import com.droidective.core.device.SystemValues
 import com.droidective.core.device.ValueTable
+import com.droidective.core.net.proxy.Breakpoint
 import com.droidective.core.net.proxy.ConnectionOwners
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowOwners
@@ -282,12 +283,16 @@ object TrafficProxy {
                     owners = ShellOwners(context),
                     refusals = refusals,
                     ids = ids,
+                    breaker = Holds,
                 )
             loadRules(context)
             running.rules = proxyRules(context, chosen.value)
             loadMocks(context)
             running.mocks = answers.value
             running.throttle = speed.value
+            Holds.attach(context)
+            Holds.load(context)
+            running.breakpoints = Holds.breakpoints.value
             val port = withContext(Dispatchers.IO) { running.start(PORT) }
             server = running
             current.value = ProxyRun.Listening(port)
@@ -327,6 +332,11 @@ object TrafficProxy {
     fun throttle(slower: Throttle) {
         speed.value = slower
         server?.throttle = slower
+    }
+
+    /** Puts [points] in force on a running proxy at once. */
+    internal fun applyBreakpoints(points: List<Breakpoint>) {
+        server?.breakpoints = points
     }
 
     private val answers = MutableStateFlow<List<Mock>>(emptyList())
@@ -396,6 +406,8 @@ object TrafficProxy {
 
     /** Stops listening. A failure stays on screen until the next start, so it can be read. */
     internal fun shutDown() {
+        // Nobody is left to decide about what is held, and its connections are about to close.
+        Holds.releaseAll()
         server?.stop()
         server = null
         if (current.value !is ProxyRun.Failed) current.value = ProxyRun.Off

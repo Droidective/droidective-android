@@ -56,12 +56,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
 import com.droidective.android.proxy.CertificateTrust
+import com.droidective.android.proxy.Hold
+import com.droidective.android.proxy.Holds
 import com.droidective.android.proxy.ProxyRun
 import com.droidective.android.proxy.TrafficExport
 import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.copy
 import com.droidective.core.AccessLevel
+import com.droidective.core.net.proxy.Breakpoint
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowFilter
 import com.droidective.core.net.proxy.FlowLabels
@@ -89,10 +92,23 @@ fun NetworkTrafficTool(tool: ToolContext) {
         }
     }
     var open by rememberSaveable { mutableStateOf<Long?>(null) }
-    var mocking by remember { mutableStateOf<Editing?>(null) }
-    mocking?.let { editing ->
-        val back = ToolContext(tool.snackbar, onBack = { mocking = null }, tool.onOpenSetup)
-        key(editing.mock.id) { MockEditor(editing.mock, editing.isNew, back) }
+    var editing by remember { mutableStateOf<Editing?>(null) }
+    editing?.let { now ->
+        val back = ToolContext(tool.snackbar, onBack = { editing = null }, tool.onOpenSetup)
+        when (now) {
+            is Editing.OfMock -> key(now.mock.id) { MockEditor(now.mock, now.isNew, back) }
+            is Editing.OfBreakpoint ->
+                key(now.point.id) { BreakpointEditor(now.point, now.isNew, back) }
+        }
+        return
+    }
+    val held by Holds.held.collectAsStateWithLifecycle()
+    var holding by remember { mutableStateOf<Hold?>(null) }
+    // Decided elsewhere, from the notification, or let go when nobody did in time.
+    val hold = holding?.takeIf { it in held }
+    if (hold != null) {
+        val back = ToolContext(tool.snackbar, onBack = { holding = null }, tool.onOpenSetup)
+        key(hold) { HeldEditor(hold, back) }
         return
     }
     // The list catches up four times a second; a flow just made, a repeat, is in the store first.
@@ -102,7 +118,8 @@ fun NetworkTrafficTool(tool: ToolContext) {
             opened,
             ToolContext(tool.snackbar, onBack = { open = null }, tool.onOpenSetup),
             onOpen = { open = it },
-            onMock = { mocking = Editing(it, isNew = true) },
+            onMock = { editing = Editing.OfMock(it, isNew = true) },
+            onBreak = { editing = Editing.OfBreakpoint(it, isNew = true) },
         )
         return
     }
@@ -119,9 +136,18 @@ fun NetworkTrafficTool(tool: ToolContext) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item { TitleRow(tool, flows.isNotEmpty(), visible) }
+            if (held.isNotEmpty()) item { HeldCard(held) { holding = it } }
             item { ProxySection(tool) }
             item { CertificateSection(tool) }
-            item { RulesSection(flows) { mock, isNew -> mocking = Editing(mock, isNew) } }
+            item {
+                RulesSection(
+                    flows,
+                    onEditMock = { mock, isNew -> editing = Editing.OfMock(mock, isNew) },
+                    onEditBreakpoint = { point, isNew ->
+                        editing = Editing.OfBreakpoint(point, isNew)
+                    },
+                )
+            }
             item { SearchRow(query, flows, labels) { query = it } }
             item {
                 ToolNote(
@@ -535,6 +561,7 @@ private fun rowDetails(flow: Flow, operation: String?, labels: AppLabels): Strin
     }
     FlowLabels.passed(flow)?.let { parts += it }
     if (flow.mocked != null) parts += "mocked"
+    if (flow.edited) parts += "changed" else if (flow.paused != null) parts += "held"
     flow.repeatOf?.let { parts += "repeat of #$it" }
     flow.durationMillis?.let { parts += FlowLabels.duration(it) }
     if (flow.wireLength > 0) parts += FlowLabels.size(flow.wireLength)
@@ -589,5 +616,9 @@ private const val PACE_MILLIS = 250L
 private const val MAX_APP_CHIPS = 6
 private const val STATUS_WIDTH = 52
 
-/** A mock open in the editor, and whether saving it makes a new one. */
-private class Editing(val mock: Mock, val isNew: Boolean)
+/** A mock or a breakpoint open in its editor, and whether saving it makes a new one. */
+private sealed interface Editing {
+    class OfMock(val mock: Mock, val isNew: Boolean) : Editing
+
+    class OfBreakpoint(val point: Breakpoint, val isNew: Boolean) : Editing
+}

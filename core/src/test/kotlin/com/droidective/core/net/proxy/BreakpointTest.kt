@@ -55,4 +55,24 @@ class BreakpointTest {
         repository.save(listOf(orders))
         assertEquals(listOf(orders), repository.all())
     }
+
+    @Test
+    fun oneMadeFromAFlowStopsAtItsRequestsWhateverTheirQuery() {
+        val made = Breakpoint.of(flow(method = "post", path = "/orders/42?coupon=x"), "b2")
+        assertEquals(Breakpoint("b2", "https://api.example.com/orders/42", "POST"), made)
+        assertNull(made.problem())
+        assertTrue(made.matches("POST", "https://api.example.com/orders/42?coupon=y"))
+    }
+
+    @Test
+    fun oneThatCantBeKeptSaysWhy() {
+        listOf(
+                orders.copy(url = "api.example.com/orders"),
+                orders.copy(url = "https:///orders"),
+                orders.copy(method = "GET /"),
+                orders.copy(requests = false, responses = false),
+            )
+            .forEach { assertTrue(it.problem() != null, it.toString()) }
+        assertNull(orders.copy(method = "PATCH", requests = false, responses = true).problem())
+    }
 }

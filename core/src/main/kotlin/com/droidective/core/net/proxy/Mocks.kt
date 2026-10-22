@@ -166,14 +166,14 @@ data class MockDraft(
             status.trim().toIntOrNull()?.takeIf { it in STATUSES }
                 ?: return Built.Invalid("Status is a number from 100 to 599.")
         val verb = method.trim().uppercase().ifEmpty { null }
-        if (verb != null && !TOKEN.matches(verb))
+        if (verb != null && !Headers.isToken(verb))
             return Built.Invalid("\"$method\" isn't a method.")
         val parsed = mutableListOf<MockHeader>()
         for ((number, line) in headers.lines().withIndex()) {
             if (line.isBlank()) continue
             val colon = line.indexOf(':')
             val name = if (colon > 0) line.substring(0, colon).trim() else ""
-            if (!TOKEN.matches(name)) return Built.Invalid("Line ${number + 1} isn't a header.")
+            if (!Headers.isToken(name)) return Built.Invalid("Line ${number + 1} isn't a header.")
             parsed += MockHeader(name, line.substring(colon + 1).trim())
         }
         return Built.Ready(Mock(id, url.trim(), verb, code, parsed, body, enabled))
@@ -190,8 +190,6 @@ data class MockDraft(
                 enabled = mock.enabled,
             )
 
-        /** RFC 9110's token: what a method or a header's name may be made of. */
-        private val TOKEN = Regex("""[!#$%&'*+\-.^_`|~0-9A-Za-z]+""")
         private val STATUSES = 100..599
     }
 }

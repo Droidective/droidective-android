@@ -53,6 +53,12 @@ class ProxyService : Service() {
             job = scope.launch { stopListening() }
             return START_NOT_STICKY
         }
+        if (intent?.action == ACTION_GO) {
+            // From the held notification: the app on screen is waiting.
+            Holds.go(intent.getLongExtra(EXTRA_HOLD, -1))
+            if (job != null) return START_STICKY
+            // A notice left by a process Android ended: listen again, as a sticky restart would.
+        }
         val point = intent?.getBooleanExtra(EXTRA_POINT, false) ?: false
         if (job == null) job = scope.launch { listen(point) }
         // Started again after Android ended the process, it listens again: the phone may still be
@@ -140,6 +146,8 @@ class ProxyService : Service() {
 
     companion object {
         internal const val ACTION_STOP = "com.droidective.android.action.STOP_TRAFFIC_PROXY"
+        internal const val ACTION_GO = "com.droidective.android.action.LET_HELD_GO"
+        internal const val EXTRA_HOLD = "com.droidective.android.extra.HOLD"
         internal const val EXTRA_POINT = "com.droidective.android.extra.POINT"
         private const val NOTIFICATION_ID = ProxyNotices.ID
 
@@ -152,6 +160,54 @@ class ProxyService : Service() {
 internal object ProxyNotices {
     const val ID = 7_430
     private const val CHANNEL = "traffic-proxy"
+    private const val HELD_ID = 7_431
+    private const val HELD_CHANNEL = "traffic-holds"
+
+    /**
+     * Says what is held at a breakpoint, or takes the notice down when nothing is. It pops up: the
+     * person is in the app that's waiting, not in this one.
+     */
+    fun held(context: Context, holds: List<Hold>) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val first = holds.firstOrNull()
+        if (first == null) {
+            manager.cancel(HELD_ID)
+            return
+        }
+        manager.createNotificationChannel(
+            NotificationChannel(
+                    HELD_CHANNEL,
+                    "Held at a breakpoint",
+                    NotificationManager.IMPORTANCE_HIGH,
+                )
+                .apply {
+                    description = "A request or answer waiting to be let go, changed or stopped"
+                }
+        )
+        val flow = first.flow
+        val what = if (first is Hold.Response) "The answer to " else ""
+        val more = if (holds.size > 1) " and ${holds.size - 1} more" else ""
+        val go =
+            PendingIntent.getService(
+                context,
+                HELD_ID,
+                Intent(context, ProxyService::class.java)
+                    .setAction(ProxyService.ACTION_GO)
+                    .putExtra(ProxyService.EXTRA_HOLD, flow.id),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        val notification =
+            Notification.Builder(context, HELD_CHANNEL)
+                .setSmallIcon(R.drawable.sym_pause)
+                .setContentTitle("Held at a breakpoint")
+                .setContentText("$what${flow.request.method} ${flow.url}$more")
+                .setContentIntent(builder(context).build().contentIntent)
+                .addAction(Notification.Action.Builder(null, "Let it go", go).build())
+                .setOnlyAlertOnce(true)
+                .setOngoing(true)
+                .build()
+        post(context, HELD_ID, notification)
+    }
 
     fun builder(context: Context): Notification.Builder {
         context
@@ -190,9 +246,11 @@ internal object ProxyNotices {
         )
     }
 
-    fun post(context: Context, notification: Notification) {
+    fun post(context: Context, notification: Notification) = post(context, ID, notification)
+
+    private fun post(context: Context, id: Int, notification: Notification) {
         try {
-            context.getSystemService(NotificationManager::class.java).notify(ID, notification)
+            context.getSystemService(NotificationManager::class.java).notify(id, notification)
         } catch (_: SecurityException) {
             // Notifications are off; the screen shows the same.
         }

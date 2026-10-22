@@ -40,6 +40,7 @@ import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.proxy.BodyShape
 import com.droidective.core.net.proxy.BodyView
+import com.droidective.core.net.proxy.Breakpoint
 import com.droidective.core.net.proxy.Curl
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowLabels
@@ -64,6 +65,7 @@ fun FlowDetail(
     tool: ToolContext,
     onOpen: (Long) -> Unit,
     onMock: (Mock) -> Unit,
+    onBreak: (Breakpoint) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -105,6 +107,9 @@ fun FlowDetail(
             InfoRow("Connection", connection(flow))
             flow.repeatOf?.let { InfoRow("Repeat of", "#$it") }
             if (flow.mocked != null) InfoRow("Answered by", "A mock, not the server")
+            if (flow.paused != null) {
+                InfoRow("Breakpoint", if (flow.edited) "Held, and sent on changed" else "Held")
+            }
         }
         flow.failure?.let { FailureSection(it) }
         if (!flow.tunnelled || flow.response != null) {
@@ -167,6 +172,13 @@ fun FlowDetail(
             }
         }
         if (mock == null && !flow.opening) Mock.whyNot(flow)?.let { ToolNote(it) }
+        if (!flow.opening && !flow.tunnelled) {
+            OutlinedButton(
+                onClick = { onBreak(Breakpoint.of(flow, UUID.randomUUID().toString())) }
+            ) {
+                Text("Hold requests like this")
+            }
+        }
         (repeat as? Repeat.Refused)?.let { ToolNote(it.reason) }
         RuleShortcuts(flow, labels, say)
     }

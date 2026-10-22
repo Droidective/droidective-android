@@ -1,5 +1,6 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
 import com.droidective.core.net.http.ResponseHead
 import com.droidective.core.store.JsonFileStore
@@ -29,7 +30,20 @@ data class Breakpoint(
         return UrlPattern.matches(url, requestUrl)
     }
 
+    /** What is wrong with this breakpoint as it was typed, or null when it can be kept. */
+    fun problem(): String? =
+        when {
+            !UrlPattern.isPattern(url) -> "The URL needs http:// or https:// and a host."
+            method != null && !Headers.isToken(method) -> "\"$method\" isn't a method."
+            !requests && !responses -> "Hold the request, the answer or both."
+            else -> null
+        }
+
     companion object {
+        /** A breakpoint for requests like [flow]'s: its method, to its URL without the query. */
+        fun of(flow: Flow, id: String): Breakpoint =
+            Breakpoint(id, flow.url.substringBefore('?'), flow.request.method.uppercase())
+
         /** The first enabled breakpoint for [method] [url], in the order they were made. */
         fun find(points: List<Breakpoint>, method: String, url: String): Breakpoint? =
             points.firstOrNull {

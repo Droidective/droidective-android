@@ -3,6 +3,24 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.11.0
+
+Network Traffic reads what Chrome is usually sent, answers mocks from files on the phone, and
+passes on what is streamed as it streams.
+
+- **brotli.** Bodies compressed with brotli — what Chrome gets from Cloudflare and most other
+  CDNs — are now shown, mocked and exported as they read, instead of as compressed bytes.
+- **Mocks from a file.** A mock can answer with a file instead of text typed on the phone:
+  `adb push` a fixture into the mocks folder, and every request it answers reads the file as it
+  is then, so pushing it again changes the answer. The editor shows the folder, a ready `adb push`
+  line, and whether the file is there. JSON, HTML, images and more are typed by their extension.
+- **Fixed:** an answer the server sent bit by bit — server-sent events, a long poll — reached the
+  app in 8 KB lumps or only at the end, so a live stream looked stalled through the proxy.
+- **Fixed:** a request whose app hung up, or whose server stopped part-way, stayed "waiting" in
+  the list for good. It now says what happened.
+- **Fixed:** a very compressible answer could unpack to gigabytes on the phone; decoding now
+  stops at 32 MB.
+
 ## 0.10.0
 
 Network Traffic reads WebSockets, and can send an app's requests to a different server.

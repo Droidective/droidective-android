@@ -9,6 +9,7 @@ import com.droidective.core.reactotron.ReactotronEvent.Display
 import com.droidective.core.reactotron.ReactotronEvent.Image
 import com.droidective.core.reactotron.ReactotronEvent.Log
 import com.droidective.core.reactotron.ReactotronEvent.StateAction
+import com.droidective.core.reactotron.ReactotronEvent.StateAnswer
 import com.droidective.core.reactotron.ReactotronEvent.StateChange
 import com.droidective.core.reactotron.ReactotronEvent.Unknown
 import java.util.Locale
@@ -29,6 +30,7 @@ object ReactotronLabels {
             is ApiResponse -> ReactotronKind.Network
             is StateAction,
             is StateChange,
+            is StateAnswer,
             is AsyncStorage -> ReactotronKind.State
             else -> ReactotronKind.Other
         }
@@ -41,6 +43,7 @@ object ReactotronLabels {
             is ApiResponse -> if (event.status == 0) "FAILED" else event.status.toString()
             is StateAction -> "ACTION"
             is StateChange -> "STATE"
+            is StateAnswer -> if (event.keys) "KEYS" else "VALUE"
             is AsyncStorage -> "STORAGE"
             is Display -> "DISPLAY"
             is Image -> "IMAGE"
@@ -58,6 +61,7 @@ object ReactotronLabels {
             is ApiResponse -> "${event.method} ${event.url} · ${millis(event.durationMillis)}"
             is StateAction -> event.name + (event.millis?.let { " · ${millis(it)}" } ?: "")
             is StateChange -> event.changes.joinToString(", ") { it.first }
+            is StateAnswer -> event.path.ifEmpty { "the whole store" }
             is AsyncStorage -> event.action
             is Display -> listOfNotNull(event.name, event.preview).joinToString(" · ")
             is Image -> event.caption ?: event.uri

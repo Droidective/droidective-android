@@ -3,6 +3,7 @@ package com.droidective.android.reactotron
 import android.content.Context
 import android.content.Intent
 import com.droidective.core.reactotron.ReactotronCommand
+import com.droidective.core.reactotron.ReactotronCommands
 import com.droidective.core.reactotron.ReactotronEvent
 import com.droidective.core.reactotron.ReactotronServer
 import com.droidective.core.reactotron.ReactotronSink
@@ -37,6 +38,12 @@ object Reactotron : ReactotronSink {
     data class Client(val name: String, val platform: String?, val since: Long)
 
     val timeline = ReactotronTimeline()
+
+    private val registry = ReactotronCommands()
+    private val commands_ = MutableStateFlow<List<ReactotronCommands.Command>>(emptyList())
+
+    /** The custom commands the connected apps offer, to run from here. */
+    val commands: StateFlow<List<ReactotronCommands.Command>> = commands_.asStateFlow()
 
     private val state_ = MutableStateFlow<State>(State.Off)
     val state: StateFlow<State> = state_.asStateFlow()
@@ -83,8 +90,29 @@ object Reactotron : ReactotronSink {
     internal fun shutDown() {
         server?.stop()
         server = null
+        clients_.value.keys.forEach(registry::gone)
         clients_.value = emptyMap()
+        commands_.value = emptyList()
         if (state_.value is State.Listening) state_.value = State.Off
+    }
+
+    /** Runs [command] in the app that offered it, with [args] by name. From any thread. */
+    fun run(command: ReactotronCommands.Command, args: Map<String, String>) {
+        server?.send(
+            command.connection,
+            ReactotronCommands.RUN,
+            ReactotronCommands.run(command, args),
+        )
+    }
+
+    /**
+     * Asks every connected app for its state at [path] — the value there, or the keys under it —
+     * whose answer comes into the timeline. An app needs a state plugin, reactotron-redux or
+     * reactotron-mst, to have one to give.
+     */
+    fun askState(path: String, keys: Boolean) {
+        val (type, payload) = ReactotronCommands.stateRequest(path, keys)
+        clients_.value.keys.forEach { server?.send(it, type, payload) }
     }
 
     fun clear() {
@@ -102,6 +130,11 @@ object Reactotron : ReactotronSink {
     }
 
     override fun command(connection: Int, command: ReactotronCommand, size: Int) {
+        // Commands come and go as the app's handlers do; they are buttons, not news.
+        if (registry.heard(connection, command)) {
+            commands_.value = registry.all()
+            return
+        }
         timeline.add(System.currentTimeMillis(), connection, name(connection), command, size)
         changes_.update { it + 1 }
     }
@@ -109,6 +142,8 @@ object Reactotron : ReactotronSink {
     override fun disconnected(connection: Int, why: String?) {
         val gone = clients_.value[connection]
         clients_.update { it - connection }
+        registry.gone(connection)
+        commands_.value = registry.all()
         // A reload taking its own place is no news.
         if (why != null) timeline.gone(System.currentTimeMillis(), connection, gone?.name, why)
         changes_.update { it + 1 }

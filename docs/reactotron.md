@@ -22,6 +22,7 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `core/reactotron/ReactotronEvent.kt` | Each command read for what it says, as Droidective for Mac reads it |
 | `core/reactotron/ReactotronTimeline.kt` | What the apps said, bounded by count and by bytes |
 | `core/reactotron/ReactotronLabels.kt` | A row's tag and summary, the filter's kinds, the search |
+| `core/reactotron/ReactotronCommands.kt` | The custom commands apps register, running one, asking for state |
 | `app/reactotron/Reactotron.kt` | The one server, its state, the apps connected, the timeline |
 | `app/reactotron/ReactotronService.kt` | The foreground service that keeps it listening |
 | `app/ui/tools/ReactotronTool.kt` | The screen: start and stop, the timeline, an entry whole |
@@ -39,14 +40,22 @@ cleartext to localhost, which is all a `ws://` connection there needs.
   which the screen offers to free with `adb reverse --remove tcp:9090`.
 - **The timeline is bounded by bytes as they crossed** (32 MB, 5,000 entries), counted by the
   server rather than by writing payloads back out: a state tree or an answer can be megabytes.
+- **What the server sends goes from its own thread.** A screen calls `send()` from the main
+  thread, which Android won't let touch a socket; the first Run button on the emulator found
+  that out the hard way.
+- **Commands are buttons, not news.** An app registers its commands again on every connect
+  and reload; they are kept per connection, gone with it, and left out of the timeline, as
+  Reactotron's desktop keeps them in a tab of their own.
 - **The frame reader is the proxy's** (`core/net/ws`), at a 16 MB limit; a larger frame arrives
   as an `(undecodable)` command that says so.
 
 ## What is left
 
-- **Talking back.** Reactotron's desktop can ask for state (`state.values.request`), back it up
-  and restore it, run custom commands an app registers, and use the REPL. The server has
-  `send()`; the screen has nothing that uses it yet.
+- **The rest of talking back.** Commands and state reads are done; backing the state up and
+  restoring it (`state.backup.request`, `state.restore.request`), subscribing to paths so their
+  changes stream in (`state.values.subscribe` with paths), and the REPL are not.
+- **An app's commands outside the screen.** A command as a widget slot or an automation's
+  action would run it without opening Droidective — while that app is connected.
 - **Images.** An `image` command is listed, not shown.
 - **The MCP server** Droidective for Mac serves Reactotron's timeline through has no phone half.
 

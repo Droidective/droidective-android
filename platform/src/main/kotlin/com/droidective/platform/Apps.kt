@@ -6,6 +6,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.content.pm.PermissionInfo
 import android.net.TrafficStats
+import com.droidective.core.apps.AppGrants
 import com.droidective.core.apps.InstallTimes
 import java.text.DateFormat
 import java.util.Date
@@ -61,6 +62,37 @@ object AppCatalog {
                 permissions = runtimePermissions(pm, info),
                 launchable = pm.getLaunchIntentForPackage(packageName) != null,
             )
+        }
+
+    /**
+     * Every installed app that asks for a runtime permission, with each held or not: one pass over
+     * the package manager, and each permission's kind looked up once however many ask.
+     */
+    suspend fun grants(context: Context): List<AppGrants> =
+        withContext(Dispatchers.IO) {
+            val pm = context.packageManager
+            val runtime = HashMap<String, Boolean>()
+            pm.getInstalledPackages(
+                    PackageManager.GET_PERMISSIONS or PackageManager.MATCH_DISABLED_COMPONENTS
+                )
+                .mapNotNull { info ->
+                    val app = info.applicationInfo ?: return@mapNotNull null
+                    val names = info.requestedPermissions ?: return@mapNotNull null
+                    val flags = info.requestedPermissionsFlags ?: IntArray(names.size)
+                    val granted =
+                        names.indices
+                            .filter { runtime.getOrPut(names[it]) { isRuntime(pm, names[it]) } }
+                            .associate {
+                                names[it] to
+                                    (flags[it] and PackageInfo.REQUESTED_PERMISSION_GRANTED != 0)
+                            }
+                    if (granted.isEmpty()) return@mapNotNull null
+                    val entry = app.toEntry(pm)
+                    // As Settings counts it: preinstalled with nothing to open, not Chrome or Maps.
+                    val part =
+                        entry.system && pm.getLaunchIntentForPackage(entry.packageName) == null
+                    AppGrants(entry.packageName, entry.label, part, granted)
+                }
         }
 
     private fun facts(context: Context, info: PackageInfo, app: ApplicationInfo): List<Fact> {

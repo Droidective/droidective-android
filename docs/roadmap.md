@@ -7,14 +7,16 @@ another machine. Current release: **0.12.0**.
 
 - A WebSocket that can't be read — an extension Droidective doesn't know, or frames that stop
   making sense — says so in its Messages, rather than going quiet (#120).
+- Permissions, the Mac's `permissions`: each kind of runtime permission, every app that asks for
+  it, and a switch to grant or revoke it (#121).
 
 ## Next
 
 - **The proxy's next steps** — the certificate in the system store with root, zstd, HTTP/2 — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
 - **The Mac tools not yet on the phone**, by the Mac's ids: `api-client` (an HTTP client, which
-  the proxy's repeat would share), and `permissions` and `app-info` as their own screens (the
-  Apps tool covers most of both).
+  the proxy's repeat would share). `app-info` stays the Apps tool's detail screen, which already
+  is that.
 - **Real-device passes on the OnePlus Pad** need the person there: OxygenOS holds every
   `adb install` for a tap on the device (see Standing constraints).
 

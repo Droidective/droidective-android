@@ -89,6 +89,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "bug-report" to { BugReportTool(it) },
         "screen-record" to { ScreenRecordTool(it) },
         "screenshot" to { ScreenshotTool(it) },
+        "permissions" to { PermissionsTool(it) },
         "root-status" to { RootStatusTool(it) },
     )
 

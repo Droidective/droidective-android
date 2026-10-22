@@ -1,15 +1,12 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.10.0**.
+another machine. Current release: **0.11.0**.
 
-## Shipped since 0.10.0, waiting for a release
+## Shipped since 0.11.0, waiting for a release
 
-- Mocks that answer from a file in the mocks folder, read again for every request, so a fixture
-  pushed with `adb push` changes the answer (#111).
-- brotli bodies — what Chrome gets from most CDNs — are read, shown and exported decoded (#112).
-- An answer streamed slowly — server-sent events, a long poll — reaches the app as it is sent,
-  not in 8 KB lumps; one cut short by either end is on record rather than left pending (#113).
+Nothing yet. 0.11.0 carried mocks from a file (#111), brotli (#112) and streamed answers passed
+on as they arrive (#113); see `RELEASE_NOTES.md`.
 
 ## Next
 

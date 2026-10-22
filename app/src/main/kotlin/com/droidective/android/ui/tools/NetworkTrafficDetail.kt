@@ -45,6 +45,7 @@ import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowLabels
 import com.droidective.core.net.proxy.Repeat
 import com.droidective.core.net.proxy.Repeater
+import com.droidective.core.net.proxy.RequestDraft
 import com.droidective.core.net.proxy.TlsFailure
 import com.droidective.core.net.proxy.TrafficRules
 import java.time.Instant
@@ -61,6 +62,20 @@ fun FlowDetail(flow: Flow, tool: ToolContext, onOpen: (Long) -> Unit) {
     val scope = rememberCoroutineScope()
     val say = rememberSay(tool)
     var sending by remember { mutableStateOf(false) }
+    var editing by rememberSaveable { mutableStateOf(false) }
+    val draft = remember(flow) { RequestDraft.of(flow) }
+    if (editing && draft != null) {
+        RequestEditor(
+            flow,
+            draft,
+            ToolContext(tool.snackbar, onBack = { editing = false }, tool.onOpenSetup),
+            onSent = {
+                editing = false
+                onOpen(it)
+            },
+        )
+        return
+    }
     val labels = remember { AppLabels(context) }
     var side by rememberSaveable { mutableIntStateOf(if (flow.response != null) 1 else 0) }
     ToolScaffold(if (flow.opening) flow.host else "${flow.request.method} ${flow.host}", tool) {
@@ -123,15 +138,18 @@ fun FlowDetail(flow: Flow, tool: ToolContext, onOpen: (Long) -> Unit) {
             ) {
                 Text(if (sending) "Sending…" else "Send again")
             }
-            OutlinedButton(
-                onClick = {
-                    context.copy("cURL", Curl.of(flow))
-                    say("Copied as cURL")
-                },
-                enabled = !flow.opening,
-            ) {
-                Text("Copy as cURL")
+            OutlinedButton(onClick = { editing = true }, enabled = draft != null) {
+                Text("Edit and send")
             }
+        }
+        OutlinedButton(
+            onClick = {
+                context.copy("cURL", Curl.of(flow))
+                say("Copied as cURL")
+            },
+            enabled = !flow.opening,
+        ) {
+            Text("Copy as cURL")
         }
         (repeat as? Repeat.Refused)?.let { ToolNote(it.reason) }
         RuleShortcuts(flow, labels, say)

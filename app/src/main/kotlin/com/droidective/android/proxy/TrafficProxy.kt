@@ -18,6 +18,7 @@ import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowOwners
 import com.droidective.core.net.proxy.FlowSink
 import com.droidective.core.net.proxy.FlowStore
+import com.droidective.core.net.proxy.Outgoing
 import com.droidective.core.net.proxy.ProxyRules
 import com.droidective.core.net.proxy.ProxyServer
 import com.droidective.core.net.proxy.ProxySetting
@@ -299,10 +300,13 @@ object TrafficProxy {
      */
     suspend fun repeat(context: Context, flow: Flow): Flow? {
         val ready = Repeater.prepare(flow) as? Repeat.Ready ?: return null
+        return send(context, ready.outgoing, of = flow.id)
+    }
+
+    /** Sends [outgoing] — a repeat, or an edited one — and records it as sent by this app. */
+    suspend fun send(context: Context, outgoing: Outgoing, of: Long): Flow {
         val sent =
-            withContext(Dispatchers.IO) {
-                Repeater().send(ready.outgoing, ids.incrementAndGet(), of = flow.id)
-            }
+            withContext(Dispatchers.IO) { Repeater().send(outgoing, ids.incrementAndGet(), of) }
         val recorded = sent.copy(uid = Process.myUid(), app = context.packageName)
         flows.put(recorded)
         revision.update { it + 1 }

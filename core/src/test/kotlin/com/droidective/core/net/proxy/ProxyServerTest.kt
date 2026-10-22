@@ -498,7 +498,7 @@ private class Collected : FlowSink {
 }
 
 /** One request a server of ours was asked. */
-private data class Asked(
+internal data class Asked(
     val method: String,
     val target: String,
     val headers: Map<String, String>,
@@ -506,7 +506,7 @@ private data class Asked(
 )
 
 /** A server on loopback that answers whatever [reply] says, plain or over TLS. */
-private class FakeServer(context: SSLContext? = null) : AutoCloseable {
+internal class FakeServer(context: SSLContext? = null) : AutoCloseable {
     private val server: ServerSocket =
         context?.serverSocketFactory?.createServerSocket(0) ?: ServerSocket(0)
 

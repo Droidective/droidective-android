@@ -242,6 +242,13 @@ class FlowSummaryTest {
     }
 
     @Test
+    fun repeatsAreFoundByWhatTheyAre() {
+        val filter = FlowFilter.parse("is:repeat")
+        assertTrue(filter.matches(flow(id = 12).copy(repeatOf = 3)))
+        assertFalse(filter.matches(flow(id = 3)))
+    }
+
+    @Test
     fun aChipAddsItsWordAndTakesItBackOut() {
         val added = FlowFilter.toggled("login", "app:com.example.shop")
         assertEquals("login app:com.example.shop", added)

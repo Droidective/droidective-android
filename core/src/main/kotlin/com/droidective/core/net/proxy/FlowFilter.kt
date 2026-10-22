@@ -53,6 +53,7 @@ data class FlowFilter(val terms: List<Term>) {
                 "tunnelled",
                 "tunneled" -> flow.tunnelled
                 "passed" -> flow.tunnelled && flow.response == null
+                "repeat" -> flow.repeatOf != null
                 "pending" -> flow.response == null && flow.failure == null
                 "secure" -> flow.secure
                 else -> false

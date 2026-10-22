@@ -57,6 +57,7 @@ data class FlowFilter(val terms: List<Term>) {
                 "mocked" -> flow.mocked != null
                 "held" -> flow.paused != null
                 "changed" -> flow.edited
+                "remapped" -> flow.sentTo != null
                 "pending" -> flow.response == null && flow.failure == null
                 "secure" -> flow.secure
                 else -> false

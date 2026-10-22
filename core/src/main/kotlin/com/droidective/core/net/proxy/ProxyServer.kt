@@ -73,6 +73,9 @@ class ProxyServer(
     /** Where exchanges are held for someone to see; may be changed while the proxy runs. */
     @Volatile var breakpoints: List<Breakpoint> = emptyList()
 
+    /** Which requests go to another server; may be changed while the proxy runs. */
+    @Volatile var remaps: List<Remap> = emptyList()
+
     private val contexts = ConcurrentHashMap<String, SSLContext>()
     private val open = ConcurrentHashMap.newKeySet<Socket>()
     private var listener: ServerSocket? = null
@@ -218,53 +221,51 @@ class ProxyServer(
         record: FlowSink,
     ) {
         val reader = HttpReader(source)
-        var upstream: Upstream? = null
+        val line = Line(source, out, secure, record)
         var head = first ?: reader.readRequest()
         try {
             while (head != null) {
                 val origin = fixed ?: Origin.of(head, secure) ?: break
-                if (upstream != null && upstream.origin != origin) {
-                    upstream.close()
-                    upstream = null
-                }
-                val flow = begin(head, origin, secure)
-                // On record at once, before the server is reached: a dial can take its full
-                // fifteen seconds, and a request nobody can see yet looks like one never made.
-                record.started(flow)
-                val mock = Mock.find(mocks, head.method, flow.url)
-                if (mock != null) {
-                    if (!mocked(flow, head, mock, source, out, record)) break
-                    head = reader.readRequest()
-                    continue
-                }
-                val point = Breakpoint.find(breakpoints, head.method, flow.url)
-                var decided: Decided? = null
-                if (point != null) {
-                    decided = decide(flow, head, point, source, out, record) ?: break
-                    // Someone may have taken minutes, and a server closes a connection left idle.
-                    if (point.requests) {
-                        upstream?.close()
-                        upstream = null
-                    }
-                }
-                if (upstream == null) {
-                    upstream =
-                        try {
-                            Upstream(origin, dial(origin, secure))
-                        } catch (e: IOException) {
-                            return failed(decided?.flow ?: flow, out, e, record)
-                        }
-                }
-                val ends = Ends(source, out, upstream)
-                val more =
-                    if (point != null && decided != null) held(decided, head, point, ends, record)
-                    else exchange(flow, head, ends, record)
-                if (!more) break
+                if (!request(head, origin, line)) break
                 head = reader.readRequest()
             }
         } finally {
-            upstream?.close()
+            line.close()
         }
+    }
+
+    /**
+     * One request and its answer, wherever it goes: answered by a mock, sent where a remap says,
+     * held at a breakpoint, or straight on. Returns whether the connection can carry another.
+     */
+    private fun request(head: RequestHead, origin: Origin, line: Line): Boolean {
+        val source = line.source
+        val out = line.out
+        val record = line.record
+        val flow = begin(head, origin, line.secure)
+        // On record at once, before the server is reached: a dial can take its full fifteen
+        // seconds, and a request nobody can see yet looks like one never made.
+        record.started(flow)
+        Mock.find(mocks, head.method, flow.url)?.let {
+            return mocked(flow, head, it, source, out, record)
+        }
+        // Recorded as the app asked, with where it went.
+        val remapped = Remap.route(remaps, flow.url)
+        val routed = if (remapped != null) flow.copy(sentTo = remapped.url) else flow
+        val point = Breakpoint.find(breakpoints, head.method, flow.url)
+        val decided = point?.let { decide(routed, head, it, source, out, record) ?: return false }
+        // Someone may have taken minutes, and a server closes a connection left idle.
+        if (point?.requests == true) line.close()
+        val upstream =
+            try {
+                line.to(remapped ?: Server(line.secure, origin))
+            } catch (e: IOException) {
+                failed(decided?.flow ?: routed, out, e, record)
+                return false
+            }
+        val ends = Ends(source, out, upstream, remapped)
+        return if (point != null && decided != null) held(decided, head, point, ends, record)
+        else exchange(routed, head, ends, record)
     }
 
     /**
@@ -309,7 +310,8 @@ class ProxyServer(
         delay(slow)
         val toServer = Paced.of(upstream.sink, slow.upBytesPerSecond)
         val out = Paced.of(client, slow.downBytesPerSecond)
-        toServer.write(head.with(target = head.path, headers = forwardable(head.headers)).bytes())
+        val forward = head.with(target = head.path, headers = forwardable(head.headers))
+        toServer.write((ends.remapped?.hosting(forward) ?: forward).bytes())
         val requestBody = HttpBody.relay(BodyFraming.of(head), source, toServer)
         toServer.flush()
         val asked = flow.copy(requestBody = requestBody)
@@ -459,7 +461,8 @@ class ProxyServer(
         val slow = throttle
         delay(slow)
         val toServer = Paced.of(upstream.sink, slow.upBytesPerSecond)
-        toServer.write(whole(sentHead, sentBody.size).bytes())
+        val sending = whole(sentHead, sentBody.size)
+        toServer.write((ends.remapped?.hosting(sending) ?: sending).bytes())
         toServer.write(sentBody)
         toServer.flush()
         val sent =
@@ -568,21 +571,60 @@ class ProxyServer(
         CompletableFuture.supplyAsync({ owners.uidOf(port) }, Dispatchers.IO.asExecutor())
             .exceptionally { null }
 
-    private fun dial(origin: Origin, secure: Boolean): Socket =
-        if (secure) {
+    private fun dial(server: Server): Socket {
+        val (secure, origin) = server
+        // Sent to itself, by an app or by a remap, a request would ask the proxy again, for ever.
+        if (origin.port == port && loopback(origin.host)) throw IOException(ITSELF)
+        return if (secure) {
             upstream.connect(origin, CONNECT_MILLIS)
         } else {
             Dial.connect(origin.host, origin.port, CONNECT_MILLIS).apply { soTimeout = IDLE_MILLIS }
         }
+    }
+
+    /**
+     * One client connection, as its requests see it: the app's end, how it came in, and the
+     * server's end, kept while the requests keep going to the same server.
+     */
+    private inner class Line(
+        val source: InputStream,
+        val out: OutputStream,
+        val secure: Boolean,
+        val record: FlowSink,
+    ) {
+        private var upstream: Upstream? = null
+
+        /** A connection to [server]: the one already open, when it goes there again. */
+        fun to(server: Server): Upstream =
+            upstream?.takeIf { it.server == server }
+                ?: Upstream(server, dial(server)).also {
+                    close()
+                    upstream = it
+                }
+
+        /** Lets the server's end go, so the next request dials afresh. */
+        fun close() {
+            upstream?.close()
+            upstream = null
+        }
+    }
 
     /** The app's end of a connection. */
     private data class Client(val socket: Socket, val source: InputStream, val out: OutputStream)
 
-    /** The three streams one exchange moves bytes between. */
-    private data class Ends(val source: InputStream, val out: OutputStream, val upstream: Upstream)
+    /**
+     * The three streams one exchange moves bytes between, and the server a remap sent it to, whose
+     * name its `Host` has to carry.
+     */
+    private data class Ends(
+        val source: InputStream,
+        val out: OutputStream,
+        val upstream: Upstream,
+        val remapped: Server? = null,
+    )
 
-    /** The server end of one client connection, kept while the requests keep going there. */
-    private class Upstream(val origin: Origin, private val socket: Socket) {
+    /** The server end of one client connection. */
+    private class Upstream(val server: Server, private val socket: Socket) {
         val source = BufferedInputStream(socket.getInputStream())
         val sink = BufferedOutputStream(socket.getOutputStream())
         val reader = HttpReader(source)
@@ -592,6 +634,7 @@ class ProxyServer(
 
     private companion object {
         const val CONNECT = "CONNECT"
+        const val ITSELF = "that is this proxy, which would only ask itself again"
         const val ACCEPT_ENCODING = "Accept-Encoding"
         const val SWITCHING = 101
         const val BACKLOG = 50
@@ -620,6 +663,10 @@ class ProxyServer(
                         .without(Headers.CONTENT_LENGTH, Headers.TRANSFER_ENCODING)
                         .add(Headers.CONTENT_LENGTH, length.toString())
             )
+
+        /** Whether [host] is this phone, written as its own name for itself. */
+        fun loopback(host: String): Boolean =
+            host.equals("localhost", ignoreCase = true) || host == "::1" || host.startsWith("127.")
 
         /** [headers] asking the server only for codings the proxy can undo. */
         fun readable(headers: Headers): Headers {

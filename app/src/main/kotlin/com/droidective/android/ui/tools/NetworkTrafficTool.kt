@@ -72,6 +72,7 @@ import com.droidective.core.net.proxy.FlowLabels
 import com.droidective.core.net.proxy.FlowOutcome
 import com.droidective.core.net.proxy.FlowSummary
 import com.droidective.core.net.proxy.Mock
+import com.droidective.core.net.proxy.Remap
 import com.droidective.core.net.proxy.Throttle
 import java.io.IOException
 import kotlinx.coroutines.delay
@@ -104,6 +105,7 @@ fun NetworkTrafficTool(tool: ToolContext) {
             is Editing.OfMock -> key(now.mock.id) { MockEditor(now.mock, now.isNew, back) }
             is Editing.OfBreakpoint ->
                 key(now.point.id) { BreakpointEditor(now.point, now.isNew, back) }
+            is Editing.OfRemap -> key(now.remap.id) { RemapEditor(now.remap, now.isNew, back) }
         }
         return
     }
@@ -125,6 +127,7 @@ fun NetworkTrafficTool(tool: ToolContext) {
             onOpen = { open = it },
             onMock = { editing = Editing.OfMock(it, isNew = true) },
             onBreak = { editing = Editing.OfBreakpoint(it, isNew = true) },
+            onRemap = { editing = Editing.OfRemap(it, isNew = true) },
         )
         return
     }
@@ -154,6 +157,7 @@ fun NetworkTrafficTool(tool: ToolContext) {
                     onEditBreakpoint = { point, isNew ->
                         editing = Editing.OfBreakpoint(point, isNew)
                     },
+                    onEditRemap = { remap, isNew -> editing = Editing.OfRemap(remap, isNew) },
                 )
             }
             item { SearchRow(query, flows, labels) { query = it } }
@@ -570,6 +574,7 @@ private fun rowDetails(flow: Flow, operation: String?, labels: AppLabels): Strin
     FlowLabels.passed(flow)?.let { parts += it }
     if (flow.mocked != null) parts += "mocked"
     if (flow.edited) parts += "changed" else if (flow.paused != null) parts += "held"
+    flow.sentTo?.let { parts += "sent to ${it.substringAfter("://")}" }
     flow.repeatOf?.let { parts += "repeat of #$it" }
     flow.durationMillis?.let { parts += FlowLabels.duration(it) }
     if (flow.wireLength > 0) parts += FlowLabels.size(flow.wireLength)
@@ -624,9 +629,11 @@ private const val PACE_MILLIS = 250L
 private const val MAX_APP_CHIPS = 6
 private const val STATUS_WIDTH = 52
 
-/** A mock or a breakpoint open in its editor, and whether saving it makes a new one. */
+/** A mock, a remap or a breakpoint open in its editor, and whether saving it makes a new one. */
 private sealed interface Editing {
     class OfMock(val mock: Mock, val isNew: Boolean) : Editing
 
     class OfBreakpoint(val point: Breakpoint, val isNew: Boolean) : Editing
+
+    class OfRemap(val remap: Remap, val isNew: Boolean) : Editing
 }

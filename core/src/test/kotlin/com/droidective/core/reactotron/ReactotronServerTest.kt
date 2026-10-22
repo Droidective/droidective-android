@@ -233,12 +233,13 @@ class ReactotronServerTest {
         val commands = LinkedBlockingQueue<Pair<Int, ReactotronCommand>>()
         val disconnected = LinkedBlockingQueue<Pair<Int, String?>>()
 
-        override fun connected(
-            connection: Int,
-            clientId: String,
-            intro: ReactotronEvent.ClientIntro,
-        ) {
-            connected += Triple(connection, clientId, intro)
+        override fun connected(connection: Int, clientId: String, intro: ReactotronCommand) {
+            connected +=
+                Triple(
+                    connection,
+                    clientId,
+                    ReactotronEvent.of(intro) as ReactotronEvent.ClientIntro,
+                )
         }
 
         val sizes = LinkedBlockingQueue<Int>()

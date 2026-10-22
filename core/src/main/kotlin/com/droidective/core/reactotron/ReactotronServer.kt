@@ -29,8 +29,11 @@ import kotlinx.serialization.json.JsonPrimitive
 
 /** What a [ReactotronServer] hears, from whichever thread heard it. */
 interface ReactotronSink {
-    /** Connection [connection] said who it is, and is client [clientId] from now on. */
-    fun connected(connection: Int, clientId: String, intro: ReactotronEvent.ClientIntro)
+    /**
+     * Connection [connection] said who it is with [intro], a `client.intro`, and is client
+     * [clientId] from now on.
+     */
+    fun connected(connection: Int, clientId: String, intro: ReactotronCommand)
 
     /** [command] from [connection], [size] bytes as it crossed: what a bounded timeline counts. */
     fun command(connection: Int, command: ReactotronCommand, size: Int)
@@ -141,11 +144,7 @@ class ReactotronServer(
         connection.clientId = clientId
         val paths = JsonObject(mapOf("paths" to JsonArray(emptyList())))
         connection.send(command(SUBSCRIBE, paths))
-        sink.connected(
-            connection.id,
-            clientId,
-            ReactotronEvent.of(intro) as ReactotronEvent.ClientIntro,
-        )
+        sink.connected(connection.id, clientId, intro)
     }
 
     private inner class Connection(val id: Int, private val socket: Socket) {

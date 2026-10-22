@@ -31,7 +31,8 @@ toggles Android keeps from ordinary apps. The macOS app lives in
   Work (Doze, standby buckets, jobs and alarms), UI Inspector, Intent Builder, Network Check, App
   Snapshots, Notification Inspector, Monkey Test, React Native, Language, Install App (APK,
   APKS, XAPK and APKM, with only this phone's splits), Developer Settings, Memory Usage, Current
-  Activity, Simulate, Demo Mode, HTTP Proxy, Private DNS, Wireless ADB, Wi-Fi, Network Speed,
+  Activity, Simulate, Demo Mode, Mock Location (the phone anywhere, from coordinates or a map
+  link), HTTP Proxy, Private DNS, Wireless ADB, Wi-Fi, Network Speed,
   Apps, Permissions (which apps hold the camera, the microphone, location and the rest, to
   grant or revoke), API Testing (requests kept by name, with variables and cURL pasted in),
   Device Info and more.

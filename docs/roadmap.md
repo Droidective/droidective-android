@@ -11,6 +11,10 @@ another machine. Current release: **0.14.0**.
 - **zstd answers read** (#130): Chrome and its WebView ask for zstd, and an answer in it now
   shows and exports decoded, through a decoder of the app's own (`core/zstd`).
 
+- **Reactotron on the phone** (#131, #132): a React Native app's Reactotron client reports to
+  the phone it runs on — logs, API calls, state, benchmarks — with no computer; see
+  [reactotron.md](reactotron.md).
+
 ## Next
 
 - **The proxy's next steps** — the certificate in the system store with root, schemas from

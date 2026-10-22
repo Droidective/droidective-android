@@ -55,6 +55,7 @@ val toolScreens: Map<String, @Composable (ToolContext) -> Unit> =
         "logcat" to { LogcatTool(it) },
         "performance" to { PerformanceTool(it) },
         "react-native" to { ReactNativeTool(it) },
+        "reactotron" to { ReactotronTool(it) },
         "simulate" to { SimulateTool(it) },
         "demo-mode" to { DemoModeTool(it) },
         "system-restrictions" to { RestrictionsTool(it) },

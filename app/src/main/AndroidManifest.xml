@@ -214,6 +214,14 @@
                 android:value="Runs the debugging proxy the person started in Network Traffic: listens on the phone's own loopback address, 127.0.0.1, so the person can see the HTTP and HTTPS requests their apps make and the answers that come back. Nothing off the device can reach it. Runs only until they press Stop in the app or its notification, and stopping puts the phone's proxy setting back the way it was." />
         </service>
         <service
+            android:name=".reactotron.ReactotronService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Runs the Reactotron server the person started: listens on the phone's own loopback address, 127.0.0.1, port 9090, where the React Native apps they are developing send their logs, network requests and state while those apps run in debug. Nothing off the device can reach it. Runs only until they press Stop in the app or its notification." />
+        </service>
+        <service
             android:name=".floating.FloatingControlsService"
             android:exported="false"
             android:foregroundServiceType="specialUse">

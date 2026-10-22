@@ -105,6 +105,12 @@ interface FlowSink {
     /** A message crossed the WebSocket that flow [flowId] upgraded to. */
     fun message(flowId: Long, message: SocketMessage) = Unit
 
+    /**
+     * One direction of flow [flowId]'s WebSocket stopped being read, and [why]: what crosses it
+     * from then on is still passed on, only not shown.
+     */
+    fun unread(flowId: Long, fromApp: Boolean, why: String) = Unit
+
     companion object {
         /** Keeps nothing, for a proxy being run only to forward. */
         val NONE: FlowSink =

@@ -62,9 +62,11 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/net/h2/Http2Reader.kt` | Both directions into one `Http2Exchange` a stream, whichever arrives first |
 | `core/net/proxy/Http2Flows.kt` | A stream as a `Flow`: pseudo-headers to method, path and status; trailers kept |
 | `core/net/grpc/Grpc.kt` | gRPC: a body's length-prefixed messages, `grpc-status` in words, the method's name |
+| `core/net/grpc/ProtoWire.kt` | The protobuf wire format, nothing guessed: fields, varints, packed runs |
 | `core/net/grpc/ProtoRaw.kt` | Protobuf read without its schema, printed as `protoc --decode_raw` prints it |
+| `core/net/grpc/ProtoSchema.kt` | A descriptor set read: messages, enums, methods; a message printed as `protoc --decode` would, `Any` opened |
 
-`core/net` carries **380 tests**, nearly all of them this work.
+`core/net` carries **392 tests**, nearly all of them this work.
 
 The Android side is in `app`:
 
@@ -73,6 +75,7 @@ The Android side is in `app`:
 | `proxy/TrafficProxy.kt` | The one proxy: state, store, certificate, rules, pointing the phone |
 | `proxy/ProxyService.kt` | The `specialUse` foreground service, and `ProxyNotices` |
 | `proxy/TrafficExport.kt` | Saving flows as HAR to Downloads, and the share sheet |
+| `proxy/ProtoFolder.kt` | The `protos` folder: descriptor sets pushed there, read as one schema |
 | `ui/tools/NetworkTrafficTool.kt` | The screen: proxy, certificate, rules, the list |
 | `ui/tools/NetworkTrafficRules.kt` | The rules editor |
 | `ui/tools/NetworkTrafficDetail.kt` | One flow: overview, headers, body, cURL, rule shortcuts |
@@ -121,9 +124,8 @@ Roughly in the order people reach for them after the list itself:
   approach), redone after each reboot. `CertificateTrust.System` already reads the result.
 - **zstd.** Chrome asks for it, and a body in it is shown and exported as it arrived: it
   needs a decoder the app doesn't carry. brotli is read (`org.brotli:dec`).
-- **gRPC with its `.proto`.** Without the schema a field is a number and a guess at its
-  kind; given the app's descriptors (a `.proto`, or the server's reflection service) the
-  fields would have names and types.
+- **Schemas from the server.** A gRPC server with reflection on would give its schema to
+  whoever asks, so no file would need pushing; asking means an HTTP/2 client of its own.
 - **Sending a gRPC call again.** A repeat goes out as HTTP/1.1, so gRPC is refused it;
   repeating one means an HTTP/2 client of its own.
 
@@ -228,6 +230,12 @@ does exactly this.
   `adb push` writes it, and it is read again for every answer, so pushing a fixture again
   changes the answer. A name that would leave the folder — `..`, a leading `/`, a link out of
   it — is refused, and a file over 8 MB answers a 502 that says so.
+- **A gRPC schema is a descriptor set in a folder beside it** (`files/protos`), compiled
+  as grpcurl's `-protoset` is: `protoc --include_imports --descriptor_set_out=app.protoset
+  *.proto`, then `adb push app.protoset` there. A descriptor set rather than `.proto` text,
+  because protoc has already resolved the imports and the names, and reading one is reading
+  protobuf. Every file there is one schema together, read again only when the folder
+  changes; a file that isn't one is passed over, and a type it lacks is read without.
 - **The proxy never dials itself.** An app asking for `127.0.0.1:8888`, or a remap there,
   would have it ask itself again for ever; it fails as a 502 instead.
 

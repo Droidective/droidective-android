@@ -34,64 +34,59 @@ object ProtoRaw {
     }
 
     /** The fields of [bytes], or null when they don't read as a message through to the end. */
-    fun parse(bytes: ByteArray): List<Field>? = parse(bytes, 0, bytes.size, depth = 0)
+    fun parse(bytes: ByteArray): List<Field>? = parse(bytes, depth = 0)
 
     /** [fields] the way `protoc --decode_raw` prints them. */
-    fun render(fields: List<Field>): String = buildString { render(fields, indent = 0) }
+    fun render(fields: List<Field>): String = render(fields, indent = 0)
 
-    private fun parse(bytes: ByteArray, from: Int, to: Int, depth: Int): List<Field>? {
-        val reader = Reader(bytes, from, to)
-        val fields = ArrayList<Field>()
-        while (reader.more) {
-            val tag = reader.varint() ?: return null
-            val number = (tag ushr WIRE_BITS).toInt()
-            if (tag ushr WIRE_BITS > MAX_FIELD || number < 1) return null
-            val value =
-                when ((tag and WIRE_MASK).toInt()) {
-                    VARINT -> Value.Varint(reader.varint() ?: return null)
-                    FIXED64 -> Value.Fixed64(reader.fixed(LONG_BYTES) ?: return null)
-                    FIXED32 -> Value.Fixed32((reader.fixed(INT_BYTES) ?: return null).toInt())
-                    LENGTH -> {
-                        val length = reader.varint() ?: return null
-                        if (length < 0 || length > reader.left) return null
-                        val start = reader.at
-                        reader.skip(length.toInt())
-                        delimited(bytes, start, start + length.toInt(), depth)
-                    }
-                    // Groups (3 and 4) are long gone, and 6 and 7 never existed.
-                    else -> return null
-                }
-            fields += Field(number, value)
-        }
-        return fields
+    /** [fields] as [render] writes them, [indent] levels in. */
+    internal fun render(fields: List<Field>, indent: Int): String = buildString {
+        render(fields, indent)
     }
 
-    private fun delimited(bytes: ByteArray, from: Int, to: Int, depth: Int): Value {
-        val slice = bytes.copyOfRange(from, to)
-        printable(slice)?.let {
+    /** [bytes] quoted as text when they are UTF-8, and with protoc's escapes when they aren't. */
+    internal fun text(bytes: ByteArray): String = utf8(bytes)?.let(::quoted) ?: quoted(bytes)
+
+    /** One field read off the wire, its bytes guessed at when they are length-delimited. */
+    internal fun field(wire: WireField, depth: Int = 0): Field {
+        val value =
+            when (wire.wireType) {
+                ProtoWire.VARINT -> Value.Varint(wire.bits)
+                ProtoWire.FIXED64 -> Value.Fixed64(wire.bits)
+                ProtoWire.FIXED32 -> Value.Fixed32(wire.bits.toInt())
+                else -> delimited(checkNotNull(wire.bytes), depth)
+            }
+        return Field(wire.number, value)
+    }
+
+    private fun parse(bytes: ByteArray, depth: Int): List<Field>? =
+        ProtoWire.fields(bytes)?.map { field(it, depth) }
+
+    private fun delimited(bytes: ByteArray, depth: Int): Value {
+        printable(bytes)?.let {
             return Value.Text(it)
         }
         if (depth < MAX_DEPTH) {
-            parse(bytes, from, to, depth + 1)?.let {
+            parse(bytes, depth + 1)?.let {
                 return Value.Message(it)
             }
         }
-        return Value.Bytes(slice)
+        return Value.Bytes(bytes)
     }
 
     /**
      * [bytes] as text when they are UTF-8 with nothing unprintable in them but line breaks and
      * tabs.
      */
-    private fun printable(bytes: ByteArray): String? {
-        val text =
-            try {
-                StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString()
-            } catch (_: CharacterCodingException) {
-                return null
-            }
-        return text.takeIf { it.none { char -> char.isISOControl() && char !in "\n\r\t" } }
-    }
+    private fun printable(bytes: ByteArray): String? =
+        utf8(bytes)?.takeIf { it.none { char -> char.isISOControl() && char !in "\n\r\t" } }
+
+    private fun utf8(bytes: ByteArray): String? =
+        try {
+            StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString()
+        } catch (_: CharacterCodingException) {
+            null
+        }
 
     private fun StringBuilder.render(fields: List<Field>, indent: Int) {
         for ((number, value) in fields) {
@@ -134,7 +129,7 @@ object ProtoRaw {
     /**
      * Bytes in double quotes, with C's escapes for what isn't printable ASCII, as protoc writes.
      */
-    private fun quoted(bytes: ByteArray): String = buildString {
+    internal fun quoted(bytes: ByteArray): String = buildString {
         append('"')
         for (byte in bytes) {
             val code = byte.toInt() and BYTE
@@ -151,56 +146,9 @@ object ProtoRaw {
         append('"')
     }
 
-    /** Reading through one message's bytes. Every read says null rather than run off the end. */
-    private class Reader(private val bytes: ByteArray, from: Int, private val to: Int) {
-        var at = from
-            private set
-
-        val more: Boolean
-            get() = at < to
-
-        val left: Int
-            get() = to - at
-
-        fun varint(): Long? {
-            var value = 0L
-            var shift = 0
-            while (at < to && shift < Long.SIZE_BITS) {
-                val byte = bytes[at++].toInt() and BYTE
-                value = value or ((byte and SEVEN_BITS).toLong() shl shift)
-                if (byte and CONTINUES == 0) return value
-                shift += 7
-            }
-            return null
-        }
-
-        fun fixed(count: Int): Long? {
-            if (left < count) return null
-            var value = 0L
-            for (index in 0 until count) {
-                value = value or ((bytes[at + index].toLong() and 0xff) shl (index * 8))
-            }
-            at += count
-            return value
-        }
-
-        fun skip(count: Int) {
-            at += count
-        }
-    }
-
-    private const val WIRE_BITS = 3
-    private const val WIRE_MASK = 0x7L
-    private const val VARINT = 0
-    private const val FIXED64 = 1
-    private const val LENGTH = 2
-    private const val FIXED32 = 5
-    private const val MAX_FIELD = (1L shl 29) - 1
     private const val LONG_BYTES = 8
     private const val INT_BYTES = 4
     private const val BYTE = 0xff
-    private const val SEVEN_BITS = 0x7f
-    private const val CONTINUES = 0x80
 
     /** Past this, a field is shown as bytes: deep enough for any real message, short of a stack. */
     private const val MAX_DEPTH = 32

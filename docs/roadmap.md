@@ -5,13 +5,14 @@ another machine. Current release: **0.14.0**.
 
 ## Shipped since 0.14.0, waiting for a release
 
-Nothing yet. 0.14.0 carried HTTP/2 (#125, #126) and gRPC (#127) in Network Traffic; see
-`RELEASE_NOTES.md`.
+- **gRPC read with the app's schema** (#129): descriptor sets pushed to the `protos`
+  folder name each call's fields, types and enums as `protoc --decode` does, open the
+  `Any`s in error details, and fall back to reading without when a type isn't there.
 
 ## Next
 
-- **The proxy's next steps** — gRPC with its `.proto`, the certificate in the system
-  store with root, zstd — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
+- **The proxy's next steps** — zstd, the certificate in the system store with root,
+  schemas from a server's reflection — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
 - **The Mac tools not yet on the phone**: none on the list. `app-info` stays the Apps tool's
   detail screen, which already is that.

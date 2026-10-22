@@ -1,0 +1,53 @@
+// A schema with one of everything, for ProtoSchemaTest. check.protoset is it compiled:
+//   protoc --include_imports --descriptor_set_out=check.protoset check.proto
+syntax = "proto3";
+
+package droidective.check;
+
+enum Kind {
+  KIND_UNSET = 0;
+  KIND_A = 1;
+  KIND_B = 2;
+}
+
+message Inner {
+  int64 id = 1;
+  string label = 2;
+}
+
+message Everything {
+  double d = 1;
+  float f = 2;
+  int64 i64 = 3;
+  uint64 u64 = 4;
+  int32 i32 = 5;
+  fixed64 fx64 = 6;
+  fixed32 fx32 = 7;
+  bool b = 8;
+  string s = 9;
+  Inner inner = 11;
+  bytes raw = 12;
+  uint32 u32 = 13;
+  Kind kind = 14;
+  sfixed32 sfx32 = 15;
+  sfixed64 sfx64 = 16;
+  sint32 si32 = 17;
+  sint64 si64 = 18;
+  repeated int32 packed = 19;
+  repeated string tags = 20;
+  repeated Inner inners = 21;
+  map<string, int32> counts = 22;
+  oneof choice {
+    string name = 23;
+    int32 number = 24;
+  }
+
+  message Nested {
+    Kind kind = 1;
+  }
+  Nested nested = 25;
+}
+
+service Check {
+  rpc Echo(Everything) returns (Inner);
+}

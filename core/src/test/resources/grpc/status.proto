@@ -1,0 +1,20 @@
+// The shape of googleapis' google/rpc/status.proto and one of its error details, for
+// ProtoSchemaTest and GrpcFlowTest. status.protoset is it compiled, imports and all:
+//   protoc --include_imports --descriptor_set_out=status.protoset status.proto
+syntax = "proto3";
+
+package google.rpc;
+
+import "google/protobuf/any.proto";
+
+message Status {
+  int32 code = 1;
+  string message = 2;
+  repeated google.protobuf.Any details = 3;
+}
+
+message ErrorInfo {
+  string reason = 1;
+  string domain = 2;
+  map<string, string> metadata = 3;
+}

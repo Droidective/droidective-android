@@ -1,0 +1,7 @@
+// A second schema, with no package, for ProtoSchemaTest. other.protoset is it compiled:
+//   protoc --descriptor_set_out=other.protoset other.proto
+syntax = "proto3";
+
+message Other {
+  string note = 1;
+}

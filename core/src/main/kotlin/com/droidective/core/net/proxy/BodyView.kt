@@ -2,6 +2,7 @@ package com.droidective.core.net.proxy
 
 import com.droidective.core.net.grpc.Grpc
 import com.droidective.core.net.grpc.ProtoRaw
+import com.droidective.core.net.grpc.ProtoSchema
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
 import java.io.ByteArrayInputStream
@@ -71,6 +72,8 @@ data class GrpcShown(
     val fields: String? = null,
     val text: String? = null,
     val problem: String? = null,
+    /** The message type its fields were named from, when the app's schema had it. */
+    val type: String? = null,
 )
 
 /**
@@ -80,9 +83,13 @@ data class GrpcShown(
  * captured shows nothing anybody can read. Decoding comes first, then deciding what the body is.
  */
 object BodyView {
-    fun of(headers: Headers, body: CapturedBody?): BodyShape {
+    /**
+     * [body] as it is worth showing. A gRPC body is read as [typed] when the app's schema says what
+     * it is, and without the schema when it doesn't.
+     */
+    fun of(headers: Headers, body: CapturedBody?, typed: ProtoSchema.Typed? = null): BodyShape {
         if (body == null || body.bytes.isEmpty()) return BodyShape.Empty
-        if (Grpc.carries(headers.contentType)) return grpc(headers, body)
+        if (Grpc.carries(headers.contentType)) return grpc(headers, body, typed)
         val media = mediaType(headers)
         val decoded =
             decode(headers.contentEncoding, body.bytes) ?: return unreadable(headers, body)
@@ -106,7 +113,7 @@ object BodyView {
         return if (text.isEmpty()) BodyShape.Binary(NOT_TEXT, decoded) else BodyShape.Text(text)
     }
 
-    private fun grpc(headers: Headers, body: CapturedBody): BodyShape {
+    private fun grpc(headers: Headers, body: CapturedBody, typed: ProtoSchema.Typed?): BodyShape {
         val shown =
             Grpc.messages(body.bytes, headers[GRPC_ENCODING]).map { message ->
                 val problem = message.problem
@@ -117,6 +124,14 @@ object BodyView {
                     bytes.isEmpty() ->
                         GrpcShown(message.wireLength, message.compressed, fields = "")
                     else -> {
+                        typed?.render(bytes)?.let {
+                            return@map GrpcShown(
+                                message.wireLength,
+                                message.compressed,
+                                fields = it,
+                                type = typed.type,
+                            )
+                        }
                         val fields = ProtoRaw.parse(bytes)?.let(ProtoRaw::render)
                         val text = if (fields == null) text(bytes, StandardCharsets.UTF_8) else null
                         GrpcShown(

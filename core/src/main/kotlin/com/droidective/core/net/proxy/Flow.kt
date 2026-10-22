@@ -30,6 +30,8 @@ data class Flow(
     val app: String? = null,
     /** The flow this one sent again, when it is a repeat rather than something an app asked. */
     val repeatOf: Long? = null,
+    /** The mock that answered, when the server was never asked. */
+    val mocked: String? = null,
 ) {
     val scheme: String
         get() = if (secure) "https" else "http"

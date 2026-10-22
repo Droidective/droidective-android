@@ -292,6 +292,44 @@ class ProxyServerTest {
     }
 
     @Test
+    fun aMockAnswersWithoutTheServerBeingAsked() {
+        FakeServer().use { origin ->
+            val port = proxy()
+            server?.mocks =
+                listOf(Mock("m1", "http://127.0.0.1:${origin.port}/menu", body = "mocked"))
+            assertEquals("mocked", get("http://127.0.0.1:${origin.port}/menu?store=7", port))
+
+            val flow = sink.next()
+            assertEquals("m1", flow.mocked)
+            assertEquals(200, flow.status)
+            assertEquals(0, origin.connections.get())
+        }
+    }
+
+    @Test
+    fun aMockedHttpsAnswerIsReadInsideTheTunnel() {
+        secureServer().use { origin ->
+            origin.reply = { ok("real") }
+            val port = proxy()
+            server?.mocks = listOf(Mock("m1", "https://localhost:*/private", body = "mocked"))
+            assertEquals("mocked", throughTunnel(port, origin.port, "/private"))
+            assertEquals("m1", sink.next().mocked)
+        }
+    }
+
+    @Test
+    fun whatNoMockAnswersStillGoesToTheServer() {
+        FakeServer().use { origin ->
+            origin.reply = { ok("real") }
+            val port = proxy()
+            server?.mocks =
+                listOf(Mock("m1", "http://127.0.0.1:${origin.port}/menu", enabled = false))
+            assertEquals("real", get("http://127.0.0.1:${origin.port}/menu", port))
+            assertNull(sink.next().mocked)
+        }
+    }
+
+    @Test
     fun aRequestIsOnRecordBeforeTheServerIsReached() {
         val closed = ServerSocket(0).use { it.localPort }
         val port = proxy()

@@ -43,6 +43,7 @@ import com.droidective.core.net.proxy.BodyView
 import com.droidective.core.net.proxy.Curl
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowLabels
+import com.droidective.core.net.proxy.Mock
 import com.droidective.core.net.proxy.Repeat
 import com.droidective.core.net.proxy.Repeater
 import com.droidective.core.net.proxy.RequestDraft
@@ -51,13 +52,19 @@ import com.droidective.core.net.proxy.TrafficRules
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** One exchange: where it went, what was sent, what came back, and a way to send it again. */
 @Composable
-fun FlowDetail(flow: Flow, tool: ToolContext, onOpen: (Long) -> Unit) {
+fun FlowDetail(
+    flow: Flow,
+    tool: ToolContext,
+    onOpen: (Long) -> Unit,
+    onMock: (Mock) -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val say = rememberSay(tool)
@@ -97,6 +104,7 @@ fun FlowDetail(flow: Flow, tool: ToolContext, onOpen: (Long) -> Unit) {
             if (flow.wireLength > 0) InfoRow("Moved", FlowLabels.size(flow.wireLength))
             InfoRow("Connection", connection(flow))
             flow.repeatOf?.let { InfoRow("Repeat of", "#$it") }
+            if (flow.mocked != null) InfoRow("Answered by", "A mock, not the server")
         }
         flow.failure?.let { FailureSection(it) }
         if (!flow.tunnelled || flow.response != null) {
@@ -142,15 +150,23 @@ fun FlowDetail(flow: Flow, tool: ToolContext, onOpen: (Long) -> Unit) {
                 Text("Edit and send")
             }
         }
-        OutlinedButton(
-            onClick = {
-                context.copy("cURL", Curl.of(flow))
-                say("Copied as cURL")
-            },
-            enabled = !flow.opening,
-        ) {
-            Text("Copy as cURL")
+        val mock = remember(flow) { Mock.of(flow, UUID.randomUUID().toString()) }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = {
+                    context.copy("cURL", Curl.of(flow))
+                    say("Copied as cURL")
+                },
+                enabled = !flow.opening,
+            ) {
+                Text("Copy as cURL")
+            }
+            // Its answer, kept to give back the next time, and changed if need be.
+            OutlinedButton(onClick = { mock?.let(onMock) }, enabled = mock != null) {
+                Text("Mock this response")
+            }
         }
+        if (mock == null && !flow.opening) Mock.whyNot(flow)?.let { ToolNote(it) }
         (repeat as? Repeat.Refused)?.let { ToolNote(it.reason) }
         RuleShortcuts(flow, labels, say)
     }

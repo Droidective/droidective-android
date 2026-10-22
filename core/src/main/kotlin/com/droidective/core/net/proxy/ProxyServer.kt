@@ -1,6 +1,7 @@
 package com.droidective.core.net.proxy
 
 import com.droidective.core.net.http.BodyFraming
+import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.HttpBody
 import com.droidective.core.net.http.HttpReader
@@ -60,6 +61,9 @@ class ProxyServer(
 ) {
     /** Which hosts are opened; may be changed while the proxy is running. */
     @Volatile var rules: ProxyRules = ProxyRules()
+
+    /** Answers given here instead of by the server; may be changed while the proxy is running. */
+    @Volatile var mocks: List<Mock> = emptyList()
 
     private val contexts = ConcurrentHashMap<String, SSLContext>()
     private val open = ConcurrentHashMap.newKeySet<Socket>()
@@ -219,6 +223,12 @@ class ProxyServer(
                 // On record at once, before the server is reached: a dial can take its full
                 // fifteen seconds, and a request nobody can see yet looks like one never made.
                 record.started(flow)
+                val mock = Mock.find(mocks, head.method, flow.url)
+                if (mock != null) {
+                    if (!mocked(flow, head, mock, source, out, record)) break
+                    head = reader.readRequest()
+                    continue
+                }
                 if (upstream == null) {
                     upstream =
                         try {
@@ -233,6 +243,37 @@ class ProxyServer(
         } finally {
             upstream?.close()
         }
+    }
+
+    /**
+     * A request answered here, by [mock], without the server: the body the app sent is read and
+     * kept, the answer written, and the flow says which mock gave it. Returns whether the
+     * connection can carry another.
+     */
+    private fun mocked(
+        flow: Flow,
+        head: RequestHead,
+        mock: Mock,
+        source: InputStream,
+        out: OutputStream,
+        record: FlowSink,
+    ): Boolean {
+        val requestBody = HttpBody.relay(BodyFraming.of(head), source, null)
+        val (response, body) = mock.response()
+        out.write(response.bytes())
+        out.write(body)
+        out.flush()
+        val kept = CapturedBody(body, body.size.toLong(), truncated = false)
+        record.finished(
+            flow.copy(
+                requestBody = requestBody,
+                response = response,
+                responseBody = kept,
+                finishedAt = clock(),
+                mocked = mock.id,
+            )
+        )
+        return !closes(head.headers)
     }
 
     /** One request and its answer. Returns whether the connection can carry another. */

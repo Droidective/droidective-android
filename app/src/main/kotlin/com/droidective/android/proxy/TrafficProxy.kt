@@ -18,6 +18,8 @@ import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowOwners
 import com.droidective.core.net.proxy.FlowSink
 import com.droidective.core.net.proxy.FlowStore
+import com.droidective.core.net.proxy.Mock
+import com.droidective.core.net.proxy.MockRepository
 import com.droidective.core.net.proxy.Outgoing
 import com.droidective.core.net.proxy.ProxyRules
 import com.droidective.core.net.proxy.ProxyServer
@@ -282,6 +284,8 @@ object TrafficProxy {
                 )
             loadRules(context)
             running.rules = proxyRules(context, chosen.value)
+            loadMocks(context)
+            running.mocks = answers.value
             val port = withContext(Dispatchers.IO) { running.start(PORT) }
             server = running
             current.value = ProxyRun.Listening(port)
@@ -311,6 +315,39 @@ object TrafficProxy {
         flows.put(recorded)
         revision.update { it + 1 }
         return recorded
+    }
+
+    private val answers = MutableStateFlow<List<Mock>>(emptyList())
+    @Volatile private var mocksLoaded = false
+
+    /** The answers given instead of the server's, in the order they were made. */
+    val mocks: StateFlow<List<Mock>> = answers.asStateFlow()
+
+    /** Reads the kept mocks, once; after that [mocks] is the truth. */
+    fun loadMocks(context: Context) {
+        if (mocksLoaded) return
+        synchronized(this) {
+            if (mocksLoaded) return
+            answers.value = MockRepository(context.filesDir).all()
+            mocksLoaded = true
+        }
+    }
+
+    /** Keeps [mock], replacing the one with its id, and applies it at once. */
+    fun saveMock(context: Context, mock: Mock) =
+        changeMocks(context) { all ->
+            if (all.any { it.id == mock.id }) all.map { if (it.id == mock.id) mock else it }
+            else all + mock
+        }
+
+    fun removeMock(context: Context, id: String) =
+        changeMocks(context) { all -> all.filterNot { it.id == id } }
+
+    private fun changeMocks(context: Context, edit: (List<Mock>) -> List<Mock>) {
+        loadMocks(context)
+        val changed = synchronized(this) { edit(answers.value).also { answers.value = it } }
+        MockRepository(context.filesDir).save(changed)
+        server?.mocks = changed
     }
 
     /** Reads the kept rules, once; after that [rules] is the truth. */

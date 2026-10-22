@@ -136,6 +136,36 @@ class ProxyServerTest {
     }
 
     @Test
+    fun anAppLearnedWhileItsFlowIsBeingRecordedIsNotLost() {
+        val asked = CountDownLatch(1)
+        val answered = CountDownLatch(1)
+        FakeServer().use { origin ->
+            val port =
+                proxy(
+                    owners =
+                        FlowOwners {
+                            asked.await(10, TimeUnit.SECONDS)
+                            answered.countDown()
+                            10144
+                        }
+                )
+            // The answer arrives in the middle of the first record, after it was stamped without
+            // one: the moment a check for "already answered?" would have let it slip by.
+            sink.whileRecording = { flow ->
+                if (flow.uid == null) {
+                    asked.countDown()
+                    answered.await(10, TimeUnit.SECONDS)
+                    Thread.sleep(SETTLE_MILLIS)
+                }
+            }
+            get("http://127.0.0.1:${origin.port}/thing", port)
+
+            assertNull(sink.next().uid)
+            assertEquals(10144, sink.next().uid)
+        }
+    }
+
+    @Test
     fun aSecondRunGoesOnFromTheIdsOfTheFirst() {
         // Stopped and started again with the same store: the second run's first flow was id 1
         // again, and replaced the first run's.
@@ -809,6 +839,9 @@ class ProxyServerTest {
     }
 
     private companion object {
+        /** Long enough for an answered future to have finished completing. */
+        const val SETTLE_MILLIS = 200L
+
         /** Generating keys is slow, so every test in the class shares one authority. */
         val certificates: ProxyCertificates by lazy { ProxyCertificates.create("Droidective Test") }
 
@@ -854,7 +887,11 @@ private class Collected : FlowSink {
         begun += flow
     }
 
+    /** Runs as each record is made, before it is kept: a test's way into the middle of it. */
+    @Volatile var whileRecording: (Flow) -> Unit = {}
+
     override fun finished(flow: Flow) {
+        whileRecording(flow)
         everything += flow
         done += flow
     }

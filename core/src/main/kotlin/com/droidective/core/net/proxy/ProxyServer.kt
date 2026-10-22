@@ -758,7 +758,9 @@ private class Owned(private val sink: FlowSink, private val owner: CompletableFu
     override fun finished(flow: Flow) {
         val now = stamped(flow)
         sink.finished(now)
-        if (now.uid == null && !owner.isDone) {
+        // Not "unless it is done by now": an answer arriving since it was stamped would be lost.
+        // A done one runs this at once.
+        if (now.uid == null) {
             owner.thenAccept { uid -> if (uid != null) sink.finished(now.copy(uid = uid)) }
         }
     }

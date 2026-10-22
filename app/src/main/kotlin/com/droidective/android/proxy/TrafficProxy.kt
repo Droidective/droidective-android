@@ -290,6 +290,7 @@ object TrafficProxy {
                     refusals = refusals,
                     ids = ids,
                     breaker = Holds,
+                    files = MockFolder(context),
                 )
             loadRules(context)
             running.rules = proxyRules(context, chosen.value)

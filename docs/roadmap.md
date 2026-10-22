@@ -5,13 +5,12 @@ another machine. Current release: **0.10.0**.
 
 ## Shipped since 0.10.0, waiting for a release
 
-Nothing yet. 0.10.0 carried WebSockets (#106, #108, #109), map remote (#104) and three fixes
-(#105, #107, #108); see `RELEASE_NOTES.md`.
+- Mocks that answer from a file in the mocks folder, read again for every request, so a fixture
+  pushed with `adb push` changes the answer (#111).
 
 ## Next
 
-- **The proxy's next steps** — map local from a file, the certificate in the system store with
-  root, brotli, HTTP/2 — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
+- **The proxy's next steps** — the certificate in the system store with root, brotli, HTTP/2 — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
 - **The Mac tools not yet on the phone**, by the Mac's ids: `api-client` (an HTTP client, which
   the proxy's repeat would share), `permissions` and `app-info` as their own screens (the Apps

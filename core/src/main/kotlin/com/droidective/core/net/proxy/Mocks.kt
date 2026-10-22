@@ -2,6 +2,7 @@ package com.droidective.core.net.proxy
 
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.ResponseHead
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.StandardCharsets
@@ -17,6 +18,8 @@ import kotlinx.serialization.Serializable
  *
  * @property url the URL it answers, without the query; `*` stands for any run of characters.
  * @property method the method it answers, or null for any.
+ * @property file a file in the mocks folder whose contents answer instead of [body], read again for
+ *   every request, so a fixture can be changed — pushed again — without touching the mock.
  */
 @Serializable
 data class Mock(
@@ -27,6 +30,7 @@ data class Mock(
     val headers: List<MockHeader> = emptyList(),
     val body: String = "",
     val enabled: Boolean = true,
+    val file: String? = null,
 ) {
     /** Whether this answers a [method] request for [requestUrl]. */
     fun matches(method: String, requestUrl: String): Boolean {
@@ -35,13 +39,22 @@ data class Mock(
         return UrlPattern.matches(url, requestUrl)
     }
 
-    /** The answer as it goes on the wire: the head, its length stated, and the body. */
-    fun response(): Pair<ResponseHead, ByteArray> {
-        val bytes = body.toByteArray(StandardCharsets.UTF_8)
+    /** The answer as it goes on the wire: the head, its length stated, and the typed body. */
+    fun response(): Pair<ResponseHead, ByteArray> =
+        response(body.toByteArray(StandardCharsets.UTF_8))
+
+    /**
+     * The answer with [bytes] for its body, as read from [file]: typed by the file's extension when
+     * the mock doesn't say what it is.
+     */
+    fun response(bytes: ByteArray): Pair<ResponseHead, ByteArray> {
         var sent = Headers()
         headers
             .filterNot { ANSWERED_HERE.any { name -> name.equals(it.name, ignoreCase = true) } }
             .forEach { sent = sent.add(it.name, it.value) }
+        val type = file?.let { TYPES[it.substringAfterLast('.', "").lowercase()] }
+        if (type != null && !sent.has(Headers.CONTENT_TYPE))
+            sent = sent.add(Headers.CONTENT_TYPE, type)
         sent = sent.add(Headers.CONTENT_LENGTH, bytes.size.toString())
         return ResponseHead(HTTP_1_1, status, REASONS[status].orEmpty(), sent) to bytes
     }
@@ -134,6 +147,35 @@ data class Mock(
         /** Whether [url] is a pattern a mock can have: http or https, with a host. */
         fun isPattern(url: String): Boolean = UrlPattern.isPattern(url)
 
+        /**
+         * Whether [name] can name a file in the mocks folder: a path inside it, never out of it. It
+         * is joined onto the folder, so `..` or a leading `/` would read anywhere the app can.
+         */
+        fun isFileName(name: String): Boolean {
+            if (name.isEmpty() || name.startsWith("/") || '\\' in name || '\u0000' in name)
+                return false
+            return name.split('/').none { it.isEmpty() || it == "." || it == ".." }
+        }
+
+        /** What a file says it is by its extension, for a mock that doesn't say. */
+        private val TYPES =
+            mapOf(
+                "json" to "application/json",
+                "html" to "text/html; charset=utf-8",
+                "txt" to "text/plain; charset=utf-8",
+                "xml" to "application/xml",
+                "js" to "text/javascript",
+                "css" to "text/css",
+                "csv" to "text/csv",
+                "png" to "image/png",
+                "jpg" to "image/jpeg",
+                "jpeg" to "image/jpeg",
+                "gif" to "image/gif",
+                "webp" to "image/webp",
+                "svg" to "image/svg+xml",
+                "pdf" to "application/pdf",
+            )
+
         private fun utf8(bytes: ByteArray): String? =
             try {
                 StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString()
@@ -151,6 +193,8 @@ data class MockDraft(
     val headers: String,
     val body: String,
     val enabled: Boolean,
+    /** The file in the mocks folder that answers instead of [body]; blank for none. */
+    val file: String = "",
 ) {
     sealed interface Built {
         data class Ready(val mock: Mock) : Built
@@ -176,7 +220,11 @@ data class MockDraft(
             if (!Headers.isToken(name)) return Built.Invalid("Line ${number + 1} isn't a header.")
             parsed += MockHeader(name, line.substring(colon + 1).trim())
         }
-        return Built.Ready(Mock(id, url.trim(), verb, code, parsed, body, enabled))
+        val named = file.trim().ifEmpty { null }
+        if (named != null && !Mock.isFileName(named)) {
+            return Built.Invalid("\"$file\" isn't a file in the mocks folder.")
+        }
+        return Built.Ready(Mock(id, url.trim(), verb, code, parsed, body, enabled, named))
     }
 
     companion object {
@@ -188,8 +236,23 @@ data class MockDraft(
                 headers = mock.headers.joinToString("\n") { "${it.name}: ${it.value}" },
                 body = mock.body,
                 enabled = mock.enabled,
+                file = mock.file.orEmpty(),
             )
 
         private val STATUSES = 100..599
+    }
+}
+
+/**
+ * Where a mock's [Mock.file] is read from, for each request it answers.
+ *
+ * @throws IOException saying why, when the file can't be answered with.
+ */
+fun interface MockFiles {
+    fun read(name: String): ByteArray
+
+    companion object {
+        /** No folder, for a proxy without one: a mock naming a file says so. */
+        val NONE = MockFiles { throw IOException("there is no mocks folder") }
     }
 }

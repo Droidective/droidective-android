@@ -1,5 +1,7 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.grpc.Grpc
+import com.droidective.core.net.grpc.GrpcStatus
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.StandardCharsets
@@ -28,9 +30,20 @@ enum class FlowOutcome {
 
 /** How a flow reads in a list: short, and the same wherever one is shown. */
 object FlowLabels {
+    /** Why an HTTP/2 flow can't be mocked, held at a breakpoint, or remapped. */
+    const val HTTP2_UNTOUCHED =
+        "Mocks, breakpoints and remaps reach HTTP/1.1 only: an app that speaks HTTP/2 is " +
+            "carried and read, never answered, held or sent elsewhere."
+
     fun outcome(flow: Flow): FlowOutcome {
         if (flow.failure != null) return FlowOutcome.Failed
         if (flow.tunnelled && flow.response == null) return FlowOutcome.PassedThrough
+        // A gRPC call is a 200 however it went; its own status is the one that says.
+        grpc(flow)
+            ?.takeUnless { it.ok }
+            ?.let {
+                return if (it.callers) FlowOutcome.ClientError else FlowOutcome.ServerError
+            }
         val status = flow.status ?: return FlowOutcome.Pending
         return when (status / CLASS) {
             1 -> FlowOutcome.Informational
@@ -61,6 +74,20 @@ object FlowLabels {
             null -> "passed through"
         }
     }
+
+    /** How a gRPC call went, once its status is in; null for anything that isn't one. */
+    fun grpc(flow: Flow): GrpcStatus? {
+        if (!isGrpc(flow)) return null
+        val response = flow.response ?: return null
+        return GrpcStatus.of(response.headers, flow.trailers)
+    }
+
+    /** The service and method a gRPC call named — `Firestore/GetDocument` — or null. */
+    fun grpcMethod(flow: Flow): String? = if (isGrpc(flow)) Grpc.method(flow.request.path) else null
+
+    private fun isGrpc(flow: Flow): Boolean =
+        Grpc.carries(flow.request.headers.contentType) ||
+            Grpc.carries(flow.response?.headers?.contentType)
 
     /** What follows the host: the path and query, or nothing for a connection never read. */
     fun path(flow: Flow): String = if (flow.opening) "" else flow.request.path

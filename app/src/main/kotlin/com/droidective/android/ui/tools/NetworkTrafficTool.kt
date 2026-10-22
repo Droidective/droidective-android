@@ -543,7 +543,10 @@ private fun SearchRow(
 @Composable
 private fun FlowRow(flow: Flow, labels: AppLabels, onClick: () -> Unit) {
     val outcome = FlowLabels.outcome(flow)
-    val operation = remember(flow.id, flow.requestBody) { FlowLabels.graphQlOperation(flow) }
+    val operation =
+        remember(flow.id, flow.requestBody) {
+            FlowLabels.graphQlOperation(flow) ?: FlowLabels.grpcMethod(flow)
+        }
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -592,6 +595,7 @@ private fun rowDetails(flow: Flow, operation: String?, labels: AppLabels): Strin
         return parts.joinToString(" · ")
     }
     FlowLabels.passed(flow)?.let { parts += it }
+    FlowLabels.grpc(flow)?.takeUnless { it.ok }?.let { parts += it.name }
     if (flow.mocked != null) parts += "mocked"
     if (flow.edited) parts += "changed" else if (flow.paused != null) parts += "held"
     flow.sentTo?.let { parts += "sent to ${it.substringAfter("://")}" }

@@ -61,8 +61,10 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/net/h2/Huffman.kt` | HPACK's Huffman code, built from its 257 lengths since the code is canonical |
 | `core/net/h2/Http2Reader.kt` | Both directions into one `Http2Exchange` a stream, whichever arrives first |
 | `core/net/proxy/Http2Flows.kt` | A stream as a `Flow`: pseudo-headers to method, path and status; trailers kept |
+| `core/net/grpc/Grpc.kt` | gRPC: a body's length-prefixed messages, `grpc-status` in words, the method's name |
+| `core/net/grpc/ProtoRaw.kt` | Protobuf read without its schema, printed as `protoc --decode_raw` prints it |
 
-`core/net` carries **353 tests**, nearly all of them this work.
+`core/net` carries **380 tests**, nearly all of them this work.
 
 The Android side is in `app`:
 
@@ -119,9 +121,11 @@ Roughly in the order people reach for them after the list itself:
   approach), redone after each reboot. `CertificateTrust.System` already reads the result.
 - **zstd.** Chrome asks for it, and a body in it is shown and exported as it arrived: it
   needs a decoder the app doesn't carry. brotli is read (`org.brotli:dec`).
-- **gRPC messages.** A gRPC body is length-prefixed protobuf, shown now as binary. Split
-  into its messages and read field by field (as `protoc --decode_raw` does), a call
-  would read without its `.proto`.
+- **gRPC with its `.proto`.** Without the schema a field is a number and a guess at its
+  kind; given the app's descriptors (a `.proto`, or the server's reflection service) the
+  fields would have names and types.
+- **Sending a gRPC call again.** A repeat goes out as HTTP/1.1, so gRPC is refused it;
+  repeating one means an HTTP/2 client of its own.
 
 ## What stops this working, and what to tell people
 

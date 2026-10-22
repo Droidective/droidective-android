@@ -1,16 +1,12 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.12.0**.
+another machine. Current release: **0.13.0**.
 
-## Shipped since 0.12.0, waiting for a release
+## Shipped since 0.13.0, waiting for a release
 
-- A WebSocket that can't be read — an extension Droidective doesn't know, or frames that stop
-  making sense — says so in its Messages, rather than going quiet (#120).
-- Permissions, the Mac's `permissions`: each kind of runtime permission, every app that asks for
-  it, and a switch to grant or revoke it (#121).
-- API Testing, the Mac's `api-client`: requests written by hand and kept by name, `{{variables}}`,
-  and a cURL command pasted in — sent from the phone, shown in Network Traffic too (#122, #123).
+Nothing yet. 0.13.0 carried Permissions (#121), API Testing (#122, #123) and the WebSocket
+"not read" note (#120); see `RELEASE_NOTES.md`.
 
 ## Next
 

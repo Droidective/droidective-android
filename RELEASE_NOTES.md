@@ -3,6 +3,22 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.13.0
+
+Two of the Mac's tools come to the phone: one for permissions, one for sending requests by hand.
+
+- **Permissions.** Each kind of runtime permission — camera, microphone, location, notifications,
+  photos, contacts and the rest — with every app that asks for it and whether it holds it, and a
+  switch to grant or revoke it. The quickest way to see who can use the microphone, or to take a
+  permission away and see how an app copes. Switching needs Shell; looking doesn't.
+- **API Testing.** Write a request, keep it by name, and send it from the phone, over its network
+  and its VPN. `{{host}}` and `{{token}}` take values kept once, so one request works against
+  staging and production. Paste what a browser's "Copy as cURL" gives and it becomes a request to
+  edit. The answer shows its status, time, headers and body, and the request shows in Network
+  Traffic too.
+- **WebSockets** that can't be read — an extension Droidective doesn't know, or frames that stop
+  making sense — now say so in their Messages, rather than going quiet.
+
 ## 0.12.0
 
 Screenshots you can mark up before anyone sees them, taken from wherever you are.

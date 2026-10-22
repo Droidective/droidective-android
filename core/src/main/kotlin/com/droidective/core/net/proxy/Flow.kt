@@ -3,6 +3,7 @@ package com.droidective.core.net.proxy
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.RequestHead
 import com.droidective.core.net.http.ResponseHead
+import com.droidective.core.net.ws.SocketMessage
 
 /**
  * One exchange the proxy saw: a request going out and whatever came back, or the reason nothing
@@ -91,6 +92,9 @@ interface FlowSink {
 
     /** The exchange is over, one way or another. */
     fun finished(flow: Flow)
+
+    /** A message crossed the WebSocket that flow [flowId] upgraded to. */
+    fun message(flowId: Long, message: SocketMessage) = Unit
 
     companion object {
         /** Keeps nothing, for a proxy being run only to forward. */

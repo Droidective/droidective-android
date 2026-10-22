@@ -32,6 +32,8 @@ import com.droidective.core.net.proxy.Throttle
 import com.droidective.core.net.proxy.TrafficRules
 import com.droidective.core.net.proxy.TrafficRulesRepository
 import com.droidective.core.net.tls.ProxyCertificates
+import com.droidective.core.net.ws.SocketLog
+import com.droidective.core.net.ws.SocketMessage
 import com.droidective.core.shell.ShellUnavailableException
 import com.droidective.core.toggles.SettingScope
 import com.droidective.platform.AndroidSettingsStore
@@ -95,6 +97,9 @@ object TrafficProxy {
     val changes: StateFlow<Long> = revision.asStateFlow()
 
     val flows = FlowStore()
+
+    /** What the WebSockets among [flows] said, by flow. */
+    val messages = SocketLog()
 
     /** Flow ids for every run, so a run never reuses one the store still holds. */
     private val ids = AtomicLong()
@@ -160,6 +165,7 @@ object TrafficProxy {
 
     fun clear() {
         flows.clear()
+        messages.clear()
         revision.update { it + 1 }
     }
 
@@ -456,6 +462,11 @@ object TrafficProxy {
         override fun started(flow: Flow) = keep(flow)
 
         override fun finished(flow: Flow) = keep(flow)
+
+        override fun message(flowId: Long, message: SocketMessage) {
+            messages.put(flowId, message)
+            revision.update { it + 1 }
+        }
 
         private fun keep(flow: Flow) {
             flows.put(flow.copy(app = flow.uid?.let { AppNames.of(context, it) }))

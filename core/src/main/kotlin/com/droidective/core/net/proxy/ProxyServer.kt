@@ -8,8 +8,12 @@ import com.droidective.core.net.http.HttpReader
 import com.droidective.core.net.http.RequestHead
 import com.droidective.core.net.http.ResponseHead
 import com.droidective.core.net.tls.ProxyCertificates
+import com.droidective.core.net.ws.FrameReader
+import com.droidective.core.net.ws.Negotiated
+import com.droidective.core.net.ws.SocketMessage
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
+import java.io.Closeable
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -359,9 +363,27 @@ class ProxyServer(
     ): Boolean {
         val (source, out, upstream) = ends
         out.flush()
-        bothWays(source, out, upstream.source, upstream.sink)
-        record.finished(flow.copy(response = response, finishedAt = clock(), tunnelled = true))
+        val open = flow.copy(response = response, tunnelled = true)
+        // On record as it is, a socket still open, for however long it stays that way.
+        record.started(open)
+        val (fromApp, fromServer) = readers(flow.id, response, record)
+        bothWays(source, out, upstream.source, upstream.sink, fromApp, fromServer)
+        record.finished(open.copy(finishedAt = clock()))
         return false
+    }
+
+    /**
+     * What reads each direction of an upgraded connection, when it became a WebSocket: messages go
+     * on record as flow [flowId]'s. Anything else upgraded to stays bytes, as before.
+     */
+    private fun readers(flowId: Long, response: ResponseHead, record: FlowSink): Pair<Tap?, Tap?> {
+        if (!response.headers[UPGRADE].equals(WEBSOCKET, ignoreCase = true)) return null to null
+        val negotiated = Negotiated.of(response.headers.values(EXTENSIONS))
+        fun reader(fromApp: Boolean): Tap {
+            val frames = FrameReader(fromApp, negotiated, clock) { record.message(flowId, it) }
+            return { bytes, count -> frames.feed(bytes, 0, count) }
+        }
+        return reader(fromApp = true) to reader(fromApp = false)
     }
 
     /** A host left alone: the bytes cross untouched and only that it happened is recorded. */
@@ -634,6 +656,9 @@ class ProxyServer(
 
     private companion object {
         const val CONNECT = "CONNECT"
+        const val UPGRADE = "Upgrade"
+        const val WEBSOCKET = "websocket"
+        const val EXTENSIONS = "Sec-WebSocket-Extensions"
         const val ITSELF = "that is this proxy, which would only ask itself again"
         const val ACCEPT_ENCODING = "Accept-Encoding"
         const val SWITCHING = 101
@@ -765,23 +790,43 @@ private class Owned(private val sink: FlowSink, private val owner: CompletableFu
         }
     }
 
+    override fun message(flowId: Long, message: SocketMessage) = sink.message(flowId, message)
+
     private fun stamped(flow: Flow): Flow =
         if (flow.uid != null) flow else flow.copy(uid = owner.getNow(null))
 }
 
-/** Copies both ways at once and returns when either side is done. */
+/**
+ * Shown each chunk of bytes as it crosses, after it has gone on: the buffer, and how much of it.
+ */
+private typealias Tap = (ByteArray, Int) -> Unit
+
+/**
+ * Copies both ways at once and returns when either side is done, showing what crosses from the app
+ * to [up] and what crosses from the server to [down]. Whichever end hangs up first is hung up on at
+ * the other: otherwise a server is never told the app has gone, and the copy waiting on it — with
+ * no timeout, on a tunnel or a socket — waits for ever.
+ */
 private fun bothWays(
     clientIn: InputStream,
     clientOut: OutputStream,
     serverIn: InputStream,
     serverOut: OutputStream,
+    up: Tap? = null,
+    down: Tap? = null,
 ) {
-    val back = thread(name = "droidective-proxy-tunnel") { copyQuietly(serverIn, clientOut) }
-    copyQuietly(clientIn, serverOut)
+    val back =
+        thread(name = "droidective-proxy-tunnel") {
+            copyQuietly(serverIn, clientOut, down)
+            clientIn.closeQuietly()
+        }
+    copyQuietly(clientIn, serverOut, up)
+    serverIn.closeQuietly()
     back.join()
 }
 
-private fun copyQuietly(source: InputStream, sink: OutputStream) {
+private fun copyQuietly(source: InputStream, sink: OutputStream, tap: Tap?) {
+    var watching = tap
     try {
         val buffer = ByteArray(16 * 1024)
         while (true) {
@@ -789,6 +834,12 @@ private fun copyQuietly(source: InputStream, sink: OutputStream) {
             if (read == -1) break
             sink.write(buffer, 0, read)
             sink.flush()
+            try {
+                watching?.invoke(buffer, read)
+            } catch (_: RuntimeException) {
+                // Reading along is for the record, and the record must never cost the connection.
+                watching = null
+            }
         }
     } catch (_: IOException) {
         // Either end closing is how a tunnel ends; there is nothing to report about it.
@@ -804,7 +855,7 @@ private fun OutputStream.writeQuietly(bytes: ByteArray) {
     }
 }
 
-private fun Socket.closeQuietly() {
+private fun Closeable.closeQuietly() {
     try {
         close()
     } catch (_: IOException) {

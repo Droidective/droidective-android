@@ -53,8 +53,9 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/net/proxy/Mocks.kt` | Mocks, their draft, and `traffic-mocks.json` |
 | `core/net/proxy/Throttle.kt` | Network speed: Chrome's presets, and `Paced` streams |
 | `core/net/proxy/Breakpoints.kt` | Breakpoints, what is held, the verdicts, and the `Breaker` that decides |
+| `core/net/proxy/Remaps.kt` | Remaps (Map Remote), and `Server`: where a request is sent, and its `Host` |
 
-`core/net` carries **258 tests**, nearly all of them this work.
+`core/net` carries **272 tests**, nearly all of them this work.
 
 The Android side is in `app`:
 
@@ -69,7 +70,9 @@ The Android side is in `app`:
 | `ui/tools/NetworkTrafficCompose.kt` | Edit and send: a captured request changed and sent again |
 | `ui/tools/NetworkTrafficMocks.kt` | The mock editor and its rows |
 | `ui/tools/NetworkTrafficHolds.kt` | What is held, its editor, and the breakpoint editor |
+| `ui/tools/NetworkTrafficRemaps.kt` | The remap editor and its rows |
 | `proxy/Holds.kt` | The breakpoints, and the `Breaker` that waits for a person's decision |
+| `proxy/KeptList.kt` | The mocks, remaps and breakpoints as kept: read once, written on each change |
 | `surface/AppPlatformToggles.kt` | The `traffic-proxy` toggle; `TrafficProxyTile` is in `TileSlots.kt` |
 
 ## What is merged
@@ -93,14 +96,15 @@ The Android side is in `app`:
 | [#99](https://github.com/Droidective/droidective-android/pull/99) | Network speed: Chrome's throttling presets, played through the proxy |
 | [#100](https://github.com/Droidective/droidective-android/pull/100) | Breakpoints in the engine: a request or its answer held whole and handed over |
 | [#101](https://github.com/Droidective/droidective-android/pull/101) | Breakpoints on the phone: the editor, what is held, and a notice that reaches you in the app being debugged |
+| [#103](https://github.com/Droidective/droidective-android/pull/103) | `KeptList`: the mocks and breakpoints kept one way |
+| [#104](https://github.com/Droidective/droidective-android/pull/104) | Map remote: a URL's requests sent to another server, repeats included; the proxy never dials itself |
 
 ## What is left, worth doing
 
 Roughly in the order people reach for them after the list itself:
 
-- **Map remote.** Send a URL to another host — a staging server, a laptop on the same
-  network. A mock already answers from text; answering from a file is the other half of
-  Charles's *Map Local*.
+- **Map local from a file.** A mock answers from text typed on the phone; answering from a
+  file — a fixture pushed with `adb push`, a large JSON — is the rest of Charles's *Map Local*.
 - **The system store, with root.** A user certificate is trusted only by apps that opt in.
   With root it can go in the system store, and every app that doesn't pin trusts it. On
   Android 14 and later the store lives in the Conscrypt APEX, so it means a tmpfs mounted
@@ -186,6 +190,12 @@ does exactly this.
 - **A held request keeps its host.** The app is talking to that host, over TLS made for it;
   sending its request elsewhere is map remote's job. Edit and send, from the list, goes
   anywhere.
+- **A remap changes the server, never the path.** The request is recorded as the app asked it,
+  with `sentTo` saying where it went; only what goes on the wire has the new server's `Host`.
+  A mock answers before a remap sends anywhere, and Send again follows remaps, so a repeat
+  goes where the app's request went.
+- **The proxy never dials itself.** An app asking for `127.0.0.1:8888`, or a remap there,
+  would have it ask itself again for ever; it fails as a 502 instead.
 
 ## Resuming
 

@@ -27,6 +27,7 @@ import com.droidective.core.net.proxy.ProxySetting
 import com.droidective.core.net.proxy.Refusals
 import com.droidective.core.net.proxy.Repeat
 import com.droidective.core.net.proxy.Repeater
+import com.droidective.core.net.proxy.Throttle
 import com.droidective.core.net.proxy.TrafficRules
 import com.droidective.core.net.proxy.TrafficRulesRepository
 import com.droidective.core.net.tls.ProxyCertificates
@@ -286,6 +287,7 @@ object TrafficProxy {
             running.rules = proxyRules(context, chosen.value)
             loadMocks(context)
             running.mocks = answers.value
+            running.throttle = speed.value
             val port = withContext(Dispatchers.IO) { running.start(PORT) }
             server = running
             current.value = ProxyRun.Listening(port)
@@ -315,6 +317,16 @@ object TrafficProxy {
         flows.put(recorded)
         revision.update { it + 1 }
         return recorded
+    }
+
+    private val speed = MutableStateFlow(Throttle.NONE)
+
+    /** How slow a network the proxy plays, for this session; it applies to the next request. */
+    val throttle: StateFlow<Throttle> = speed.asStateFlow()
+
+    fun throttle(slower: Throttle) {
+        speed.value = slower
+        server?.throttle = slower
     }
 
     private val answers = MutableStateFlow<List<Mock>>(emptyList())

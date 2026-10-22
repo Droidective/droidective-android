@@ -330,6 +330,33 @@ class ProxyServerTest {
     }
 
     @Test
+    fun aSlowerNetworkIsSlower() {
+        FakeServer().use { origin ->
+            val body = "x".repeat(10_000)
+            origin.reply = { ok(body) }
+            val port = proxy()
+            // Ten thousand bytes at twenty thousand a second, behind 300 ms: at least 800 ms.
+            server?.throttle = Throttle(300, 20_000, 0)
+            val started = System.nanoTime()
+            assertEquals(body, get("http://127.0.0.1:${origin.port}/big", port))
+            val took = (System.nanoTime() - started) / 1_000_000
+            assertTrue(took >= 750, "took $took ms")
+        }
+    }
+
+    @Test
+    fun aMockIsAsSlowAsTheNetwork() {
+        FakeServer().use { origin ->
+            val port = proxy()
+            server?.mocks = listOf(Mock("m", "http://127.0.0.1:${origin.port}/m", body = "mocked"))
+            server?.throttle = Throttle(400, 0, 0)
+            val started = System.nanoTime()
+            assertEquals("mocked", get("http://127.0.0.1:${origin.port}/m", port))
+            assertTrue((System.nanoTime() - started) / 1_000_000 >= 380)
+        }
+    }
+
+    @Test
     fun aRequestIsOnRecordBeforeTheServerIsReached() {
         val closed = ServerSocket(0).use { it.localPort }
         val port = proxy()

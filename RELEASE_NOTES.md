@@ -20,6 +20,8 @@ Files and the share sheet.
 - **Open with, and Share.** An APK, XAPK or APKM tapped in Files, or shared from another app,
   opens in Install App, which reads it and waits for you to press Install. Text with a link in it,
   shared from any app, opens Deep Links with the link ready to try.
+- **Fixed:** in Network Traffic, stopping and starting the proxy again made the new requests
+  replace the earlier ones in the list, one for one.
 
 ## 0.7.0
 

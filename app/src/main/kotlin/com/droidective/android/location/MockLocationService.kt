@@ -20,6 +20,7 @@ import com.droidective.android.NoticeIds
 import com.droidective.android.R
 import com.droidective.android.surface.Launch
 import com.droidective.core.location.Coordinates
+import com.droidective.core.location.Route
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -58,20 +59,22 @@ class MockLocationService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        val route = route(intent)
         val where =
-            Coordinates(
-                intent.getDoubleExtra(EXTRA_LATITUDE, 0.0),
-                intent.getDoubleExtra(EXTRA_LONGITUDE, 0.0),
-            )
+            route?.points?.first()
+                ?: Coordinates(
+                    intent.getDoubleExtra(EXTRA_LATITUDE, 0.0),
+                    intent.getDoubleExtra(EXTRA_LONGITUDE, 0.0),
+                )
         val name = intent.getStringExtra(EXTRA_NAME)
         if (!standIn()) {
             stopSelf()
             return START_NOT_STICKY
         }
-        MockLocation.state_.value = MockLocation.State.On(where, name)
+        MockLocation.state_.value = MockLocation.State.On(where, name, route)
         post(notice())
         feeding?.cancel()
-        feeding = scope.launch { feed(where) }
+        feeding = scope.launch { feed(route, where, name) }
         return START_NOT_STICKY
     }
 
@@ -143,12 +146,24 @@ class MockLocationService : Service() {
         )
     }
 
-    private suspend fun feed(where: Coordinates) {
+    /**
+     * A fix a second: at [still], or along [route] from the moment it set off, the screen kept up
+     * with where along the way it has got.
+     */
+    private suspend fun feed(route: Route?, still: Coordinates, name: String?) {
         val manager = getSystemService(LocationManager::class.java)
+        val setOff = SystemClock.elapsedRealtime()
         while (scope.isActive) {
+            val now =
+                route?.at((SystemClock.elapsedRealtime() - setOff) / MILLIS)
+                    ?: Route.Fix(still, 0.0, 0.0, arrived = false)
+            if (route != null) {
+                MockLocation.state_.value =
+                    MockLocation.State.On(now.where, name, route, now.arrived)
+            }
             for (provider in standingIn.toList()) {
                 try {
-                    manager.setTestProviderLocation(provider, fix(provider, where))
+                    manager.setTestProviderLocation(provider, fix(provider, now))
                 } catch (_: SecurityException) {
                     // Developer options picked another app since; it is that app's place now.
                     MockLocation.state_.value =
@@ -245,6 +260,11 @@ class MockLocationService : Service() {
         internal const val EXTRA_LATITUDE = "com.droidective.android.extra.LATITUDE"
         internal const val EXTRA_LONGITUDE = "com.droidective.android.extra.LONGITUDE"
         internal const val EXTRA_NAME = "com.droidective.android.extra.PLACE_NAME"
+        internal const val EXTRA_LATITUDES = "com.droidective.android.extra.LATITUDES"
+        internal const val EXTRA_LONGITUDES = "com.droidective.android.extra.LONGITUDES"
+        internal const val EXTRA_SPEED = "com.droidective.android.extra.SPEED"
+        internal const val EXTRA_LOOP = "com.droidective.android.extra.LOOP"
+        private const val MILLIS = 1_000.0
         private const val CHANNEL = "mock-location"
         private const val EVERY_MILLIS = 1_000L
         private const val ACCURACY_METRES = 3f
@@ -252,15 +272,30 @@ class MockLocationService : Service() {
             "Droidective isn't the mock location app. Android lets only that app stand in for " +
                 "the phone's location."
 
-        /** A fix as a provider would give it: now, here, still, and accurate to a few metres. */
-        private fun fix(provider: String, where: Coordinates): Location =
+        /** The route [intent] carries, when it carries one rather than a place. */
+        private fun route(intent: Intent): Route? {
+            val lats = intent.getDoubleArrayExtra(EXTRA_LATITUDES) ?: return null
+            val lons = intent.getDoubleArrayExtra(EXTRA_LONGITUDES) ?: return null
+            if (lats.size != lons.size) return null
+            return runCatching {
+                Route(
+                    lats.indices.map { Coordinates(lats[it], lons[it]) },
+                    intent.getDoubleExtra(EXTRA_SPEED, 0.0),
+                    intent.getBooleanExtra(EXTRA_LOOP, false),
+                )
+            }
+                .getOrNull()
+        }
+
+        /** A fix as a provider would give it: now, there, at its speed, to a few metres. */
+        private fun fix(provider: String, at: Route.Fix): Location =
             Location(provider).apply {
-                latitude = where.latitude
-                longitude = where.longitude
+                latitude = at.where.latitude
+                longitude = at.where.longitude
                 altitude = 0.0
                 accuracy = ACCURACY_METRES
-                speed = 0f
-                bearing = 0f
+                speed = at.metresPerSecond.toFloat()
+                bearing = at.bearing.toFloat()
                 time = System.currentTimeMillis()
                 elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
                 verticalAccuracyMeters = ACCURACY_METRES

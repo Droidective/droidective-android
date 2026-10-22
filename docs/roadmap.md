@@ -10,6 +10,8 @@ another machine. Current release: **0.15.0**.
 - **Mock Location** (#135): the phone anywhere, for every app that asks where it is —
   coordinates, a Google Maps or OpenStreetMap link, a kept place or a ready city — through
   test providers for GPS, the network and fused location, as the mock location app.
+- **…and moving** (#136): along waypoints or a pasted GPX track at a walk, a run, a ride or a
+  drive, once or round and round, with the bearing and speed a tracking screen reads.
 
 ## Next
 

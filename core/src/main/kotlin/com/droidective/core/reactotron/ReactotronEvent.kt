@@ -58,6 +58,13 @@ sealed interface ReactotronEvent {
 
     data class StateChange(val changes: List<Pair<String, JsonElement>>) : ReactotronEvent
 
+    /**
+     * The app's answer to a state request: the value at [path], or with [keys] the names under it.
+     * An empty path asked for the whole store, which is what comes back.
+     */
+    data class StateAnswer(val path: String, val value: JsonElement?, val keys: Boolean) :
+        ReactotronEvent
+
     data class Unknown(val type: String, val payload: JsonElement?) : ReactotronEvent
 
     /** A frame in a stack trace, as the client sends it. */
@@ -92,6 +99,10 @@ sealed interface ReactotronEvent {
                         payload["action"],
                         payload["ms"].number,
                     )
+                "state.values.response" ->
+                    StateAnswer(payload["path"].text.orEmpty(), payload["value"], keys = false)
+                "state.keys.response" ->
+                    StateAnswer(payload["path"].text.orEmpty(), payload["keys"], keys = true)
                 "state.values.change" ->
                     StateChange(
                         payload["changes"].list.map {

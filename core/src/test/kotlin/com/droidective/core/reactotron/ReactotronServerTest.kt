@@ -111,6 +111,26 @@ class ReactotronServerTest {
     }
 
     @Test
+    fun whatTheServerSendsReachesTheApp() {
+        val app = App(start())
+        app.send("""{"type":"client.intro","payload":{"name":"A","clientId":"c"}}""")
+        val (connection) = heard.connected.poll(5, TimeUnit.SECONDS)!!
+        app.next() // the subscription
+        server!!.send(
+            connection,
+            "custom",
+            Json.parseToJsonElement("""{"command":"resetOnboarding","args":{}}"""),
+        )
+        val sent = app.next()
+        assertEquals("custom", sent.type())
+        assertEquals("""{"command":"resetOnboarding","args":{}}""", sent["payload"].toString())
+        // Nothing to send to, and no harm in trying: a connection gone, or the server stopped.
+        server!!.send(connection + 100, "custom", sent)
+        server!!.stop()
+        server!!.send(connection, "custom", sent)
+    }
+
+    @Test
     fun anAppGoingAwaySaysSo() {
         val app = App(start())
         app.send("""{"type":"client.intro","payload":{"name":"A","clientId":"c"}}""")

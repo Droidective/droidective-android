@@ -5,16 +5,16 @@ another machine. Current release: **0.15.0**.
 
 ## Shipped since 0.15.0, waiting for a release
 
-Nothing yet. 0.15.0 carried Reactotron on the phone (#131, #132), zstd (#130) and gRPC read
-with the app's schema (#129); see `RELEASE_NOTES.md`.
+- **Reactotron talks back** (#134): an app's custom commands run from the phone, arguments
+  and all, and its state is read by path or whole.
 
 ## Next
 
 - **The proxy's next steps** — the certificate in the system store with root, schemas from
   a server's reflection — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
-- **Reactotron talking back** — state requests, an app's custom commands, the REPL — is in
-  [reactotron.md](reactotron.md).
+- **Reactotron's next steps** — state backup and restore, path subscriptions, the REPL, an
+  app's commands as widget slots — are in [reactotron.md](reactotron.md).
 - **The Mac tools not yet on the phone**: none on the list. `app-info` stays the Apps tool's
   detail screen, which already is that.
 - **Real-device passes on the OnePlus Pad** need the person there: OxygenOS holds every

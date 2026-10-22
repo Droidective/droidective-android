@@ -27,6 +27,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -45,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.reactotron.Reactotron
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.copy
+import com.droidective.core.reactotron.ReactotronCommands
 import com.droidective.core.reactotron.ReactotronEvent
 import com.droidective.core.reactotron.ReactotronKind
 import com.droidective.core.reactotron.ReactotronLabels
@@ -117,6 +120,10 @@ private fun Timeline(
                 }
             }
             item { ServerSection() }
+            if (clients.isNotEmpty()) {
+                item { CommandsSection() }
+                item { StateSection() }
+            }
             item {
                 Filters(kind, query, onKind = { kindName = it?.name }, onQuery = { query = it })
             }
@@ -177,6 +184,79 @@ private fun ServerSection() {
             "A React Native app's Reactotron connects to localhost:9090. With no adb reverse " +
                 "from a computer, that is this phone, so the debug build you are running reports " +
                 "here: no host to set, no cable."
+        )
+    }
+}
+
+/**
+ * The commands the connected apps registered with `Reactotron.onCustomCommand`, as buttons: each
+ * runs in its app, with whatever it asks for typed in first.
+ */
+@Composable
+private fun CommandsSection() {
+    val commands by Reactotron.commands.collectAsStateWithLifecycle()
+    ToolSection("Commands") {
+        if (commands.isEmpty()) {
+            ToolNote(
+                "None registered. An app adds its own with Reactotron.onCustomCommand(...), and " +
+                    "they show here to run."
+            )
+        }
+        commands.forEach { command -> key(command.connection, command.id) { CommandRow(command) } }
+    }
+}
+
+@Composable
+private fun CommandRow(command: ReactotronCommands.Command) {
+    val values = remember { mutableStateMapOf<String, String>() }
+    var ran by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(command.label, style = MaterialTheme.typography.titleSmall)
+        command.description?.takeIf { it.isNotBlank() }?.let { ToolNote(it) }
+        command.args.forEach { arg ->
+            OutlinedTextField(
+                value = values[arg].orEmpty(),
+                onValueChange = { values[arg] = it },
+                label = { Text(arg) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Button(
+                onClick = {
+                    Reactotron.run(command, values.toMap())
+                    ran = true
+                }
+            ) {
+                Text("Run")
+            }
+            if (ran) Text("  Sent to the app", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+/** Asks the apps for their state, at a path or whole; the answer comes into the timeline. */
+@Composable
+private fun StateSection() {
+    var path by rememberSaveable { mutableStateOf("") }
+    ToolSection("State") {
+        OutlinedTextField(
+            value = path,
+            onValueChange = { path = it },
+            label = { Text("Path, such as user.profile") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { Reactotron.askState(path, keys = false) }) { Text("Read value") }
+            OutlinedButton(onClick = { Reactotron.askState(path, keys = true) }) {
+                Text("List keys")
+            }
+        }
+        ToolNote(
+            "Empty reads the whole store. The answer comes into the timeline as VALUE or KEYS; " +
+                "the app needs reactotron-redux or reactotron-mst to have a store to give."
         )
     }
 }
@@ -283,6 +363,8 @@ private fun EntryDetail(entry: ReactotronTimeline.Entry, tool: ToolContext) {
         }
         when (event) {
             is ReactotronEvent.ApiResponse -> ApiDetail(event)
+            is ReactotronEvent.StateAnswer ->
+                Payload(if (event.keys) "Keys" else "Value", event.value ?: JsonNull)
             is ReactotronEvent.Log -> LogDetail(event, entry)
             else -> Payload("Payload", entry.command.payload)
         }

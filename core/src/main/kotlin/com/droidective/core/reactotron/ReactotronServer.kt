@@ -20,6 +20,8 @@ import java.security.MessageDigest
 import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 import kotlinx.serialization.json.JsonArray
@@ -63,6 +65,14 @@ class ReactotronServer(
     private val connections = ConcurrentHashMap<Int, Connection>()
     private val ids = AtomicInteger()
 
+    /**
+     * Where [send] writes from: a screen calls it from its main thread, which Android won't let
+     * touch a socket, and a slow app would hold it up besides.
+     */
+    private val outbox = Executors.newSingleThreadExecutor { task ->
+        Thread(task, "droidective-reactotron-send").apply { isDaemon = true }
+    }
+
     @Volatile private var running = false
 
     /** Starts listening, returning the port; a port already taken throws a `BindException`. */
@@ -84,15 +94,25 @@ class ReactotronServer(
 
     fun stop() {
         running = false
+        outbox.shutdownNow()
         listener?.closeQuietly()
         listener = null
         connections.values.forEach { it.close() }
         connections.clear()
     }
 
-    /** Sends one command, `{type, payload}`, to [connection]; nothing when it has gone. */
+    /**
+     * Sends one command, `{type, payload}`, to [connection]; nothing when it has gone. Safe from
+     * any thread: it returns at once and the write happens on the server's own.
+     */
     fun send(connection: Int, type: String, payload: JsonElement) {
-        connections[connection]?.send(command(type, payload))
+        val target = connections[connection] ?: return
+        val bytes = command(type, payload)
+        try {
+            outbox.execute { target.send(bytes) }
+        } catch (_: RejectedExecutionException) {
+            // Stopped since: there is nobody to send it to.
+        }
     }
 
     private fun accept(server: ServerSocket) {

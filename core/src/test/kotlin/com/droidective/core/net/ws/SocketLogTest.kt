@@ -49,10 +49,21 @@ class SocketLogTest {
     }
 
     @Test
+    fun aSocketNotReadOneWaySaysWhichAndWhy() {
+        val log = SocketLog()
+        log.unread(1, fromApp = false, why = "it uses x-webkit-deflate-frame")
+
+        assertEquals(mapOf(false to "it uses x-webkit-deflate-frame"), log.unreadOf(1))
+        assertEquals(emptyMap(), log.unreadOf(2))
+    }
+
+    @Test
     fun clearingForgetsEverything() {
         val log = SocketLog()
         log.put(1, said("a"))
+        log.unread(1, fromApp = true, why = "nonsense")
         log.clear()
+        assertEquals(emptyMap(), log.unreadOf(1))
 
         assertEquals(0, log.count(1))
         assertEquals(0, log.heldBytes())

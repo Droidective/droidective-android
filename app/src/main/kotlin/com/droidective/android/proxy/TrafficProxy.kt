@@ -469,6 +469,11 @@ object TrafficProxy {
             revision.update { it + 1 }
         }
 
+        override fun unread(flowId: Long, fromApp: Boolean, why: String) {
+            messages.unread(flowId, fromApp, why)
+            revision.update { it + 1 }
+        }
+
         private fun keep(flow: Flow) {
             flows.put(flow.copy(app = flow.uid?.let { AppNames.of(context, it) }))
             revision.update { it + 1 }

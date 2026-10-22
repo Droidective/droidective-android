@@ -5,8 +5,8 @@ another machine. Current release: **0.12.0**.
 
 ## Shipped since 0.12.0, waiting for a release
 
-Nothing yet. 0.12.0 carried Screenshot with markup (#116, #118) and the notice id fix (#115);
-see `RELEASE_NOTES.md`.
+- A WebSocket that can't be read — an extension Droidective doesn't know, or frames that stop
+  making sense — says so in its Messages, rather than going quiet (#120).
 
 ## Next
 

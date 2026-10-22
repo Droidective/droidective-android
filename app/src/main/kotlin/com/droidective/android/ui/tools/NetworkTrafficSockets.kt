@@ -41,14 +41,24 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun SocketMessages(flowId: Long) {
     var messages by remember(flowId) { mutableStateOf(TrafficProxy.messages.of(flowId)) }
+    var unread by remember(flowId) { mutableStateOf(TrafficProxy.messages.unreadOf(flowId)) }
     LaunchedEffect(flowId) {
         TrafficProxy.changes.collect {
             messages = TrafficProxy.messages.of(flowId)
+            unread = TrafficProxy.messages.unreadOf(flowId)
             delay(PACE_MILLIS)
         }
     }
     ToolSection("Messages") {
+        // Said first: a gap in what's shown, with nothing to say why, reads as a quiet socket.
+        unread[true]?.let {
+            ToolNote("What the app sends isn't read any more: $it. It still goes.")
+        }
+        unread[false]?.let {
+            ToolNote("What the server sends isn't read any more: $it. It still arrives.")
+        }
         if (messages.isEmpty()) {
+            if (unread.isNotEmpty()) return@ToolSection
             ToolNote("Nothing yet. What either side sends shows here as it crosses.")
             return@ToolSection
         }

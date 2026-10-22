@@ -193,6 +193,7 @@ class SocketFramesTest {
     fun anExtensionNobodyKnowsLeavesTheSocketUnread() {
         val negotiated = Negotiated.of(listOf("x-webkit-deflate-frame"))
         assertFalse(negotiated.readable)
+        assertEquals("x-webkit-deflate-frame", negotiated.unknown)
         val (messages, reader) = read(frame(TEXT, "hi".toByteArray()), negotiated = negotiated)
         assertTrue(reader.broken)
         assertEquals(emptyList(), messages)

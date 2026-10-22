@@ -414,9 +414,24 @@ class ProxyServer(
     private fun readers(flowId: Long, response: ResponseHead, record: FlowSink): Pair<Tap?, Tap?> {
         if (!response.headers[UPGRADE].equals(WEBSOCKET, ignoreCase = true)) return null to null
         val negotiated = Negotiated.of(response.headers.values(EXTENSIONS))
+        val why =
+            negotiated.unknown?.let { "it uses $it, which isn't read here" }
+                ?: "what it sent stopped making sense as WebSocket frames"
         fun reader(fromApp: Boolean): Tap {
             val frames = FrameReader(fromApp, negotiated, clock) { record.message(flowId, it) }
-            return { bytes, count -> frames.feed(bytes, 0, count) }
+            var told = false
+            // Once, when it gives up: at once for an extension it can't read, or part-way.
+            val tell = {
+                if (frames.broken && !told) {
+                    told = true
+                    record.unread(flowId, fromApp, why)
+                }
+            }
+            tell()
+            return { bytes, count ->
+                frames.feed(bytes, 0, count)
+                tell()
+            }
         }
         return reader(fromApp = true) to reader(fromApp = false)
     }
@@ -849,6 +864,9 @@ private class Owned(private val sink: FlowSink, private val owner: CompletableFu
     }
 
     override fun message(flowId: Long, message: SocketMessage) = sink.message(flowId, message)
+
+    override fun unread(flowId: Long, fromApp: Boolean, why: String) =
+        sink.unread(flowId, fromApp, why)
 
     private fun stamped(flow: Flow): Flow =
         if (flow.uid != null) flow else flow.copy(uid = owner.getNow(null))

@@ -778,6 +778,39 @@ class ProxyServerTest {
     }
 
     @Test
+    fun aSocketWithAnExtensionNobodyReadsSaysSoFromTheStart() {
+        SocketEcho(extensions = "x-webkit-deflate-frame").use { echo ->
+            val port = proxy()
+            Socket("127.0.0.1", port).use { socket ->
+                upgrade(socket, "http://127.0.0.1:${echo.port}/live", "websocket")
+                val said = listOf(sink.nextUnread(), sink.nextUnread())
+                assertEquals(setOf(true, false), said.map { it.second }.toSet())
+                said.forEach { assertTrue("x-webkit-deflate-frame" in it.third, it.third) }
+            }
+        }
+    }
+
+    @Test
+    fun aSocketThatStopsMakingSenseSaysSoWhenItDoes() {
+        SocketEcho().use { echo ->
+            val port = proxy()
+            Socket("127.0.0.1", port).use { socket ->
+                upgrade(socket, "http://127.0.0.1:${echo.port}/live", "websocket")
+                // An opcode nobody has defined, from the app.
+                socket
+                    .getOutputStream()
+                    .write(byteArrayOf(0x83.toByte(), 0x80.toByte(), 1, 2, 3, 4))
+                socket.getOutputStream().flush()
+                val (_, fromApp, why) = sink.nextUnread()
+                assertTrue(fromApp)
+                assertTrue("stopped making sense" in why, why)
+            }
+            // Only the way that broke: the server's side was never in doubt.
+            assertTrue(sink.unreads.none { !it.second })
+        }
+    }
+
+    @Test
     fun anUpgradeToSomethingElseStaysBytes() {
         SocketEcho().use { echo ->
             val port = proxy()
@@ -1148,7 +1181,10 @@ private class Trickle(private val length: Int, private val first: Int) : AutoClo
  * A server that agrees to any upgrade, then answers the first message with an echo of it, and waits
  * for the app to hang up — or, when it doesn't [hold], hangs up itself.
  */
-private class SocketEcho(private val hold: Boolean = true) : AutoCloseable {
+private class SocketEcho(
+    private val hold: Boolean = true,
+    private val extensions: String? = null,
+) : AutoCloseable {
     // 127.0.0.1 by name: these tests prefer IPv6, and the loopback address is ::1 then.
     private val server = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
     val port: Int = server.localPort
@@ -1163,6 +1199,8 @@ private class SocketEcho(private val hold: Boolean = true) : AutoCloseable {
                         .getOutputStream()
                         .write(
                             ("HTTP/1.1 101 Switching Protocols\r\nUpgrade: $protocol\r\n" +
+                                    (extensions?.let { "Sec-WebSocket-Extensions: $it\r\n" }
+                                        ?: "") +
                                     "Connection: Upgrade\r\n\r\n")
                                 .toByteArray(Charsets.ISO_8859_1)
                         )
@@ -1206,6 +1244,16 @@ private class Collected : FlowSink {
 
     fun nextMessage(): Pair<Long, SocketMessage> =
         messages.poll(10, TimeUnit.SECONDS) ?: error("no message was recorded")
+
+    /** Why a direction of a socket stopped being read: (flow, from the app, why). */
+    val unreads = LinkedBlockingQueue<Triple<Long, Boolean, String>>()
+
+    override fun unread(flowId: Long, fromApp: Boolean, why: String) {
+        unreads += Triple(flowId, fromApp, why)
+    }
+
+    fun nextUnread(): Triple<Long, Boolean, String> =
+        unreads.poll(10, TimeUnit.SECONDS) ?: error("nothing was said about reading")
 
     /** Runs as each record is made, before it is kept: a test's way into the middle of it. */
     @Volatile var whileRecording: (Flow) -> Unit = {}

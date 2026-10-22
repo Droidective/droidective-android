@@ -47,18 +47,20 @@ class SocketMessage(
  * compressed with permessage-deflate (RFC 7692), and whether either side starts each message afresh
  * rather than carrying its window over from the last.
  *
- * @property readable false when an extension this doesn't know is in use, whose frames it can't
- *   tell apart from nonsense.
+ * @property unknown an extension in use that this doesn't know, whose frames it can't tell apart
+ *   from nonsense; null when there is none.
  */
 data class Negotiated(
     val deflate: Boolean,
     val appResets: Boolean,
     val serverResets: Boolean,
-    val readable: Boolean,
+    val unknown: String? = null,
 ) {
+    val readable: Boolean
+        get() = unknown == null
+
     companion object {
-        val PLAIN =
-            Negotiated(deflate = false, appResets = false, serverResets = false, readable = true)
+        val PLAIN = Negotiated(deflate = false, appResets = false, serverResets = false)
 
         /** What the `Sec-WebSocket-Extensions` values a server answered with agree to. */
         fun of(extensions: List<String>): Negotiated {
@@ -75,7 +77,7 @@ data class Negotiated(
                                 appResets = APP_RESETS in parameters,
                                 serverResets = SERVER_RESETS in parameters,
                             )
-                    else -> agreed = agreed.copy(readable = false)
+                    else -> agreed = agreed.copy(unknown = agreed.unknown ?: parameters.first())
                 }
             }
             return agreed

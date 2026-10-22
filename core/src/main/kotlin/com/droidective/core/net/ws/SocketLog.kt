@@ -10,6 +10,7 @@ class SocketLog(
 ) {
     private val bySocket = HashMap<Long, ArrayDeque<SocketMessage>>()
     private val arrivals = ArrayDeque<Long>()
+    private val unread = HashMap<Long, MutableMap<Boolean, String>>()
     private var bytes = 0L
 
     @Synchronized
@@ -27,10 +28,21 @@ class SocketLog(
 
     @Synchronized fun count(flowId: Long): Int = bySocket[flowId]?.size ?: 0
 
+    /** Notes that the socket that is flow [flowId] stopped being read one way, and why. */
+    @Synchronized
+    fun unread(flowId: Long, fromApp: Boolean, why: String) {
+        unread.getOrPut(flowId) { HashMap() }[fromApp] = why
+    }
+
+    /** Why a direction of flow [flowId]'s socket isn't read, by whether it is the app's. */
+    @Synchronized
+    fun unreadOf(flowId: Long): Map<Boolean, String> = unread[flowId]?.toMap().orEmpty()
+
     @Synchronized
     fun clear() {
         bySocket.clear()
         arrivals.clear()
+        unread.clear()
         bytes = 0
     }
 

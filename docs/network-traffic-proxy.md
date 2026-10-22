@@ -112,8 +112,6 @@ Roughly in the order people reach for them after the list itself:
   Android 14 and later the store lives in the Conscrypt APEX, so it means a tmpfs mounted
   over `/apex/com.android.conscrypt/cacerts` in every app's mount namespace (HTTP Toolkit's
   approach), redone after each reboot. `CertificateTrust.System` already reads the result.
-- **A socket that stops making sense.** When a direction's `FrameReader` gives up, its
-  messages just stop; the screen could say so rather than leave a gap.
 - **zstd.** Chrome asks for it, and a body in it is shown and exported as it arrived: it
   needs a decoder the app doesn't carry. brotli is read (`org.brotli:dec`).
 - **HTTP/2.** Only HTTP/1.1 is offered in ALPN, so clients fall back; gRPC can't.

@@ -78,6 +78,9 @@ enum class PlatformApi(val opensScreen: Boolean = false) {
 
     /** Network Traffic's debugging proxy, started and stopped like a switch. */
     TrafficProxy,
+
+    /** The capture controls floating over other apps. */
+    FloatingControls,
 }
 
 /** How a toggle's current state is read. */

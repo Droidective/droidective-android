@@ -862,6 +862,14 @@ object Toggles {
                 states = action("Capture in 3 s"),
                 level = AccessLevel.Shell,
             ),
+            // Display over other apps, which it asks for; each button needs what its toggle needs.
+            api(
+                "floating-controls",
+                "Floating controls",
+                ToggleGroup.Developer,
+                "picture_in_picture",
+                PlatformApi.FloatingControls,
+            ),
             api(
                 "demo-mode",
                 "Demo mode",

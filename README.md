@@ -8,7 +8,7 @@ toggles Android keeps from ordinary apps. The macOS app lives in
 ## What it does
 
 - **Widgets everywhere.** Home-screen bars, buttons and lists, folders, a notification bar, Quick
-  Settings tiles and shortcuts, all built from the same items: 59 toggles (network, sound,
+  Settings tiles and shortcuts, all built from the same items: 60 toggles (network, sound,
   display, device and developer), single actions (a toggle set to one state, an app force-stopped,
   a permission granted), apps, other apps' shortcuts, your own shell commands, deep links,
   automations and tools. Every widget can be styled: grid or list, sizes, chips, labels, states,
@@ -17,6 +17,9 @@ toggles Android keeps from ordinary apps. The macOS app lives in
   to set up: every request the phone's apps make, attributed to its app, decoded and searchable,
   copied as cURL or shared as HAR. Read only the apps you choose and the rest pass through
   untouched; stopping always puts the phone's proxy setting back.
+- **Floating controls.** A bubble over any app for a screenshot, a clean screenshot, a screen
+  recording, a capture of the views, the activity on screen and the debugging proxy, without
+  leaving the app you are working on. It keeps out of what it captures.
 - **Developer tools.** Performance Monitor (CPU, memory, temperature and an app's frames, with
   an overlay that shows them over any app), Logcat, Crash Catcher, Terminal, Settings Editor
   (settings, properties and feature flags, with undo), Sandbox Browser (an app's files,

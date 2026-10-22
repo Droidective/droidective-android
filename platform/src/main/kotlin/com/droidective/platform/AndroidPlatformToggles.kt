@@ -98,7 +98,8 @@ class AndroidPlatformToggles(private val context: Context) : PlatformToggles {
             PlatformApi.ScreenRecording,
             PlatformApi.PerformanceOverlay,
             PlatformApi.CaptureViews,
-            PlatformApi.TrafficProxy -> null
+            PlatformApi.TrafficProxy,
+            PlatformApi.FloatingControls -> null
         }
 
     override suspend fun write(api: PlatformApi, state: String): Outcome =

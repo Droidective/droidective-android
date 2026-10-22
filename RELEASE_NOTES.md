@@ -3,6 +3,25 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.10.0
+
+Network Traffic reads WebSockets, and can send an app's requests to a different server.
+
+- **WebSockets.** A socket an app opens shows up in Network Traffic with everything it says:
+  each message in and out, as it happens, with its time and size, JSON laid out when you open
+  it. Compressed sockets are read too. Search with `is:socket`, and HAR exports carry the
+  messages the way Chrome's DevTools writes and reads them.
+- **Map remote.** Send a URL's requests to another server instead — staging, or a server on your
+  computer (`http://10.0.2.2:<port>` from the emulator, or `http://127.0.0.1:<port>` on a phone
+  after `adb reverse`) — with no new build. The path and query stay as the app asked, a mock
+  still answers first, and Send again goes where the app's request went. Start one from Rules,
+  or with "Send this server's requests elsewhere" on any request.
+- **Fixed:** in Network Traffic, coming back from a request or an editor emptied the search and
+  scrolled the list back to the top.
+- **Fixed:** when an app closed a connection passed through the proxy, or a socket, the server
+  was never told, and the proxy kept the connection open.
+- **Fixed:** a request could now and then be listed without the app that made it.
+
 ## 0.9.0
 
 Network Traffic stops being only a window onto what apps send: send a request again, change it,

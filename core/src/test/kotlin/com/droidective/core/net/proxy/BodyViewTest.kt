@@ -11,6 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -79,7 +80,29 @@ class BodyViewTest {
     fun aCompressionThisCannotReadSaysSoRatherThanShowingRubbish() {
         val shape =
             BodyView.of(
-                headers("Content-Type" to "application/json", "Content-Encoding" to "zstd"),
+                headers("Content-Type" to "application/json", "Content-Encoding" to "dcz"),
+                body("not readable without its dictionary"),
+            )
+        assertContains(assertIs<BodyShape.Binary>(shape).reason, "dcz")
+    }
+
+    @Test
+    fun zstdIsUndoneAsGzipIs() {
+        // What the reference zstd made of "hello, hello, hello!".
+        val zstd = assertNotNull(javaClass.getResource("/zstd/short.zst")).readBytes()
+        val shape =
+            BodyView.of(
+                headers("Content-Type" to "text/plain", "Content-Encoding" to "zstd"),
+                CapturedBody(zstd, zstd.size.toLong(), truncated = false),
+            )
+        assertEquals("hello, hello, hello!", assertIs<BodyShape.Text>(shape).text)
+    }
+
+    @Test
+    fun zstdThatIsNotZstdSaysItCantBeRead() {
+        val shape =
+            BodyView.of(
+                headers("Content-Type" to "text/plain", "Content-Encoding" to "zstd"),
                 body("not really zstd"),
             )
         assertContains(assertIs<BodyShape.Binary>(shape).reason, "zstd")

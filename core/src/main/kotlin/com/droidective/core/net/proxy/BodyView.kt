@@ -5,6 +5,8 @@ import com.droidective.core.net.grpc.ProtoRaw
 import com.droidective.core.net.grpc.ProtoSchema
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
+import com.droidective.core.zstd.Zstd
+import com.droidective.core.zstd.ZstdException
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -169,12 +171,20 @@ object BodyView {
             "x-gzip" -> drain { GZIPInputStream(ByteArrayInputStream(bytes)) }
             "deflate" -> drain { InflaterInputStream(ByteArrayInputStream(bytes), Inflater()) }
             "br" -> drain { BrotliInputStream(ByteArrayInputStream(bytes)) }
-            // zstd needs a decoder this app doesn't carry, so the bytes stay as they are.
+            "zstd" -> zstd(bytes)
             else -> null
         }
 
     /** As much of one body as is decoded, past which the rest is left undone. */
     const val MAX_DECODED = 32 * 1024 * 1024
+
+    private fun zstd(bytes: ByteArray): ByteArray? =
+        try {
+            Zstd.decompress(bytes, MAX_DECODED)
+        } catch (e: ZstdException) {
+            // As a stream that stops part-way: every whole block before the trouble is kept.
+            e.partial.takeIf { it.isNotEmpty() }
+        }
 
     private fun drain(open: () -> InputStream): ByteArray? {
         val out = ByteArrayOutputStream()

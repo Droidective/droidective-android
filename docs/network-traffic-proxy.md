@@ -56,8 +56,13 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/net/proxy/Remaps.kt` | Remaps (Map Remote), and `Server`: where a request is sent, and its `Host` |
 | `core/net/ws/SocketFrames.kt` | WebSocket frames read out of a copy of each direction: messages, permessage-deflate |
 | `core/net/ws/SocketLog.kt` | What the sockets said, by flow, bounded like the flows |
+| `core/net/h2/Http2Frames.kt` | HTTP/2 frames cut out of a copy of one direction, the preface checked |
+| `core/net/h2/Hpack.kt` | HPACK: the static table, each direction's dynamic one, size updates |
+| `core/net/h2/Huffman.kt` | HPACK's Huffman code, built from its 257 lengths since the code is canonical |
+| `core/net/h2/Http2Reader.kt` | Both directions into one `Http2Exchange` a stream, whichever arrives first |
+| `core/net/proxy/Http2Flows.kt` | A stream as a `Flow`: pseudo-headers to method, path and status; trailers kept |
 
-`core/net` carries **272 tests**, nearly all of them this work.
+`core/net` carries **353 tests**, nearly all of them this work.
 
 The Android side is in `app`:
 
@@ -114,9 +119,9 @@ Roughly in the order people reach for them after the list itself:
   approach), redone after each reboot. `CertificateTrust.System` already reads the result.
 - **zstd.** Chrome asks for it, and a body in it is shown and exported as it arrived: it
   needs a decoder the app doesn't carry. brotli is read (`org.brotli:dec`).
-- **Reading HTTP/2.** An app that speaks only HTTP/2 (gRPC) is carried to its server and
-  works, but shows as one row "passed on unread". Its frames could be read the way a
-  WebSocket's are, one flow per stream.
+- **gRPC messages.** A gRPC body is length-prefixed protobuf, shown now as binary. Split
+  into its messages and read field by field (as `protoc --decode_raw` does), a call
+  would read without its `.proto`.
 
 ## What stops this working, and what to tell people
 
@@ -162,7 +167,14 @@ does exactly this.
   second, for the client that speaks nothing else: offered only HTTP/1.1, gRPC fails the
   handshake on the JVM and, on Android, finishes it with no protocol agreed and hangs up,
   with nothing on record either way. Such a connection is relayed to a server asked for
-  HTTP/2 alone; mocks, remaps and breakpoints don't reach it.
+  HTTP/2 alone and **read from the side**, as a WebSocket is: a copy of each direction is
+  cut into frames, each direction's header table is followed block by block, and each
+  stream becomes a flow. Nothing here speaks HTTP/2 to either end, so the two settle flow
+  control and settings between themselves, and mocks, remaps and breakpoints don't reach
+  these flows. If the frames stop making sense, the rest of the connection is carried
+  unread and says so in one row; one missed header block would misread every block after
+  it, so there is no skipping ahead. The answer can be read before its request, since
+  each direction is read on its own thread after its bytes have gone on.
 - **It listens on `127.0.0.1`, by name.** A proxy on every interface is an open proxy for
   everyone else on that Wi-Fi. And not `InetAddress.getLoopbackAddress()`: on Android that
   is `::1`, and a socket there never hears a connection to `127.0.0.1` (#79). `core`'s tests

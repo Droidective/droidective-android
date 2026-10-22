@@ -126,6 +126,9 @@ sealed interface BodyFraming {
 }
 
 internal const val HTTP_1_1 = "HTTP/1.1"
+
+/** What a request or answer read off an HTTP/2 stream says it is, since it has no first line. */
+const val HTTP_2 = "HTTP/2"
 internal const val CRLF = "\r\n"
 
 private const val PARTS = 3

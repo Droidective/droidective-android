@@ -146,7 +146,7 @@ fun FlowDetail(
                 if (response == null) {
                     ToolNote(if (flow.failure != null) "Nothing came back." else "Waiting…")
                 } else {
-                    Message(response.headers, flow.responseBody, "response")
+                    Message(response.headers, flow.responseBody, "response", flow.trailers)
                 }
             }
         }
@@ -245,6 +245,7 @@ private fun connection(flow: Flow): String =
         flow.socket && flow.secure -> "A secure WebSocket, read through the proxy's certificate"
         flow.socket -> "A WebSocket, read as it talks"
         flow.tunnelled -> "Upgraded, then carried as bytes"
+        flow.http2 -> "HTTP/2, read through the proxy's certificate"
         flow.secure -> "HTTPS, read through the proxy's certificate"
         else -> "HTTP"
     }
@@ -264,9 +265,14 @@ private fun FailureSection(failure: String) {
     }
 }
 
-/** A message's headers and its body, decoded. */
+/** A message's headers, its body decoded, and the trailers after it when there were any. */
 @Composable
-internal fun Message(headers: Headers, body: CapturedBody?, what: String) {
+internal fun Message(
+    headers: Headers,
+    body: CapturedBody?,
+    what: String,
+    trailers: Headers = Headers(),
+) {
     val context = LocalContext.current
     ToolSection("Headers") {
         if (headers.all.isEmpty()) ToolNote("None.")
@@ -308,6 +314,9 @@ internal fun Message(headers: Headers, body: CapturedBody?, what: String) {
                 Text("Copy body")
             }
         }
+    }
+    if (trailers.all.isNotEmpty()) {
+        ToolSection("Trailers") { trailers.forEach { NameValue(it.name, it.value) } }
     }
 }
 

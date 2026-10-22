@@ -1,6 +1,8 @@
 package com.droidective.core.net.proxy
 
 import com.droidective.core.net.http.CapturedBody
+import com.droidective.core.net.http.HTTP_2
+import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
 import com.droidective.core.net.http.ResponseHead
 import com.droidective.core.net.ws.SocketMessage
@@ -39,6 +41,8 @@ data class Flow(
     val edited: Boolean = false,
     /** The server a remap sent it to, instead of the one the app asked for. */
     val sentTo: String? = null,
+    /** What the server sent after the body: on HTTP/2, where gRPC says how the call went. */
+    val trailers: Headers = Headers(),
 ) {
     val scheme: String
         get() = if (secure) "https" else "http"
@@ -60,6 +64,10 @@ data class Flow(
 
     val status: Int?
         get() = response?.status
+
+    /** Whether it was one stream of an HTTP/2 connection. */
+    val http2: Boolean
+        get() = request.version == HTTP_2
 
     /** Whether it became a WebSocket, whose messages the socket log holds under its id. */
     val socket: Boolean

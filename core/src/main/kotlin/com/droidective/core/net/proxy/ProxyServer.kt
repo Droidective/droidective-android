@@ -1,5 +1,6 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.h2.Http2Reader
 import com.droidective.core.net.http.BodyFraming
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
@@ -473,26 +474,30 @@ class ProxyServer(
     }
 
     /**
-     * A connection the app would speak only HTTP/2 on, carried to a server that speaks it too. None
-     * of it is read yet, so no rule that rewrites a request reaches it — but the app works, where
-     * without this it could not get a word out while it was being read.
+     * A connection the app would speak only HTTP/2 on, carried to a server that speaks it too and
+     * read from the side as it goes: each stream goes on record as a flow of its own. Nothing here
+     * speaks HTTP/2 to either end, so no rule that rewrites a request reaches these.
      */
     private fun relay(origin: Origin, head: RequestHead, app: SSLSocket, record: FlowSink) {
-        val flow =
-            begin(head, origin, secure = true).copy(tunnelled = true, passing = Passing.Http2)
-        record.started(flow)
+        val connection = begin(head, origin, secure = true)
         var server: SSLSocket? = null
         try {
             val dialled = dialTls(origin, ProxyTls.H2)
             server = dialled
             // The app was promised HTTP/2; a server that would not agree has nothing it can read.
             if (dialled.applicationProtocol != ProxyTls.H2) {
-                record.finished(flow.copy(finishedAt = clock(), failure = NO_HTTP2))
+                record.finished(connection.copy(finishedAt = clock(), failure = NO_HTTP2))
                 return
             }
             // Like a tunnel, an HTTP/2 connection sits idle between calls and is still alive.
             app.soTimeout = 0
             dialled.soTimeout = 0
+            // The rest of a connection whose frames stopped making sense is still carried, and
+            // says so in a row of its own.
+            val unread = connection.copy(tunnelled = true, passing = Passing.Unreadable)
+            val flows =
+                Http2Flows(origin, record, ids::incrementAndGet, clock) { record.started(unread) }
+            val reader = Http2Reader(flows)
             val slow = throttle
             delay(slow)
             bothWays(
@@ -500,11 +505,14 @@ class ProxyServer(
                 Paced.of(app.outputStream, slow.downBytesPerSecond),
                 dialled.inputStream,
                 Paced.of(dialled.outputStream, slow.upBytesPerSecond),
+                up = reader::fromApp,
+                down = reader::fromServer,
             )
-            record.finished(flow.copy(finishedAt = clock()))
+            reader.closed()
+            if (reader.stopped != null) record.finished(unread.copy(finishedAt = clock()))
         } catch (e: IOException) {
             val why = if (e is SSLException) TlsFailure.upstream(e.message) else e.reason()
-            record.finished(flow.copy(finishedAt = clock(), failure = why))
+            record.finished(connection.copy(finishedAt = clock(), failure = why))
         } finally {
             server?.closeQuietly()
         }

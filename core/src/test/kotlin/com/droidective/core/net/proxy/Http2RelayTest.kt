@@ -1,6 +1,19 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.h2.FrameCutter
+import com.droidective.core.net.h2.H2Wire
+import com.droidective.core.net.h2.H2Wire.END_HEADERS
+import com.droidective.core.net.h2.H2Wire.END_STREAM
+import com.droidective.core.net.h2.H2Wire.HEADERS
+import com.droidective.core.net.h2.H2Wire.SETTINGS
+import com.droidective.core.net.h2.H2Wire.data
+import com.droidective.core.net.h2.H2Wire.frame
+import com.droidective.core.net.h2.H2Wire.headers
+import com.droidective.core.net.h2.H2Wire.indexed
+import com.droidective.core.net.h2.H2Wire.opening
+import com.droidective.core.net.h2.Http2Frame
 import com.droidective.core.net.http.BodyFraming
+import com.droidective.core.net.http.Header
 import com.droidective.core.net.http.HttpBody
 import com.droidective.core.net.http.HttpReader
 import com.droidective.core.net.proxy.ProxyTls.H2
@@ -22,8 +35,8 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * An app that will speak only HTTP/2 — gRPC, for one — reaching its server through the proxy, which
- * reads HTTP/1.1. Offered nothing in common, such an app could not get a word out.
+ * An app that will speak only HTTP/2 — gRPC, for one — reaching its server through the proxy:
+ * carried across, and read from the side into a flow a stream.
  */
 class Http2RelayTest {
     private val finished = LinkedBlockingQueue<Flow>()
@@ -37,8 +50,6 @@ class Http2RelayTest {
     private fun proxy(): Int {
         val sink =
             object : FlowSink {
-                override fun started(flow: Flow) = Unit
-
                 override fun finished(flow: Flow) {
                     finished += flow
                 }
@@ -51,21 +62,75 @@ class Http2RelayTest {
     private fun next(): Flow = finished.poll(10, TimeUnit.SECONDS) ?: error("nothing was recorded")
 
     @Test
-    fun anAppThatSpeaksOnlyHttp2IsCarriedToTheServer() {
-        EchoServer(H2).use { origin ->
+    fun anAppThatSpeaksOnlyHttp2IsReadStreamByStream() {
+        H2Origin(H2).use { origin ->
             val port = proxy()
             through(port, origin.port, H2).use { app ->
                 assertEquals(H2, app.applicationProtocol)
-                app.outputStream.write(PREFACE)
+                app.outputStream.write(
+                    opening() +
+                        headers(1, GET, ":path" to "/thing", AUTHORITY, "accept" to "*/*") +
+                        headers(3, POST, ":path" to "/form", AUTHORITY, end = false) +
+                        data(3, "a=1")
+                )
                 app.outputStream.flush()
-                assertContentEquals(PREFACE, app.inputStream.readNBytes(PREFACE.size))
+                // Both answers got back to the app: it was carried, whatever was read of it.
+                assertEquals(setOf(1, 3), answersTo(app, 2))
             }
-            assertEquals(H2, origin.spoken.poll(10, TimeUnit.SECONDS))
-            val flow = next()
-            assertEquals(Passing.Http2, flow.passing)
-            assertTrue(flow.tunnelled)
-            assertNull(flow.failure)
-            assertEquals("passed on unread: it speaks only HTTP/2", FlowLabels.passed(flow))
+            val flows = listOf(next(), next()).associateBy { it.request.path }
+            val get = assertNotNull(flows["/thing"])
+            assertTrue(get.http2)
+            assertEquals("GET", get.request.method)
+            assertEquals("https://localhost:${origin.port}/thing", get.url)
+            assertEquals(listOf(Header("accept", "*/*")), get.request.headers.all)
+            assertEquals(200, get.status)
+            assertEquals("text/plain", get.response?.headers?.contentType)
+            assertEquals("hello", String(assertNotNull(get.responseBody).bytes))
+            assertNull(get.failure)
+            val post = assertNotNull(flows["/form"])
+            assertContentEquals("a=1".toByteArray(), post.requestBody.bytes)
+        }
+    }
+
+    @Test
+    fun whatComesAfterTheBodyIsKept() {
+        H2Origin(H2).use { origin ->
+            origin.answer = { stream ->
+                headers(stream, OK, "content-type" to "application/grpc", end = false) +
+                    data(stream, "\u0000\u0000\u0000\u0000\u0000", end = false) +
+                    headers(stream, "grpc-status" to "0")
+            }
+            val port = proxy()
+            through(port, origin.port, H2).use { app ->
+                app.outputStream.write(
+                    opening() + headers(1, POST, ":path" to "/Svc/Call", AUTHORITY)
+                )
+                app.outputStream.flush()
+                answersTo(app, 1)
+            }
+            assertEquals("0", next().trailers["grpc-status"])
+        }
+    }
+
+    @Test
+    fun nonsenseIsCarriedOnUnread() {
+        H2Origin(H2).use { origin ->
+            val port = proxy()
+            through(port, origin.port, H2).use { app ->
+                // Field 0 is no field: the reading stops, and the server, which reads frames and
+                // not fields, answers anyway.
+                val nonsense = frame(HEADERS, END_HEADERS or END_STREAM, 1, indexed(0))
+                app.outputStream.write(opening() + nonsense)
+                app.outputStream.flush()
+                assertEquals(setOf(1), answersTo(app, 1))
+            }
+            val row = next()
+            assertEquals(Passing.Unreadable, row.passing)
+            assertTrue(row.opening)
+            assertEquals(
+                "the rest passed on unread: it stopped making sense as HTTP/2",
+                FlowLabels.passed(row),
+            )
         }
     }
 
@@ -86,29 +151,27 @@ class Http2RelayTest {
             val flow = next()
             assertNull(flow.passing)
             assertEquals(200, flow.status)
-            assertEquals("/thing", flow.request.path)
+            assertEquals("HTTP/1.1", flow.request.version)
         }
     }
 
     @Test
     fun aServerThatWontSpeakHttp2IsNamedAsTheReason() {
         // It ignores ALPN altogether, so the handshake succeeds and agrees on nothing.
-        EchoServer().use { origin ->
+        H2Origin().use { origin ->
             val port = proxy()
             through(port, origin.port, H2).use { app ->
                 assertEquals(H2, app.applicationProtocol)
                 // Hung up on: there is nobody at the other end it can talk to.
                 assertEquals(-1, app.inputStream.read())
             }
-            val flow = next()
-            assertEquals(Passing.Http2, flow.passing)
-            assertEquals("the app speaks only HTTP/2, and the server would not", flow.failure)
+            assertEquals("the app speaks only HTTP/2, and the server would not", next().failure)
         }
     }
 
     @Test
     fun aServerThatRefusesHttp2SaysSoInWords() {
-        EchoServer(HTTP_1_1).use { origin ->
+        H2Origin(HTTP_1_1).use { origin ->
             val port = proxy()
             through(port, origin.port, H2).use { app -> assertEquals(-1, app.inputStream.read()) }
             val failure = assertNotNull(next().failure)
@@ -132,30 +195,51 @@ class Http2RelayTest {
         return tls
     }
 
+    /** The streams [count] answers came back on, read off [app] as frames. */
+    private fun answersTo(app: SSLSocket, count: Int): Set<Int> {
+        val ended = LinkedHashSet<Int>()
+        val frames = FrameCutter(preface = false) { if (it.ends()) ended += it.stream }
+        val buffer = ByteArray(4096)
+        while (ended.size < count) {
+            val read = app.inputStream.read(buffer)
+            if (read == -1) break
+            frames.feed(buffer, 0, read)
+        }
+        return ended
+    }
+
     private companion object {
-        /** What every HTTP/2 connection opens with, from RFC 9113. */
-        val PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n".wire()
+        val GET = ":method" to "GET"
+        val POST = ":method" to "POST"
+        val AUTHORITY = ":authority" to "localhost"
+        val OK = ":status" to "200"
 
         fun String.wire() = toByteArray(Charsets.ISO_8859_1)
     }
 }
 
+private fun Http2Frame.ends(): Boolean = (type == H2Wire.DATA || type == HEADERS) && has(END_STREAM)
+
 /**
- * A TLS server of the test's own that sends back whatever it is sent, speaking [alpn] — or, given
- * none, paying ALPN no attention at all.
+ * A TLS server of the test's own speaking [alpn] — or, given none, paying ALPN no attention. When
+ * it speaks HTTP/2 it reads frames, not fields, and answers each stream the app ends with [answer]:
+ * so it answers even what the proxy can't make sense of.
  */
-private class EchoServer(private vararg val alpn: String) : AutoCloseable {
+private class H2Origin(private vararg val alpn: String) : AutoCloseable {
     private val server =
         TestAuthority.serverContext().serverSocketFactory.createServerSocket(0) as SSLServerSocket
 
     val port: Int
         get() = server.localPort
 
-    /** The protocol each connection settled on, "" for none. */
-    val spoken = LinkedBlockingQueue<String>()
+    @Volatile
+    var answer: (Int) -> ByteArray = { stream ->
+        headers(stream, ":status" to "200", "content-type" to "text/plain", end = false) +
+            data(stream, "hello")
+    }
 
     init {
-        thread(isDaemon = true, name = "echo-origin") {
+        thread(isDaemon = true, name = "h2-origin") {
             while (true) {
                 val socket =
                     try {
@@ -163,25 +247,33 @@ private class EchoServer(private vararg val alpn: String) : AutoCloseable {
                     } catch (_: IOException) {
                         return@thread
                     }
-                thread(isDaemon = true) { echo(socket) }
+                thread(isDaemon = true) { serve(socket) }
             }
         }
     }
 
-    private fun echo(socket: SSLSocket) {
+    private fun serve(socket: SSLSocket) {
         try {
             socket.use {
                 if (alpn.isNotEmpty()) {
                     it.sslParameters = it.sslParameters.apply { applicationProtocols = alpn }
                 }
                 it.startHandshake()
-                spoken += it.applicationProtocol.orEmpty()
-                val buffer = ByteArray(1024)
+                val out = it.outputStream
+                out.write(frame(SETTINGS, 0, 0))
+                out.flush()
+                val frames =
+                    FrameCutter(preface = true) { frame ->
+                        if (frame.ends()) {
+                            out.write(answer(frame.stream))
+                            out.flush()
+                        }
+                    }
+                val buffer = ByteArray(4096)
                 while (true) {
                     val read = it.inputStream.read(buffer)
                     if (read == -1) break
-                    it.outputStream.write(buffer, 0, read)
-                    it.outputStream.flush()
+                    frames.feed(buffer, 0, read)
                 }
             }
         } catch (_: IOException) {

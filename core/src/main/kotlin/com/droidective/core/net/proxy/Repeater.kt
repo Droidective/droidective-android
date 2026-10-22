@@ -2,6 +2,7 @@ package com.droidective.core.net.proxy
 
 import com.droidective.core.net.http.BodyFraming
 import com.droidective.core.net.http.CapturedBody
+import com.droidective.core.net.http.HTTP_1_1
 import com.droidective.core.net.http.Header
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.HttpBody
@@ -98,7 +99,7 @@ class Repeater(
          *
          * The head is the one the server saw — a path, not the whole URL a proxy is handed — with
          * the hop's own headers left out and the length stated, since the body goes in one piece
-         * however it was framed the first time.
+         * however it was framed the first time. It goes as HTTP/1.1 even when the app spoke HTTP/2.
          */
         fun prepare(flow: Flow): Repeat {
             if (flow.opening) return Repeat.Refused(NEVER_READ)
@@ -106,10 +107,12 @@ class Repeater(
             if (flow.requestBody.truncated) return Repeat.Refused(CLIPPED)
             val body = flow.requestBody.bytes
             val head =
-                flow.request.with(
-                    target = flow.request.path,
-                    headers = sendable(flow.request.headers, flow.authority, body.size),
-                )
+                flow.request
+                    .with(
+                        target = flow.request.path,
+                        headers = sendable(flow.request.headers, flow.authority, body.size),
+                    )
+                    .copy(version = HTTP_1_1)
             return Repeat.Ready(Outgoing(flow.secure, Origin(flow.host, flow.port), head, body))
         }
 

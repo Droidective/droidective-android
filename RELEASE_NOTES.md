@@ -3,6 +3,24 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.8.0
+
+Droidective from wherever you are: over the app you're working on, from the app's icon, and from
+Files and the share sheet.
+
+- **Floating controls.** A bubble over any app that opens to Screenshot, Clean screenshot, Record
+  screen, Capture views, the activity on screen (copied) and the debugging proxy, so you capture
+  the app you're working on without leaving it. The controls keep out of what they capture —
+  hidden for a screenshot, and for the whole of a recording — and stay where you drag them. Turn
+  them on from the Toggles tab, their own Quick Settings tile, a widget or an automation.
+- **Pinned and recent tools.** The Tools list leads with the tools you pinned and the ones you
+  opened last. Long-press any tool to pin it or to add it to the home screen.
+- **Shortcuts on the app's icon.** Long-pressing Droidective's icon offers your pinned tools, then
+  your recent ones.
+- **Open with, and Share.** An APK, XAPK or APKM tapped in Files, or shared from another app,
+  opens in Install App, which reads it and waits for you to press Install. Text with a link in it,
+  shared from any app, opens Deep Links with the link ready to try.
+
 ## 0.7.0
 
 A debugging proxy that runs on the phone itself, a tool for notifications that don't show,

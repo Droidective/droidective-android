@@ -19,6 +19,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLException
 import javax.net.ssl.SSLSocket
@@ -129,6 +130,22 @@ class ProxyServerTest {
             assertEquals(first.id, owned.id)
             assertEquals(10144, owned.uid)
             assertEquals(200, owned.status)
+        }
+    }
+
+    @Test
+    fun aSecondRunGoesOnFromTheIdsOfTheFirst() {
+        // Stopped and started again with the same store: the second run's first flow was id 1
+        // again, and replaced the first run's.
+        val ids = AtomicLong()
+        FakeServer().use { origin ->
+            val first = ProxyServer(certificates, sink, trustingUpstream, ids = ids)
+            get("http://127.0.0.1:${origin.port}/one", first.start())
+            first.stop()
+            val second = ProxyServer(certificates, sink, trustingUpstream, ids = ids)
+            server = second
+            get("http://127.0.0.1:${origin.port}/two", second.start())
+            assertEquals(listOf(1L, 2L), sink.all(2).map { it.id })
         }
     }
 

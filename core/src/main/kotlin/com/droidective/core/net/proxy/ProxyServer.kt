@@ -51,12 +51,16 @@ class ProxyServer(
     private val owners: FlowOwners = FlowOwners.UNKNOWN,
     /** What apps have refused the certificate for, kept by whoever outlives one run of this. */
     private val refusals: Refusals = Refusals(),
+    /**
+     * Where flow ids come from. A store that outlives one run of this needs one counter across
+     * them: its flows are keyed by id, and a second run counting from 1 again replaced the first's.
+     */
+    private val ids: AtomicLong = AtomicLong(),
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     /** Which hosts are opened; may be changed while the proxy is running. */
     @Volatile var rules: ProxyRules = ProxyRules()
 
-    private val ids = AtomicLong()
     private val contexts = ConcurrentHashMap<String, SSLContext>()
     private val open = ConcurrentHashMap.newKeySet<Socket>()
     private var listener: ServerSocket? = null

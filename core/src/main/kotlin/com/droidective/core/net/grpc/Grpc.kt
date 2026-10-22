@@ -121,7 +121,7 @@ object Grpc {
      * is what they nearly always carry: `grpc-status-details-bin` is a `google.rpc.Status`. Null
      * for any other header, or a value that isn't base64 of a message.
      */
-    fun binaryHeader(name: String, value: String): String? {
+    fun binaryHeader(name: String, value: String, schema: ProtoSchema? = null): String? {
         if (!name.endsWith(BINARY, ignoreCase = true)) return null
         val bytes =
             try {
@@ -129,6 +129,15 @@ object Grpc {
             } catch (_: IllegalArgumentException) {
                 return null
             }
+        // The one binary header whose type gRPC fixes, read with field names when it can be.
+        if (name.equals(STATUS_DETAILS, ignoreCase = true)) {
+            schema
+                ?.render(bytes, RPC_STATUS)
+                ?.takeIf { it.isNotEmpty() }
+                ?.let {
+                    return it
+                }
+        }
         return ProtoRaw.parse(bytes)?.takeIf { it.isNotEmpty() }?.let(ProtoRaw::render)
     }
 
@@ -209,6 +218,8 @@ object Grpc {
 
     private const val GRPC = "application/grpc"
     private const val BINARY = "-bin"
+    private const val STATUS_DETAILS = "grpc-status-details-bin"
+    private const val RPC_STATUS = "google.rpc.Status"
     private const val PREFIX = 5
     private const val LENGTH_BYTES = 4
     private const val COMPRESSED = 0x01

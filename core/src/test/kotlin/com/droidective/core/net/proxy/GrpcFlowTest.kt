@@ -1,13 +1,17 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.grpc.Grpc
+import com.droidective.core.net.grpc.ProtoSchema
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.HTTP_2
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
 import com.droidective.core.net.http.ResponseHead
+import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -61,6 +65,53 @@ class GrpcFlowTest {
     }
 
     @Test
+    fun withTheAppsSchemaABodyIsReadAsItsType() {
+        val schema = assertNotNull(ProtoSchema.parse(resource("check.protoset")))
+        val typed = assertNotNull(schema.typed("/droidective.check.Check/Echo", answer = true))
+        // Inner { id: 9, label: "in" }
+        val bytes = framed(hex("08091202696e"))
+        val shape =
+            BodyView.of(
+                Headers().add(CONTENT_TYPE, GRPC),
+                CapturedBody(bytes, bytes.size.toLong(), false),
+                typed,
+            )
+        val message = assertIs<BodyShape.Grpc>(shape).messages.single()
+        assertEquals("id: 9\nlabel: \"in\"\n", message.fields)
+        assertEquals("droidective.check.Inner", message.type)
+        // The request is the other type, and a method the schema hasn't is no type at all.
+        assertEquals("droidective.check.Everything", schema.typed(ECHO, answer = false)?.type)
+        assertNull(schema.typed("/droidective.check.Check/Gone", answer = false))
+    }
+
+    @Test
+    fun aBodyTheSchemaCanNotReadFallsBackToReadingWithoutIt() {
+        val schema = assertNotNull(ProtoSchema.parse(resource("check.protoset")))
+        val bytes = framed(hex("089601"))
+        val shape =
+            BodyView.of(
+                Headers().add(CONTENT_TYPE, GRPC),
+                CapturedBody(bytes, bytes.size.toLong(), false),
+                ProtoSchema.Typed(schema, "droidective.check.NotThere"),
+            )
+        val message = assertIs<BodyShape.Grpc>(shape).messages.single()
+        assertEquals("1: 150\n", message.fields)
+        assertNull(message.type)
+    }
+
+    @Test
+    fun theStatusDetailsReadWithTheSchemaWhenItHasThem() {
+        val schema = assertNotNull(ProtoSchema.parse(resource("status.protoset")))
+        // Status { code: 7, message: "no" }, base64'd as gRPC sends it.
+        val value = Base64.getEncoder().encodeToString(hex("080712026e6f"))
+        assertEquals(
+            "code: 7\nmessage: \"no\"\n",
+            Grpc.binaryHeader("grpc-status-details-bin", value, schema),
+        )
+        assertEquals("1: 7\n2: \"no\"\n", Grpc.binaryHeader("grpc-status-details-bin", value))
+    }
+
+    @Test
     fun aMessageThatIsNotProtobufIsShownAsTextOrSaidToBeNeither() {
         val text = "{\"json\":true}".toByteArray()
         val binary = byteArrayOf(0xff.toByte(), 0xfe.toByte())
@@ -111,6 +162,9 @@ class GrpcFlowTest {
         )
     }
 
+    private fun resource(name: String): ByteArray =
+        assertNotNull(javaClass.getResource("/grpc/$name"), name).readBytes()
+
     private fun framed(bytes: ByteArray): ByteArray {
         val length = bytes.size
         return byteArrayOf(0, 0, 0, (length ushr 8).toByte(), length.toByte()) + bytes
@@ -123,5 +177,6 @@ class GrpcFlowTest {
         const val CONTENT_TYPE = "content-type"
         const val GRPC = "application/grpc"
         const val JSON = "application/json"
+        const val ECHO = "/droidective.check.Check/Echo"
     }
 }

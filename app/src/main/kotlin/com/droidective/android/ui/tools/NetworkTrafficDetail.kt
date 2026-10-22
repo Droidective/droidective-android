@@ -34,9 +34,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.droidective.android.proxy.ProtoFolder
 import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.ui.copy
 import com.droidective.core.net.grpc.Grpc
+import com.droidective.core.net.grpc.ProtoSchema
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Header
 import com.droidective.core.net.http.Headers
@@ -90,6 +92,13 @@ fun FlowDetail(
         return
     }
     val labels = remember { AppLabels(context) }
+    // A gRPC call's bodies read with the app's own schema, when the protos folder has it.
+    val schemas by
+        produceState(Schemas.NONE, flow.id) {
+            if (FlowLabels.grpcMethod(flow) != null) {
+                value = withContext(Dispatchers.IO) { Schemas.of(ProtoFolder(context)) }
+            }
+        }
     // A socket opens on what it said: its request and its 101 are the least of it.
     var side by rememberSaveable {
         mutableIntStateOf(
@@ -143,13 +152,24 @@ fun FlowDetail(
             if (side == MESSAGES && flow.socket) {
                 SocketMessages(flow.id)
             } else if (side == 0) {
-                Message(flow.request.headers, flow.requestBody, "request")
+                Message(
+                    flow.request.headers,
+                    flow.requestBody,
+                    "request",
+                    reading = schemas.reading(flow, answer = false),
+                )
             } else {
                 val response = flow.response
                 if (response == null) {
                     ToolNote(if (flow.failure != null) "Nothing came back." else "Waiting…")
                 } else {
-                    Message(response.headers, flow.responseBody, "response", flow.trailers)
+                    Message(
+                        response.headers,
+                        flow.responseBody,
+                        "response",
+                        flow.trailers,
+                        schemas.reading(flow, answer = true),
+                    )
                 }
             }
         }
@@ -269,6 +289,33 @@ private fun FailureSection(failure: String) {
     }
 }
 
+/**
+ * The schemas folder as one flow's detail reads it: the schema, and where to put one when it hasn't
+ * the call's types.
+ */
+private class Schemas(val schema: ProtoSchema?, val folder: String?) {
+    /**
+     * How [flow]'s request, or its answer, is read: with its type, or with a word on finding it.
+     */
+    fun reading(flow: Flow, answer: Boolean): Reading? {
+        if (FlowLabels.grpcMethod(flow) == null) return null
+        return Reading(schema, schema?.typed(flow.request.path, answer), folder)
+    }
+
+    companion object {
+        val NONE = Schemas(null, null)
+
+        fun of(folder: ProtoFolder) = Schemas(folder.schema(), folder.folder()?.path)
+    }
+}
+
+/** A gRPC body's reading: the schema, the message type it is in it, the folder for one. */
+internal class Reading(
+    val schema: ProtoSchema?,
+    val typed: ProtoSchema.Typed?,
+    val folder: String?,
+)
+
 /** A message's headers, its body decoded, and the trailers after it when there were any. */
 @Composable
 internal fun Message(
@@ -276,15 +323,16 @@ internal fun Message(
     body: CapturedBody?,
     what: String,
     trailers: Headers = Headers(),
+    reading: Reading? = null,
 ) {
     val context = LocalContext.current
     ToolSection("Headers") {
         if (headers.all.isEmpty()) ToolNote("None.")
-        headers.forEach { header -> HeaderValue(header) }
+        headers.forEach { header -> HeaderValue(header, reading?.schema) }
     }
     val shape by
-        produceState<BodyShape?>(null, headers, body) {
-            value = withContext(Dispatchers.Default) { BodyView.of(headers, body) }
+        produceState<BodyShape?>(null, headers, body, reading?.typed) {
+            value = withContext(Dispatchers.Default) { BodyView.of(headers, body, reading?.typed) }
         }
     ToolSection("Body") {
         when (val shown = shape) {
@@ -294,7 +342,7 @@ internal fun Message(
             is BodyShape.Text -> TextBody(shown.text, what)
             is BodyShape.Form -> shown.fields.forEach { (name, value) -> NameValue(name, value) }
             is BodyShape.Image -> ImageBody(shown)
-            is BodyShape.Grpc -> GrpcBody(shown, what)
+            is BodyShape.Grpc -> GrpcBody(shown, what, reading)
             is BodyShape.Binary ->
                 ToolNote("${FlowLabels.size(shown.bytes.size.toLong())}, ${shown.reason}.")
         }
@@ -322,7 +370,7 @@ internal fun Message(
         }
     }
     if (trailers.all.isNotEmpty()) {
-        ToolSection("Trailers") { trailers.forEach { HeaderValue(it) } }
+        ToolSection("Trailers") { trailers.forEach { HeaderValue(it, reading?.schema) } }
     }
 }
 
@@ -331,12 +379,13 @@ internal fun Message(
  * thousands, so only the first few are laid out; copying the body takes them all.
  */
 @Composable
-private fun GrpcBody(body: BodyShape.Grpc, what: String) {
+private fun GrpcBody(body: BodyShape.Grpc, what: String, reading: Reading?) {
     if (body.messages.isEmpty()) ToolNote("No messages.")
     body.messages.take(MAX_SHOWN_MESSAGES).forEachIndexed { index, message ->
         val compressed = if (message.compressed) ", compressed" else ""
+        val type = message.type?.let { " · $it" }.orEmpty()
         Text(
-            "Message ${index + 1} · ${FlowLabels.size(message.wireLength.toLong())}$compressed",
+            "Message ${index + 1} · ${FlowLabels.size(message.wireLength.toLong())}$compressed$type",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -351,6 +400,13 @@ private fun GrpcBody(body: BodyShape.Grpc, what: String) {
     }
     val rest = body.messages.size - MAX_SHOWN_MESSAGES
     if (rest > 0) ToolNote("And $rest more. Copy the body for all of them.")
+    if (reading != null && reading.typed == null && body.messages.isNotEmpty()) {
+        ToolNote(
+            "Fields have names when the app's schema is on the phone: compile its .proto files " +
+                "with protoc --include_imports --descriptor_set_out=app.protoset, then adb push " +
+                "app.protoset to ${reading.folder ?: "the protos folder"}."
+        )
+    }
 }
 
 /** Long bodies are cut on screen, not in what is copied: laying out megabytes stalls a phone. */
@@ -373,8 +429,8 @@ private fun TextBody(text: String, what: String) {
 
 /** A header, a binary one read as the protobuf it carries rather than shown as base64. */
 @Composable
-private fun HeaderValue(header: Header) {
-    val read = remember(header) { Grpc.binaryHeader(header.name, header.value) }
+private fun HeaderValue(header: Header, schema: ProtoSchema?) {
+    val read = remember(header, schema) { Grpc.binaryHeader(header.name, header.value, schema) }
     NameValue(header.name, read?.trimEnd() ?: header.value)
 }
 

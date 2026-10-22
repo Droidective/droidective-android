@@ -55,6 +55,7 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/net/proxy/Breakpoints.kt` | Breakpoints, what is held, the verdicts, and the `Breaker` that decides |
 | `core/net/proxy/Remaps.kt` | Remaps (Map Remote), and `Server`: where a request is sent, and its `Host` |
 | `core/net/ws/SocketFrames.kt` | WebSocket frames read out of a copy of each direction: messages, permessage-deflate |
+| `core/net/ws/SocketLog.kt` | What the sockets said, by flow, bounded like the flows |
 
 `core/net` carries **272 tests**, nearly all of them this work.
 
@@ -195,6 +196,11 @@ does exactly this.
   with `sentTo` saying where it went; only what goes on the wire has the new server's `Host`.
   A mock answers before a remap sends anywhere, and Send again follows remaps, so a repeat
   goes where the app's request went.
+- **A socket is read from a copy.** The bytes of an upgraded connection cross as they always
+  did; a `FrameReader` per direction reads what crossed, after it has gone on, and one that
+  can't make sense of it stops reading rather than touch the connection.
+- **A hang-up at either end is a hang-up at the other.** A tunnel or a socket has no timeout,
+  so a server never told the app had gone held a thread and two connections for ever.
 - **The proxy never dials itself.** An app asking for `127.0.0.1:8888`, or a remap there,
   would have it ask itself again for ever; it fails as a 502 instead.
 

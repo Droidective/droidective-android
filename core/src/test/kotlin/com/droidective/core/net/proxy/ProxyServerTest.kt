@@ -3,11 +3,16 @@ package com.droidective.core.net.proxy
 import com.droidective.core.net.http.BodyFraming
 import com.droidective.core.net.http.HttpBody
 import com.droidective.core.net.http.HttpReader
+import com.droidective.core.net.http.ResponseHead
 import com.droidective.core.net.tls.ProxyCertificates
+import com.droidective.core.net.ws.FrameReader
+import com.droidective.core.net.ws.Negotiated
+import com.droidective.core.net.ws.SocketMessage
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.ServerSocket
@@ -690,6 +695,65 @@ class ProxyServerTest {
     }
 
     @Test
+    fun whatAWebSocketSaysIsRecordedBothWays() {
+        SocketEcho().use { echo ->
+            val port = proxy()
+            Socket("127.0.0.1", port).use { socket ->
+                val head = upgrade(socket, "http://127.0.0.1:${echo.port}/live", "websocket")
+                assertEquals(101, head.status)
+                socket.getOutputStream().write(textFrame("hello", masked = true))
+                socket.getOutputStream().flush()
+                assertEquals("echo: hello", readText(socket))
+            }
+
+            val (sentId, sent) = sink.nextMessage()
+            val (answeredId, answered) = sink.nextMessage()
+            assertTrue(sent.fromApp)
+            assertEquals("hello", sent.text)
+            assertFalse(answered.fromApp)
+            assertEquals("echo: hello", answered.text)
+            val flow = sink.next()
+            assertEquals(flow.id, sentId)
+            assertEquals(flow.id, answeredId)
+            assertEquals(101, flow.status)
+            // On record as a live socket while it was open, not as a request still waiting.
+            assertEquals(101, sink.begun.last { it.id == flow.id }.status)
+        }
+    }
+
+    @Test
+    fun aServerHangingUpHangsUpOnTheApp() {
+        SocketEcho(hold = false).use { echo ->
+            val port = proxy()
+            Socket("127.0.0.1", port).use { socket ->
+                socket.soTimeout = 5_000
+                upgrade(socket, "http://127.0.0.1:${echo.port}/live", "websocket")
+                socket.getOutputStream().write(textFrame("bye", masked = true))
+                socket.getOutputStream().flush()
+                assertEquals("echo: bye", readText(socket))
+                // The end of the stream, not a read left waiting on a server that has gone.
+                assertEquals(-1, socket.getInputStream().read())
+            }
+            assertNotNull(sink.next().finishedAt)
+        }
+    }
+
+    @Test
+    fun anUpgradeToSomethingElseStaysBytes() {
+        SocketEcho().use { echo ->
+            val port = proxy()
+            Socket("127.0.0.1", port).use { socket ->
+                upgrade(socket, "http://127.0.0.1:${echo.port}/other", "something-else")
+                socket.getOutputStream().write(textFrame("hello", masked = true))
+                socket.getOutputStream().flush()
+                readText(socket)
+            }
+            assertEquals(101, sink.next().status)
+            assertTrue(sink.messages.isEmpty())
+        }
+    }
+
+    @Test
     fun aRequestNoBreakpointMatchesIsNotHeld() {
         FakeServer().use { origin ->
             val breaker = Scripted()
@@ -878,14 +942,137 @@ class ProxyServerTest {
 }
 
 /** What the proxy recorded, waited on rather than slept for. */
+/** RFC 6455's own example key: "the sample nonce", in base64. */
+private val SAMPLE_KEY =
+    java.util.Base64.getEncoder().encodeToString("the sample nonce".toByteArray())
+
+/** Asks [url] through the proxy on [socket] to become [protocol], and reads the answer's head. */
+private fun upgrade(socket: Socket, url: String, protocol: String): ResponseHead {
+    val authority = url.substringAfter("://").substringBefore('/')
+    socket
+        .getOutputStream()
+        .write(
+            ("GET $url HTTP/1.1\r\nHost: $authority\r\nUpgrade: $protocol\r\n" +
+                    "Connection: Upgrade\r\nSec-WebSocket-Key: $SAMPLE_KEY\r\n" +
+                    "Sec-WebSocket-Version: 13\r\n\r\n")
+                .toByteArray(Charsets.ISO_8859_1)
+        )
+    socket.getOutputStream().flush()
+    return assertNotNull(readHead(socket.getInputStream()))
+}
+
+/** A response head read a byte at a time, so nothing after it is taken from the socket. */
+private fun readHead(input: java.io.InputStream): ResponseHead? {
+    val bytes = ByteArrayOutputStream()
+    while (!bytes.toString(Charsets.ISO_8859_1).endsWith("\r\n\r\n")) {
+        val next = input.read()
+        if (next == -1) return null
+        bytes.write(next)
+    }
+    return HttpReader(bytes.toByteArray().inputStream()).readResponse()
+}
+
+/** A short text frame, masked as an app's must be or plain as a server's is. */
+private fun textFrame(text: String, masked: Boolean): ByteArray {
+    val payload = text.toByteArray()
+    val key = byteArrayOf(1, 2, 3, 4)
+    val out = ByteArrayOutputStream()
+    out.write(0x81)
+    out.write((if (masked) 0x80 else 0) or payload.size)
+    if (masked) out.write(key)
+    out.write(
+        ByteArray(payload.size) {
+            (payload[it].toInt() xor if (masked) key[it % 4].toInt() else 0).toByte()
+        }
+    )
+    return out.toByteArray()
+}
+
+/** The text of the next message on [socket], read with the same reader the proxy uses. */
+private fun readText(socket: Socket): String {
+    val said = LinkedBlockingQueue<String>()
+    val reader = FrameReader(false, Negotiated.PLAIN, { 0 }) { said += it.text }
+    val buffer = ByteArray(256)
+    while (said.isEmpty()) {
+        val read = socket.getInputStream().read(buffer)
+        if (read == -1) break
+        reader.feed(buffer, 0, read)
+    }
+    return said.poll() ?: error("the socket closed before saying anything")
+}
+
+/**
+ * A server that agrees to any upgrade, then answers the first message with an echo of it, and waits
+ * for the app to hang up — or, when it doesn't [hold], hangs up itself.
+ */
+private class SocketEcho(private val hold: Boolean = true) : AutoCloseable {
+    // 127.0.0.1 by name: these tests prefer IPv6, and the loopback address is ::1 then.
+    private val server = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
+    val port: Int = server.localPort
+
+    init {
+        thread(isDaemon = true) {
+            try {
+                server.accept().use { socket ->
+                    val asked = readRequestHead(socket.getInputStream())
+                    val protocol = asked.substringAfter("Upgrade: ").substringBefore("\r\n")
+                    socket
+                        .getOutputStream()
+                        .write(
+                            ("HTTP/1.1 101 Switching Protocols\r\nUpgrade: $protocol\r\n" +
+                                    "Connection: Upgrade\r\n\r\n")
+                                .toByteArray(Charsets.ISO_8859_1)
+                        )
+                    val heard = LinkedBlockingQueue<String>()
+                    val reader = FrameReader(true, Negotiated.PLAIN, { 0 }) { heard += it.text }
+                    val buffer = ByteArray(256)
+                    while (heard.isEmpty()) {
+                        val read = socket.getInputStream().read(buffer)
+                        if (read == -1) return@use
+                        reader.feed(buffer, 0, read)
+                    }
+                    socket
+                        .getOutputStream()
+                        .write(textFrame("echo: ${heard.poll()}", masked = false))
+                    socket.getOutputStream().flush()
+                    // Held open until the app hangs up, as a socket is.
+                    if (hold) socket.getInputStream().readBytes()
+                }
+            } catch (_: java.io.IOException) {
+                // Closed by the test: that is how it ends.
+            }
+        }
+    }
+
+    private fun readRequestHead(input: java.io.InputStream): String {
+        val bytes = ByteArrayOutputStream()
+        while (!bytes.toString(Charsets.ISO_8859_1).endsWith("\r\n\r\n")) {
+            val next = input.read()
+            if (next == -1) break
+            bytes.write(next)
+        }
+        return bytes.toString(Charsets.ISO_8859_1)
+    }
+
+    override fun close() = server.close()
+}
+
 private class Collected : FlowSink {
     private val done = LinkedBlockingQueue<Flow>()
     private val everything = CopyOnWriteArrayList<Flow>()
     val begun = CopyOnWriteArrayList<Flow>()
+    val messages = LinkedBlockingQueue<Pair<Long, SocketMessage>>()
 
     override fun started(flow: Flow) {
         begun += flow
     }
+
+    override fun message(flowId: Long, message: SocketMessage) {
+        messages += flowId to message
+    }
+
+    fun nextMessage(): Pair<Long, SocketMessage> =
+        messages.poll(10, TimeUnit.SECONDS) ?: error("no message was recorded")
 
     /** Runs as each record is made, before it is kept: a test's way into the middle of it. */
     @Volatile var whileRecording: (Flow) -> Unit = {}

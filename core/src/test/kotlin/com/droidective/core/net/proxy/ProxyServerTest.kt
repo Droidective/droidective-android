@@ -589,7 +589,7 @@ class ProxyServerTest {
             connection.setRequestProperty("Accept-Encoding", "gzip, deflate, br, zstd")
             connection.inputStream.use { it.readBytes() }
 
-            assertEquals("gzip, deflate", origin.received.single().headers["accept-encoding"])
+            assertEquals("gzip, deflate, br", origin.received.single().headers["accept-encoding"])
         }
     }
 
@@ -611,7 +611,7 @@ class ProxyServerTest {
         FakeServer().use { origin ->
             val squeezed = byteArrayOf(0x1b, 0x0e, 0x00)
             origin.replyBytes = {
-                ("HTTP/1.1 200 OK\r\nContent-Encoding: br\r\nContent-Length: 3\r\n\r\n")
+                ("HTTP/1.1 200 OK\r\nContent-Encoding: zstd\r\nContent-Length: 3\r\n\r\n")
                     .toByteArray(Charsets.ISO_8859_1) + squeezed
             }
             val breaker = Scripted()
@@ -621,7 +621,7 @@ class ProxyServerTest {
             connect("http://127.0.0.1:${origin.port}/b", port).inputStream.use { it.readBytes() }
 
             val held = breaker.responses.single()
-            assertEquals("br", held.compressed)
+            assertEquals("zstd", held.compressed)
             assertContentEquals(squeezed, held.body)
         }
     }

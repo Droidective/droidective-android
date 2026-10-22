@@ -133,7 +133,7 @@ data class Mock(
             val bytes = flow.responseBody?.bytes ?: ByteArray(0)
             if (BodyView.decode(coding, bytes) == null) {
                 return "The answer came $coding-compressed, which this can't read. Send again " +
-                    "asks for gzip, and its answer can be mocked."
+                    "asks only for what this can read, and its answer can be mocked."
             }
             return if (of(flow, "") == null) "The answer isn't text, so it can't be edited."
             else null

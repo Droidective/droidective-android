@@ -106,14 +106,14 @@ class RepeaterTest {
 
     @Test
     fun aRepeatAsksOnlyForWhatItCanRead() {
-        // Chrome asks for brotli and zstd, and an answer in either shows nothing here.
+        // Chrome asks for zstd too, and an answer in it shows nothing here.
         val headers = Headers().add("Accept-Encoding", "gzip, deflate, br, zstd")
         val head = ready(captured(headers = headers, port = 80)).head
-        assertEquals("gzip, deflate", head.headers["Accept-Encoding"])
-        assertEquals("gzip;q=1.0, deflate", Repeater.readable("gzip;q=1.0, deflate, br"))
-        assertEquals("identity", Repeater.readable("br"))
+        assertEquals("gzip, deflate, br", head.headers["Accept-Encoding"])
+        assertEquals("gzip;q=1.0, deflate", Repeater.readable("gzip;q=1.0, deflate, zstd"))
+        assertEquals("identity", Repeater.readable("zstd"))
         // What it can read already is left exactly as it was.
-        assertNull(Repeater.readable("gzip, deflate"))
+        assertNull(Repeater.readable("gzip, deflate, br"))
         assertNull(Repeater.readable(null))
     }
 

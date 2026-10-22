@@ -16,6 +16,7 @@ import java.util.zip.Inflater
 import java.util.zip.InflaterInputStream
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import org.brotli.dec.BrotliInputStream
 
 /** How a body is worth putting on screen. */
 sealed interface BodyShape {
@@ -89,7 +90,8 @@ object BodyView {
      * The body as it was before the wire compressed it, or null when it cannot be undone.
      *
      * A truncated body gives back as much as decoded before the stream ran out, which is usually
-     * all of a JSON answer worth reading, rather than nothing at all.
+     * all of a JSON answer worth reading, rather than nothing at all. Decoding stops at
+     * [MAX_DECODED]: a few kept megabytes can unpack to gigabytes, by accident or on purpose.
      */
     fun decode(coding: String?, bytes: ByteArray): ByteArray? =
         when (coding) {
@@ -97,17 +99,21 @@ object BodyView {
             "gzip",
             "x-gzip" -> drain { GZIPInputStream(ByteArrayInputStream(bytes)) }
             "deflate" -> drain { InflaterInputStream(ByteArrayInputStream(bytes), Inflater()) }
-            // br and zstd need a library this app does not carry, so the bytes stay as they are.
+            "br" -> drain { BrotliInputStream(ByteArrayInputStream(bytes)) }
+            // zstd needs a decoder this app doesn't carry, so the bytes stay as they are.
             else -> null
         }
+
+    /** As much of one body as is decoded, past which the rest is left undone. */
+    const val MAX_DECODED = 32 * 1024 * 1024
 
     private fun drain(open: () -> InputStream): ByteArray? {
         val out = ByteArrayOutputStream()
         return try {
             open().use { stream ->
                 val buffer = ByteArray(BUFFER)
-                while (true) {
-                    val read = stream.read(buffer)
+                while (out.size() < MAX_DECODED) {
+                    val read = stream.read(buffer, 0, minOf(BUFFER, MAX_DECODED - out.size()))
                     if (read == -1) break
                     out.write(buffer, 0, read)
                 }

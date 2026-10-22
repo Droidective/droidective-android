@@ -114,8 +114,8 @@ Roughly in the order people reach for them after the list itself:
   approach), redone after each reboot. `CertificateTrust.System` already reads the result.
 - **A socket that stops making sense.** When a direction's `FrameReader` gives up, its
   messages just stop; the screen could say so rather than leave a gap.
-- **brotli and zstd.** Browsers ask for them, and a body in either is shown and exported as
-  it arrived: it needs a decoder the app doesn't carry.
+- **zstd.** Chrome asks for it, and a body in it is shown and exported as it arrived: it
+  needs a decoder the app doesn't carry. brotli is read (`org.brotli:dec`).
 - **HTTP/2.** Only HTTP/1.1 is offered in ALPN, so clients fall back; gRPC can't.
 - **An app that hangs up part-way.** A flow whose app goes away while its answer is being
   relayed stays pending in the list (`serve` treats a vanished client as ordinary). A held
@@ -182,6 +182,8 @@ does exactly this.
 - **Step aside is on by default**, keyed by app and host, kept for one run, and cleared when
   the certificate's trust changes.
 - **HAR is written decoded**, an entry at a time, and leaves out connections never read.
+- **A body is decoded up to 32 MB** (`BodyView.MAX_DECODED`). A few kept megabytes of gzip or
+  brotli can unpack to gigabytes; past the bound the rest is left undone.
 - **A held exchange waits five minutes for a person**, then goes on as it was, so a phone left
   alone never ends up with an app waiting forever. Stopping the proxy lets everything go.
 - **A request held for a person goes out on a new connection to the server.** The one it

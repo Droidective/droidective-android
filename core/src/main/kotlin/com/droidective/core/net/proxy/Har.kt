@@ -159,7 +159,7 @@ object Har {
         val notes =
             listOfNotNull(
                 body?.let(::truncation),
-                // br and zstd can't be undone here, so the bytes are as they came off the wire.
+                // zstd can't be undone here, so the bytes are as they came off the wire.
                 headers.contentEncoding
                     ?.takeIf { decoded == null && kept.isNotEmpty() }
                     ?.let { "still $it-compressed, as it arrived" },

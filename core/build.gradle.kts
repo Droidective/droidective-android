@@ -35,6 +35,7 @@ lint {
 dependencies {
     api(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.brotli.dec)
 
     testFixturesApi(libs.kotlinx.coroutines.core)
     testFixturesImplementation(libs.kotlinx.serialization.json)

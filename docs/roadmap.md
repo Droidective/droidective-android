@@ -1,18 +1,12 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.13.0**.
+another machine. Current release: **0.14.0**.
 
-## Shipped since 0.13.0, waiting for a release
+## Shipped since 0.14.0, waiting for a release
 
-- **Apps that speak only HTTP/2 work while they are read** (#125). gRPC, offered only
-  HTTP/1.1, couldn't connect at all; it is now relayed to its server.
-- **…and what they say is read** (#126): each HTTP/2 stream is a flow of its own, its
-  trailers (gRPC's `grpc-status`) kept, through `core/net/h2` — frames, HPACK, Huffman.
-- **gRPC calls read as calls** (#127): listed by `Service/Method`, judged by
-  `grpc-status` rather than their 200, their messages and `-bin` trailers
-  (`grpc-status-details-bin`) read field by field without a `.proto`. Mocks,
-  breakpoints, remaps and repeats say why they don't reach HTTP/2.
+Nothing yet. 0.14.0 carried HTTP/2 (#125, #126) and gRPC (#127) in Network Traffic; see
+`RELEASE_NOTES.md`.
 
 ## Next
 

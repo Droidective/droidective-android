@@ -3,6 +3,21 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.14.0
+
+Network Traffic reads apps that speak only HTTP/2, gRPC among them, where before it broke them.
+
+- **HTTP/2.** An app that speaks nothing else, as gRPC and Firestore do, couldn't connect while
+  it was being read: the proxy offered only HTTP/1.1. It is now carried to its server, and each
+  stream on the connection is a flow of its own, with its headers, body and trailers. Apps that
+  can speak either still use HTTP/1.1, where mocks, breakpoints and remaps reach them; those
+  don't reach an HTTP/2 connection, and its flows say so.
+- **gRPC.** A call is listed by its service and method, `Firestore/GetDocument`, and judged by
+  its `grpc-status` rather than its HTTP 200, so a call that failed shows as failed, with its
+  status in words. Its messages are read field by field without the `.proto`, the way
+  `protoc --decode_raw` prints them, and so are binary trailers such as
+  `grpc-status-details-bin`, where gRPC puts its error details.
+
 ## 0.13.0
 
 Two of the Mac's tools come to the phone: one for permissions, one for sending requests by hand.

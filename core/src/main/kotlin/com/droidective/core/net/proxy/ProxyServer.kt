@@ -57,6 +57,8 @@ class ProxyServer(
      * them: its flows are keyed by id, and a second run counting from 1 again replaced the first's.
      */
     private val ids: AtomicLong = AtomicLong(),
+    /** Who decides what happens to an exchange held at a breakpoint. */
+    private val breaker: Breaker = Breaker.GO,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     /** Which hosts are opened; may be changed while the proxy is running. */
@@ -67,6 +69,9 @@ class ProxyServer(
 
     /** How slow a network to play; read again for each request, so it applies at once. */
     @Volatile var throttle: Throttle = Throttle.NONE
+
+    /** Where exchanges are held for someone to see; may be changed while the proxy runs. */
+    @Volatile var breakpoints: List<Breakpoint> = emptyList()
 
     private val contexts = ConcurrentHashMap<String, SSLContext>()
     private val open = ConcurrentHashMap.newKeySet<Socket>()
@@ -240,7 +245,12 @@ class ProxyServer(
                             return failed(flow, out, e, record)
                         }
                 }
-                if (!exchange(flow, head, Ends(source, out, upstream), record)) break
+                val ends = Ends(source, out, upstream)
+                val point = Breakpoint.find(breakpoints, head.method, flow.url)
+                val more =
+                    if (point != null) held(flow, head, point, ends, record)
+                    else exchange(flow, head, ends, record)
+                if (!more) break
                 head = reader.readRequest()
             }
         } finally {
@@ -303,9 +313,20 @@ class ProxyServer(
                 failed(asked, out, e, record)
                 return false
             }
+        return answer(asked, head, response, Ends(source, out, upstream), record)
+    }
+
+    /** An answer on its way to the app as it comes. Returns whether the connection goes on. */
+    private fun answer(
+        asked: Flow,
+        head: RequestHead,
+        response: ResponseHead,
+        ends: Ends,
+        record: FlowSink,
+    ): Boolean {
+        val (_, out, upstream) = ends
         out.write(response.bytes())
         if (response.status == SWITCHING) return upgrade(asked, response, ends, record)
-
         val framing = BodyFraming.of(response, head.method)
         val body = HttpBody.relay(framing, upstream.source, out)
         out.flush()
@@ -366,6 +387,104 @@ class ProxyServer(
         }
     }
 
+    /**
+     * An exchange held at [point]: the request read whole and handed to the [breaker] before it
+     * goes on, and its answer before it reaches the app, as [point] says. Each goes on in one piece
+     * with its length stated. Returns whether the connection can carry another.
+     */
+    private fun held(
+        flow: Flow,
+        head: RequestHead,
+        point: Breakpoint,
+        ends: Ends,
+        record: FlowSink,
+    ): Boolean {
+        val (source, client, upstream) = ends
+        val read = HttpBody.relay(BodyFraming.of(head), source, null, HOLD_LIMIT)
+        val asked = flow.copy(requestBody = read, paused = point.id)
+        if (read.truncated) return refuse(asked, client, Holding.TOO_BIG, record)
+        val forward = head.with(target = head.path, headers = forwardable(head.headers))
+        val (sentHead, sentBody) =
+            if (!point.requests) forward to read.bytes
+            else
+                when (val verdict = breaker.request(HeldRequest(asked, forward, read.bytes))) {
+                    RequestVerdict.Go -> forward to read.bytes
+                    is RequestVerdict.Send -> verdict.head to verdict.body
+                    RequestVerdict.Stop -> return refuse(asked, client, Holding.STOPPED, record)
+                }
+        val slow = throttle
+        delay(slow)
+        val toServer = Paced.of(upstream.sink, slow.upBytesPerSecond)
+        toServer.write(whole(sentHead, sentBody.size).bytes())
+        toServer.write(sentBody)
+        toServer.flush()
+        val sent =
+            asked.copy(
+                request = sentHead,
+                requestBody = CapturedBody(sentBody, sentBody.size.toLong(), truncated = false),
+                edited = sentHead !== forward,
+            )
+        record.started(sent)
+        val response =
+            try {
+                upstream.reader.readResponse() ?: throw IOException("the server answered nothing")
+            } catch (e: IOException) {
+                failed(sent, client, e, record)
+                return false
+            }
+        val out = Paced.of(client, slow.downBytesPerSecond)
+        if (!point.responses || response.status == SWITCHING) {
+            return answer(sent, head, response, Ends(source, out, upstream), record)
+        }
+        return heldAnswer(sent, head, response, Ends(source, out, upstream), record)
+    }
+
+    /** An answer held before it reaches the app, decoded for whoever looks at it. */
+    private fun heldAnswer(
+        flow: Flow,
+        head: RequestHead,
+        response: ResponseHead,
+        ends: Ends,
+        record: FlowSink,
+    ): Boolean {
+        val (_, out, upstream) = ends
+        val framing = BodyFraming.of(response, head.method)
+        val read = HttpBody.relay(framing, upstream.source, null, HOLD_LIMIT)
+        if (read.truncated) return refuse(flow, out, Holding.TOO_BIG, record)
+        val coding = response.headers.contentEncoding
+        val decoded = BodyView.decode(coding, read.bytes)
+        val shown = decoded ?: read.bytes
+        val (answered, body, edited) =
+            when (val verdict = breaker.response(HeldResponse(flow, response, shown))) {
+                ResponseVerdict.Go -> Triple(whole(response, read.bytes.size), read.bytes, false)
+                // Written as the person wrote it: plain, whatever the server compressed it as.
+                is ResponseVerdict.Answer ->
+                    Triple(plain(verdict.head, verdict.body.size), verdict.body, true)
+                ResponseVerdict.Stop -> return refuse(flow, out, Holding.STOPPED, record)
+            }
+        out.write(answered.bytes())
+        out.write(body)
+        out.flush()
+        record.finished(
+            flow.copy(
+                response = answered,
+                responseBody = CapturedBody(body, body.size.toLong(), truncated = false),
+                finishedAt = clock(),
+                edited = flow.edited || edited,
+            )
+        )
+        return framing != BodyFraming.UntilClose &&
+            !closes(head.headers) &&
+            !closes(answered.headers)
+    }
+
+    /** Ends a held exchange that won't go on, telling the app it failed and why. */
+    private fun refuse(flow: Flow, out: OutputStream, why: String, record: FlowSink): Boolean {
+        record.finished(flow.copy(finishedAt = clock(), failure = why))
+        out.writeQuietly(badGateway(IOException(why)))
+        return false
+    }
+
     /** The round trip a slower network would add, before a request goes on its way. */
     private fun delay(slow: Throttle) {
         if (slow.latencyMillis > 0) Thread.sleep(slow.latencyMillis)
@@ -418,6 +537,33 @@ class ProxyServer(
         const val BACKLOG = 50
         const val IDLE_MILLIS = 120_000
         const val CONNECT_MILLIS = 15_000
+
+        /** As much of a body as is held whole at a breakpoint; past it, the exchange fails. */
+        const val HOLD_LIMIT = HttpBody.MAX_CAPTURE
+
+        /** [head] carrying a body of [length] in one piece, however it was framed before. */
+        fun whole(head: RequestHead, length: Int): RequestHead {
+            val kept = head.headers.without(Headers.CONTENT_LENGTH, Headers.TRANSFER_ENCODING)
+            val stated =
+                if (length > 0 || head.headers.has(Headers.CONTENT_LENGTH)) {
+                    kept.add(Headers.CONTENT_LENGTH, length.toString())
+                } else {
+                    kept
+                }
+            return head.with(headers = stated)
+        }
+
+        fun whole(head: ResponseHead, length: Int): ResponseHead =
+            head.copy(
+                headers =
+                    head.headers
+                        .without(Headers.CONTENT_LENGTH, Headers.TRANSFER_ENCODING)
+                        .add(Headers.CONTENT_LENGTH, length.toString())
+            )
+
+        /** An answer written out as text: no compression claimed, whatever it had before. */
+        fun plain(head: ResponseHead, length: Int): ResponseHead =
+            whole(head.copy(headers = head.headers.without(Headers.CONTENT_ENCODING)), length)
 
         /**
          * How long a connection waits to learn its app when that decides whether it is read: a

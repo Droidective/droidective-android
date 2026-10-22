@@ -35,7 +35,7 @@ data class Mock(
     fun matches(method: String, requestUrl: String): Boolean {
         if (!enabled) return false
         if (this.method != null && !this.method.equals(method, ignoreCase = true)) return false
-        return pattern.matches(normalised(requestUrl.substringBefore('?')))
+        return UrlPattern.matches(url, requestUrl)
     }
 
     /** The answer as it goes on the wire: the head, its length stated, and the body. */
@@ -48,14 +48,6 @@ data class Mock(
         sent = sent.add(Headers.CONTENT_LENGTH, bytes.size.toString())
         return ResponseHead(HTTP_1_1, status, REASONS[status].orEmpty(), sent) to bytes
     }
-
-    private val pattern: Regex
-        get() =
-            Regex(
-                normalised(url.substringBefore('?')).split('*').joinToString(".*") {
-                    Regex.escape(it)
-                }
-            )
 
     companion object {
         const val OK = 200
@@ -89,15 +81,6 @@ data class Mock(
                 503 to "Service Unavailable",
                 504 to "Gateway Timeout",
             )
-
-        /** Scheme and host fold case, as they do on the wire; the path doesn't. */
-        private fun normalised(url: String): String {
-            val split = url.indexOf("://")
-            if (split < 0) return url
-            val afterScheme = split + "://".length
-            val pathStart = url.indexOf('/', afterScheme).takeIf { it >= 0 } ?: url.length
-            return url.substring(0, pathStart).lowercase() + url.substring(pathStart)
-        }
 
         /**
          * A mock made from [flow]'s answer, ready to edit: the same status and headers, and the
@@ -149,16 +132,7 @@ data class Mock(
         }
 
         /** Whether [url] is a pattern a mock can have: http or https, with a host. */
-        fun isPattern(url: String): Boolean {
-            val trimmed = url.trim()
-            val rest =
-                when {
-                    trimmed.startsWith("https://", ignoreCase = true) -> trimmed.substring(8)
-                    trimmed.startsWith("http://", ignoreCase = true) -> trimmed.substring(7)
-                    else -> return false
-                }
-            return rest.isNotEmpty() && !rest.startsWith("/") && rest.none { it.isWhitespace() }
-        }
+        fun isPattern(url: String): Boolean = UrlPattern.isPattern(url)
 
         private fun utf8(bytes: ByteArray): String? =
             try {

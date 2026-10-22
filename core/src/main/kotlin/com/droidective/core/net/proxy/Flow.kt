@@ -32,6 +32,10 @@ data class Flow(
     val repeatOf: Long? = null,
     /** The mock that answered, when the server was never asked. */
     val mocked: String? = null,
+    /** The breakpoint it was held at, when it was. */
+    val paused: String? = null,
+    /** Whether what was held went on changed. */
+    val edited: Boolean = false,
 ) {
     val scheme: String
         get() = if (secure) "https" else "http"

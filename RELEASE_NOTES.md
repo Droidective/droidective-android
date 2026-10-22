@@ -3,6 +3,24 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.15.0
+
+Reactotron comes to the phone, and Network Traffic reads two more things it couldn't.
+
+- **Reactotron.** A React Native app's Reactotron client connects to `localhost:9090`, which on a
+  phone with no `adb reverse` from a computer is the phone itself. Start Reactotron in Droidective
+  and the debug build you are running reports to it: its logs, API calls, Redux or MobX
+  actions, displays and benchmarks, newest first, filtered and searched. An API call opens to
+  its request and answer, bodies laid out as JSON; a log opens to its stack. No host to set, no
+  cable, no computer. If a computer's `adb reverse` holds the port, it says so and gives the
+  command that frees it.
+- **gRPC with your schema.** Compile your `.proto` files with `protoc --include_imports
+  --descriptor_set_out=app.protoset` and `adb push` the file to Droidective's `protos` folder:
+  gRPC calls then show field names, enum names and typed values, as `protoc --decode` would,
+  and gRPC's error details open up whole.
+- **zstd.** Chrome and its WebView ask for zstd, and more sites now answer in it. Those bodies
+  are now shown and exported decoded, where before they were compressed bytes.
+
 ## 0.14.0
 
 Network Traffic reads apps that speak only HTTP/2, gRPC among them, where before it broke them.

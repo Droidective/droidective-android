@@ -9,6 +9,9 @@ another machine. Current release: **0.9.0**.
   with repeats following (#104).
 - Network Traffic keeps its search, scroll and open cards while a request or an editor has the
   screen (#105).
+- WebSockets: what each one says, live, in its detail and in HAR exports (#106, #108, #109).
+- A tunnel or socket the app hangs up on is hung up on at the server too (#108), and a flow no
+  longer loses its app when that is learned while it is being recorded (#107).
 
 ## Next
 

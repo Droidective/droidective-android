@@ -88,7 +88,16 @@ fun FlowDetail(
         return
     }
     val labels = remember { AppLabels(context) }
-    var side by rememberSaveable { mutableIntStateOf(if (flow.response != null) 1 else 0) }
+    // A socket opens on what it said: its request and its 101 are the least of it.
+    var side by rememberSaveable {
+        mutableIntStateOf(
+            when {
+                flow.socket -> MESSAGES
+                flow.response != null -> 1
+                else -> 0
+            }
+        )
+    }
     ToolScaffold(if (flow.opening) flow.host else "${flow.request.method} ${flow.host}", tool) {
         Text(
             flow.url,
@@ -116,18 +125,21 @@ fun FlowDetail(
         }
         flow.failure?.let { FailureSection(it) }
         if (!flow.tunnelled || flow.response != null) {
+            val sides = listOfNotNull("Request", "Response", "Messages".takeIf { flow.socket })
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                listOf("Request", "Response").forEachIndexed { index, label ->
+                sides.forEachIndexed { index, label ->
                     SegmentedButton(
                         selected = side == index,
                         onClick = { side = index },
-                        shape = SegmentedButtonDefaults.itemShape(index, 2),
+                        shape = SegmentedButtonDefaults.itemShape(index, sides.size),
                     ) {
                         Text(label)
                     }
                 }
             }
-            if (side == 0) {
+            if (side == MESSAGES && flow.socket) {
+                SocketMessages(flow.id)
+            } else if (side == 0) {
                 Message(flow.request.headers, flow.requestBody, "request")
             } else {
                 val response = flow.response
@@ -230,6 +242,8 @@ private fun connection(flow: Flow): String =
         flow.repeatOf != null -> "HTTP, sent again by Droidective"
         flow.tunnelled && flow.response == null ->
             FlowLabels.passed(flow)?.replaceFirstChar { it.uppercase() } ?: "Passed through"
+        flow.socket && flow.secure -> "A secure WebSocket, read through the proxy's certificate"
+        flow.socket -> "A WebSocket, read as it talks"
         flow.tunnelled -> "Upgraded, then carried as bytes"
         flow.secure -> "HTTPS, read through the proxy's certificate"
         else -> "HTTP"
@@ -353,4 +367,6 @@ private fun ImageBody(image: BodyShape.Image) {
 
 private const val MAX_SHOWN_CHARS = 100_000
 private const val MAX_IMAGE_HEIGHT = 320
-private val TIME = DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZoneId.systemDefault())
+internal val TIME = DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZoneId.systemDefault())
+
+private const val MESSAGES = 2

@@ -3,11 +3,13 @@ package com.droidective.core.net.proxy
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
+import com.droidective.core.net.http.ResponseHead
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -144,7 +146,17 @@ class RequestDraftTest {
     fun aFlowWithNothingToEditHasNoDraft() {
         val base =
             Flow(1, 0, true, "a.example", 443, RequestHead("GET", "/", "HTTP/1.1", Headers()))
-        assertNull(RequestDraft.of(base.copy(tunnelled = true)))
+        val opening = RequestHead("CONNECT", "a.example:443", "HTTP/1.1", Headers())
+        assertNull(RequestDraft.of(base.copy(request = opening, tunnelled = true)))
+        val upgraded = Headers().add("Upgrade", "websocket")
+        val socket =
+            base.copy(response = ResponseHead("HTTP/1.1", 101, "", upgraded), tunnelled = true)
+        assertNull(RequestDraft.of(socket))
+        assertTrue(Repeater.prepare(socket) is Repeat.Refused)
+        assertNull(Mock.of(socket, "m"))
+        assertTrue("socket" in assertNotNull(Mock.whyNot(socket)))
+        // Not an opening: the app asked for a path, and it is shown.
+        assertEquals("https://a.example/", socket.url)
         assertNull(
             RequestDraft.of(base.copy(requestBody = CapturedBody(ByteArray(4), 9_000, true)))
         )

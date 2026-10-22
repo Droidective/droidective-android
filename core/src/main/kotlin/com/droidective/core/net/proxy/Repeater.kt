@@ -102,6 +102,7 @@ class Repeater(
          */
         fun prepare(flow: Flow): Repeat {
             if (flow.opening) return Repeat.Refused(NEVER_READ)
+            if (flow.socket) return Repeat.Refused(SOCKET)
             if (flow.requestBody.truncated) return Repeat.Refused(CLIPPED)
             val body = flow.requestBody.bytes
             val head =
@@ -151,6 +152,8 @@ class Repeater(
         private const val CONNECT_MILLIS = 15_000
         private const val IDLE_MILLIS = 60_000
         private const val NOTHING = "the server answered nothing"
+        private const val SOCKET =
+            "A socket was a conversation, not a request: sent again, it would only ask to start one."
         private const val NEVER_READ = "Nothing was read on this connection, so there's no request."
         private const val CLIPPED =
             "Only part of the body was kept, so sending it again would send something else."

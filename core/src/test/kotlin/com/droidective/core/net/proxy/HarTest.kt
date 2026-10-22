@@ -4,6 +4,7 @@ import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
 import com.droidective.core.net.http.ResponseHead
+import com.droidective.core.net.ws.SocketMessage
 import java.io.ByteArrayOutputStream
 import java.util.Base64
 import java.util.zip.GZIPOutputStream
@@ -176,6 +177,68 @@ class HarTest {
             written.map { it.jsonObject.text("name") to it.jsonObject.text("value") },
         )
     }
+
+    @Test
+    fun aSocketsMessagesAreWrittenAsChromeWritesThem() {
+        val socket =
+            exchange()
+                .copy(
+                    response =
+                        ResponseHead(
+                            "HTTP/1.1",
+                            101,
+                            "Switching Protocols",
+                            Headers().add("Upgrade", "websocket"),
+                        )
+                )
+        val said =
+            listOf(
+                message(
+                    fromApp = true,
+                    SocketMessage.Kind.Text,
+                    "{\"subscribe\":\"prices\"}".toByteArray(),
+                ),
+                message(fromApp = false, SocketMessage.Kind.Binary, byteArrayOf(1, 2, 3)),
+                message(fromApp = false, SocketMessage.Kind.Ping, ByteArray(0)),
+            )
+        val out = StringBuilder()
+        Har.write(listOf(socket, exchange().copy(id = 2)), "0.9.0", out) {
+            if (it == 1L) said else emptyList()
+        }
+        val (first, second) = entries(Json.parseToJsonElement(out.toString()).jsonObject.obj("log"))
+
+        val written = first.getValue("_webSocketMessages").jsonArray.map { it.jsonObject }
+        // Text and binary, as Chrome keeps them; a ping is the connection's business.
+        assertEquals(2, written.size)
+        assertEquals("send", written[0].text("type"))
+        assertEquals(1, written[0].number("opcode"))
+        assertEquals("{\"subscribe\":\"prices\"}", written[0].text("data"))
+        assertEquals(1_792_638_306.5, written[0].getValue("time").jsonPrimitive.content.toDouble())
+        assertEquals("receive", written[1].text("type"))
+        assertEquals(2, written[1].number("opcode"))
+        assertEquals(
+            Base64.getEncoder().encodeToString(byteArrayOf(1, 2, 3)),
+            written[1].text("data"),
+        )
+        assertFalse("_webSocketMessages" in second)
+    }
+
+    @Test
+    fun aSocketIsAnUpgradeToAWebSocket() {
+        val upgraded = { protocol: String ->
+            exchange()
+                .copy(
+                    response = ResponseHead("HTTP/1.1", 101, "", Headers().add("Upgrade", protocol))
+                )
+        }
+        assertTrue(upgraded("WebSocket").socket)
+        assertFalse(upgraded("h2c").socket)
+        assertFalse(exchange().socket)
+        assertTrue(FlowFilter.parse("is:socket").matches(upgraded("websocket")))
+    }
+
+    private fun message(fromApp: Boolean, kind: SocketMessage.Kind, data: ByteArray) =
+        SocketMessage(fromApp, 1_792_638_306_500, kind, data, data.size.toLong(), truncated = false)
 
     private fun exchange(
         method: String = "GET",

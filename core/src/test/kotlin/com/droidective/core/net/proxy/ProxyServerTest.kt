@@ -629,6 +629,9 @@ class ProxyServerTest {
     @Test
     fun anAnswerHeldPastTheAppGivingUpIsStillOnRecord() {
         FakeServer().use { origin ->
+            // Bigger than any socket's buffer: a short answer can be written into the kernel's
+            // before the hang-up has reached it, and then nothing fails at all.
+            origin.reply = { ok("x".repeat(1_000_000)) }
             val holding = CountDownLatch(1)
             val gone = CountDownLatch(1)
             val breaker =

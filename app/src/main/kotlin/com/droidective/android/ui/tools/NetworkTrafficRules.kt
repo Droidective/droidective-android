@@ -57,6 +57,8 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun RulesSection(
     flows: List<Flow>,
+    expanded: Boolean,
+    onExpand: (Boolean) -> Unit,
     onEditMock: (Mock, Boolean) -> Unit,
     onEditBreakpoint: (Breakpoint, Boolean) -> Unit,
 ) {
@@ -66,15 +68,12 @@ internal fun RulesSection(
     val rules by TrafficProxy.rules.collectAsStateWithLifecycle()
     val access by context.droidective.access.access.collectAsStateWithLifecycle()
     val labels = remember { AppLabels(context) }
-    var expanded by rememberSaveable { mutableStateOf(false) }
     var choosing by remember { mutableStateOf(false) }
     val change = { new: TrafficRules -> scope.saveRules(context, new) }
     ToolSection("Rules") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(summary(rules, labels), modifier = Modifier.weight(1f).padding(start = 4.dp))
-            TextButton(onClick = { expanded = !expanded }) {
-                Text(if (expanded) "Hide" else "Edit")
-            }
+            TextButton(onClick = { onExpand(!expanded) }) { Text(if (expanded) "Hide" else "Edit") }
         }
         if (!expanded) return@ToolSection
         Label("Apps to read")

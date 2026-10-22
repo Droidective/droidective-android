@@ -290,7 +290,6 @@ object TrafficProxy {
             loadMocks(context)
             running.mocks = answers.value
             running.throttle = speed.value
-            Holds.attach(context)
             Holds.load(context)
             running.breakpoints = Holds.breakpoints.value
             val port = withContext(Dispatchers.IO) { running.start(PORT) }

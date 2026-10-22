@@ -69,6 +69,7 @@ class ProxyService : Service() {
     override fun onDestroy() {
         scope.cancel()
         TrafficProxy.shutDown()
+        ProxyNotices.held(this, emptyList())
         Surfaces.refreshBehind(this)
         // Ended some other way than Stop: the phone still has to come off the proxy.
         if (TrafficProxy.refreshPointing(this)) {
@@ -89,6 +90,9 @@ class ProxyService : Service() {
         if (point) TrafficProxy.point(this, here = true)
         // A Debugging proxy tile or widget slot shows whether it runs.
         Surfaces.refreshBehind(this)
+        // Its first answer is nothing held, which also takes down a notice a process Android
+        // ended left behind.
+        scope.launch { Holds.held.collect { ProxyNotices.held(this@ProxyService, it) } }
         TrafficProxy.changes.collect {
             notify(running())
             delay(NOTIFY_GAP)
@@ -201,7 +205,7 @@ internal object ProxyNotices {
                 .setSmallIcon(R.drawable.sym_pause)
                 .setContentTitle("Held at a breakpoint")
                 .setContentText("$what${flow.request.method} ${flow.url}$more")
-                .setContentIntent(builder(context).build().contentIntent)
+                .setContentIntent(openTool(context))
                 .addAction(Notification.Action.Builder(null, "Let it go", go).build())
                 .setOnlyAlertOnce(true)
                 .setOngoing(true)
@@ -216,20 +220,22 @@ internal object ProxyNotices {
                 NotificationChannel(CHANNEL, "Network Traffic", NotificationManager.IMPORTANCE_LOW)
                     .apply { description = "The debugging proxy, while it runs" }
             )
-        val open =
-            PendingIntent.getActivity(
-                context,
-                ID,
-                Intent(context, MainActivity::class.java)
-                    .putExtra(Launch.EXTRA_DESTINATION, Launch.DESTINATION_TOOL)
-                    .putExtra(Launch.EXTRA_TOOL, TrafficProxy.TOOL),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
         return Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.sym_travel_explore)
-            .setContentIntent(open)
+            .setContentIntent(openTool(context))
             .setOnlyAlertOnce(true)
     }
+
+    /** Network Traffic, opened from a notice. */
+    private fun openTool(context: Context): PendingIntent =
+        PendingIntent.getActivity(
+            context,
+            ID,
+            Intent(context, MainActivity::class.java)
+                .putExtra(Launch.EXTRA_DESTINATION, Launch.DESTINATION_TOOL)
+                .putExtra(Launch.EXTRA_TOOL, TrafficProxy.TOOL),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
 
     /** Says the setting was put back, so nobody wonders why their proxy came off. */
     fun released(context: Context) {

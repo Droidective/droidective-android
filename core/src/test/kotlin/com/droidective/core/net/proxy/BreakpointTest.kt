@@ -49,6 +49,24 @@ class BreakpointTest {
     }
 
     @Test
+    fun overlappingBreakpointsHoldWhatEitherHolds() {
+        val answers =
+            Breakpoint("b2", "https://api.example.com/*", requests = false, responses = true)
+        val off = Breakpoint("b3", "https://api.example.com/*", responses = true, enabled = false)
+
+        val found =
+            Breakpoint.find(listOf(answers, orders, off), "GET", "https://api.example.com/orders/1")
+
+        assertEquals("b2", found?.id)
+        assertTrue(found!!.requests && found.responses)
+        // One that is off holds nothing, whatever it says it would hold.
+        assertEquals(
+            answers,
+            Breakpoint.find(listOf(answers, off), "GET", "https://api.example.com/menu"),
+        )
+    }
+
+    @Test
     fun theBreakpointsAreKept() {
         val repository = BreakpointRepository(createTempDirectory("points").toFile())
         assertEquals(emptyList(), repository.all())

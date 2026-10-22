@@ -44,11 +44,19 @@ data class Breakpoint(
         fun of(flow: Flow, id: String): Breakpoint =
             Breakpoint(id, flow.url.substringBefore('?'), flow.request.method.uppercase())
 
-        /** The first enabled breakpoint for [method] [url], in the order they were made. */
-        fun find(points: List<Breakpoint>, method: String, url: String): Breakpoint? =
-            points.firstOrNull {
-                it.matches(method, url)
-            }
+        /**
+         * Where [method] [url] stops: the first enabled breakpoint for it, in the order they were
+         * made, holding whatever any of the ones it matches holds. Two that overlap, one for the
+         * request and one for the answer, both stop it.
+         */
+        fun find(points: List<Breakpoint>, method: String, url: String): Breakpoint? {
+            val matching = points.filter { it.matches(method, url) }
+            val first = matching.firstOrNull() ?: return null
+            return first.copy(
+                requests = matching.any { it.requests },
+                responses = matching.any { it.responses },
+            )
+        }
     }
 }
 
@@ -56,13 +64,23 @@ data class Breakpoint(
 object Holding {
     const val STOPPED = "stopped at a breakpoint"
     const val TOO_BIG = "too big to hold at a breakpoint"
+    const val HUNG_UP = "the app's connection closed while it was held"
 }
 
 /** A request held at a breakpoint: as it would go to the server, head and whole body. */
 class HeldRequest(val flow: Flow, val head: RequestHead, val body: ByteArray)
 
-/** An answer held at a breakpoint: as it would reach the app, head and whole body, decoded. */
-class HeldResponse(val flow: Flow, val head: ResponseHead, val body: ByteArray)
+/**
+ * An answer held at a breakpoint: as it would reach the app, head and whole body, decoded.
+ *
+ * @property compressed the coding the body is still in, when the proxy couldn't undo it.
+ */
+class HeldResponse(
+    val flow: Flow,
+    val head: ResponseHead,
+    val body: ByteArray,
+    val compressed: String? = null,
+)
 
 /** What to do with a held request. */
 sealed interface RequestVerdict {

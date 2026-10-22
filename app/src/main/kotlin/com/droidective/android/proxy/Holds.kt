@@ -49,21 +49,11 @@ object Holds : Breaker {
     private val points = MutableStateFlow<List<Breakpoint>>(emptyList())
     @Volatile private var loaded = false
     private val waiting = MutableStateFlow<List<Hold>>(emptyList())
-    @Volatile private var context: Context? = null
 
     val breakpoints: StateFlow<List<Breakpoint>> = points.asStateFlow()
 
     /** What is held right now, oldest first. */
     val held: StateFlow<List<Hold>> = waiting.asStateFlow()
-
-    /**
-     * Where the notification goes from, set by the proxy when it starts. A notice still up from a
-     * process Android ended names holds that went with it, so it comes down.
-     */
-    internal fun attach(context: Context) {
-        this.context = context.applicationContext
-        notifyHeld()
-    }
 
     fun load(context: Context) {
         if (loaded) return
@@ -102,7 +92,6 @@ object Holds : Breaker {
 
     private fun <T : Any> wait(hold: Hold, verdict: CompletableFuture<T>, otherwise: T): T {
         waiting.update { it + hold }
-        notifyHeld()
         return try {
             verdict.get(WAIT_MINUTES, TimeUnit.MINUTES)
         } catch (_: TimeoutException) {
@@ -112,7 +101,6 @@ object Holds : Breaker {
             otherwise
         } finally {
             waiting.update { it - hold }
-            notifyHeld()
         }
     }
 
@@ -144,10 +132,6 @@ object Holds : Breaker {
     fun releaseAll() = waiting.value.forEach { go(it.flow.id) }
 
     private fun find(id: Long): Hold? = waiting.value.firstOrNull { it.flow.id == id }
-
-    private fun notifyHeld() {
-        context?.let { ProxyNotices.held(it, waiting.value) }
-    }
 
     /** How long a held exchange waits for someone before it goes on as it was. */
     const val WAIT_MINUTES = 5L

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
@@ -92,6 +93,10 @@ fun NetworkTrafficTool(tool: ToolContext) {
         }
     }
     var open by rememberSaveable { mutableStateOf<Long?>(null) }
+    // Out here, before an editor or a flow takes the screen: the list's own state goes while one
+    // is open, and coming back would fold the rules up and scroll to the top.
+    var rulesOpen by rememberSaveable { mutableStateOf(false) }
+    val listState = rememberLazyListState()
     var editing by remember { mutableStateOf<Editing?>(null) }
     editing?.let { now ->
         val back = ToolContext(tool.snackbar, onBack = { editing = null }, tool.onOpenSetup)
@@ -133,6 +138,7 @@ fun NetworkTrafficTool(tool: ToolContext) {
     Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item { TitleRow(tool, flows.isNotEmpty(), visible) }
@@ -142,6 +148,8 @@ fun NetworkTrafficTool(tool: ToolContext) {
             item {
                 RulesSection(
                     flows,
+                    expanded = rulesOpen,
+                    onExpand = { rulesOpen = it },
                     onEditMock = { mock, isNew -> editing = Editing.OfMock(mock, isNew) },
                     onEditBreakpoint = { point, isNew ->
                         editing = Editing.OfBreakpoint(point, isNew)

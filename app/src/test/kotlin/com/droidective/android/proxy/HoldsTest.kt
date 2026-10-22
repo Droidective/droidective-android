@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
-import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
@@ -41,8 +40,6 @@ class HoldsTest {
     private val context = ApplicationProvider.getApplicationContext<Application>()
     private val notifications
         get() = shadowOf(context.getSystemService(NotificationManager::class.java))
-
-    @Before fun attach() = Holds.attach(context)
 
     @After
     fun nothingLeftHeld() {
@@ -127,11 +124,12 @@ class HoldsTest {
 
     @Test
     fun theNoticeGoesWhenNothingIsHeld() {
-        val waiting = holdRequest(flow(7))
-        heldNow(7)
+        val request = flow(7)
+        val held = HeldRequest(request, request.request, ByteArray(0))
+        ProxyNotices.held(context, listOf(Hold.Request(held, CompletableFuture())))
+        assertEquals(1, notifications.allNotifications.size)
 
-        Holds.go(7)
-        waiting.get(WAIT_SECONDS, TimeUnit.SECONDS)
+        ProxyNotices.held(context, emptyList())
 
         assertTrue(notifications.allNotifications.isEmpty())
     }

@@ -47,8 +47,14 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/net/proxy/BodyView.kt` | Decoding and shaping a captured body |
 | `core/net/proxy/Curl.kt` | A flow written back out as a command |
 | `core/net/proxy/Har.kt` | Flows as a HAR 1.2 file, written an entry at a time |
+| `core/net/proxy/Repeater.kt` | Sending a captured request again, straight to its server |
+| `core/net/proxy/RequestDraft.kt` | A request as typed, checked before it is sent |
+| `core/net/proxy/UrlPattern.kt` | The `*` URL patterns mocks and breakpoints are named by |
+| `core/net/proxy/Mocks.kt` | Mocks, their draft, and `traffic-mocks.json` |
+| `core/net/proxy/Throttle.kt` | Network speed: Chrome's presets, and `Paced` streams |
+| `core/net/proxy/Breakpoints.kt` | Breakpoints, what is held, the verdicts, and the `Breaker` that decides |
 
-`core/net` carries **194 tests**, nearly all of them this work.
+`core/net` carries **258 tests**, nearly all of them this work.
 
 The Android side is in `app`:
 
@@ -60,6 +66,10 @@ The Android side is in `app`:
 | `ui/tools/NetworkTrafficTool.kt` | The screen: proxy, certificate, rules, the list |
 | `ui/tools/NetworkTrafficRules.kt` | The rules editor |
 | `ui/tools/NetworkTrafficDetail.kt` | One flow: overview, headers, body, cURL, rule shortcuts |
+| `ui/tools/NetworkTrafficCompose.kt` | Edit and send: a captured request changed and sent again |
+| `ui/tools/NetworkTrafficMocks.kt` | The mock editor and its rows |
+| `ui/tools/NetworkTrafficHolds.kt` | What is held, its editor, and the breakpoint editor |
+| `proxy/Holds.kt` | The breakpoints, and the `Breaker` that waits for a person's decision |
 | `surface/AppPlatformToggles.kt` | The `traffic-proxy` toggle; `TrafficProxyTile` is in `TileSlots.kt` |
 
 ## What is merged
@@ -77,19 +87,20 @@ The Android side is in `app`:
 | [#85](https://github.com/Droidective/droidective-android/pull/85) | The rules editor, kept in `traffic-rules.json` |
 | [#86](https://github.com/Droidective/droidective-android/pull/86) | HAR export |
 | [#87](https://github.com/Droidective/droidective-android/pull/87) | The `traffic-proxy` toggle and its Quick Settings tile |
+| [#95](https://github.com/Droidective/droidective-android/pull/95) | Flow ids unique across runs, so a restart can't overwrite what is on screen |
+| [#96](https://github.com/Droidective/droidective-android/pull/96), [#97](https://github.com/Droidective/droidective-android/pull/97) | Send again, and edit and send — Charles's *Repeat* and *Compose* |
+| [#98](https://github.com/Droidective/droidective-android/pull/98) | Mocks: an answer given here instead of the server's, kept in `traffic-mocks.json` |
+| [#99](https://github.com/Droidective/droidective-android/pull/99) | Network speed: Chrome's throttling presets, played through the proxy |
+| [#100](https://github.com/Droidective/droidective-android/pull/100) | Breakpoints in the engine: a request or its answer held whole and handed over |
+| [#101](https://github.com/Droidective/droidective-android/pull/101) | Breakpoints on the phone: the editor, what is held, and a notice that reaches you in the app being debugged |
 
 ## What is left, worth doing
 
 Roughly in the order people reach for them after the list itself:
 
-- **Repeat and edit a request.** Send a flow again, as it was or changed — Charles's
-  *Repeat* and *Compose*. The request head and kept body are all there; it needs a client
-  that goes through the proxy, so the repeat is recorded too.
-- **Breakpoints.** Hold a request or a response for a host, edit it, let it go. The relay
-  already sits between the two ends; the work is pausing a connection on a decision the
-  screen makes.
-- **Map local and map remote.** Answer a URL from a file, or send it to another host — the
-  commonest way to try a server change before it ships.
+- **Map remote.** Send a URL to another host — a staging server, a laptop on the same
+  network. A mock already answers from text; answering from a file is the other half of
+  Charles's *Map Local*.
 - **The system store, with root.** A user certificate is trusted only by apps that opt in.
   With root it can go in the system store, and every app that doesn't pin trusts it. On
   Android 14 and later the store lives in the Conscrypt APEX, so it means a tmpfs mounted
@@ -100,6 +111,10 @@ Roughly in the order people reach for them after the list itself:
 - **brotli and zstd.** Browsers ask for them, and a body in either is shown and exported as
   it arrived: it needs a decoder the app doesn't carry.
 - **HTTP/2.** Only HTTP/1.1 is offered in ALPN, so clients fall back; gRPC can't.
+- **An app that hangs up part-way.** A flow whose app goes away while its answer is being
+  relayed stays pending in the list (`serve` treats a vanished client as ordinary). A held
+  answer is recorded as ended, since an app giving up while it waits is the usual case there;
+  the rest would need the exchange in progress known where the connection's failure is caught.
 
 ## What stops this working, and what to tell people
 
@@ -161,6 +176,16 @@ does exactly this.
 - **Step aside is on by default**, keyed by app and host, kept for one run, and cleared when
   the certificate's trust changes.
 - **HAR is written decoded**, an entry at a time, and leaves out connections never read.
+- **A held exchange waits five minutes for a person**, then goes on as it was, so a phone left
+  alone never ends up with an app waiting forever. Stopping the proxy lets everything go.
+- **A request held for a person goes out on a new connection to the server.** The one it
+  was sharing may have been closed while it waited, and the edit would fail as "the server
+  answered nothing".
+- **An answer that will be held is asked for in gzip or deflate**, never brotli or zstd, so
+  it can be read and changed. A changed answer is written out plain, its length restated.
+- **A held request keeps its host.** The app is talking to that host, over TLS made for it;
+  sending its request elsewhere is map remote's job. Edit and send, from the list, goes
+  anywhere.
 
 ## Resuming
 

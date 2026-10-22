@@ -28,11 +28,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidective.android.proxy.Hold
 import com.droidective.android.proxy.Holds
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.proxy.Breakpoint
+import com.droidective.core.net.proxy.FlowLabels
 import com.droidective.core.net.proxy.MockDraft
 import com.droidective.core.net.proxy.Origin
 import com.droidective.core.net.proxy.RequestDraft
@@ -58,12 +60,14 @@ internal fun HeldCard(holds: List<Hold>, onOpen: (Hold) -> Unit) {
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "${flow.request.method} ${flow.url}",
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
+                        "${flow.request.method} ${flow.authority}${FlowLabels.path(flow)}",
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
-                        if (hold is Hold.Response) "Its answer" else "The request",
+                        if (hold is Hold.Response) "Its answer, waiting to reach the app"
+                        else "Waiting to go to the server",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -118,8 +122,8 @@ private fun HeldRequestEditor(hold: Hold.Request, tool: ToolContext) {
                             out.secure != flow.secure || out.origin != Origin(flow.host, flow.port)
                         ) {
                             problem =
-                                "The host can't change here: the connection to it is already " +
-                                    "open. Edit and send, on the request in the list, goes anywhere."
+                                "The host can't change here: the app is talking to this one. " +
+                                    "Edit and send, on the request in the list, goes anywhere."
                         } else {
                             // The connection stays as the app left it; a draft asks to close it.
                             val head =
@@ -160,7 +164,10 @@ private fun HeldResponseEditor(hold: Hold.Response, tool: ToolContext) {
             style = MaterialTheme.typography.bodySmall,
         )
         if (text == null) {
-            ToolNote("The answer isn't text, so it can go on as it came or be stopped.")
+            val why =
+                hold.held.compressed?.let { "came $it-compressed, which this can't read" }
+                    ?: "isn't text"
+            ToolNote("The answer $why, so it can go on as it came or be stopped.")
             Verdicts(hold, tool, onSend = null)
             return@ToolScaffold
         }
@@ -241,7 +248,7 @@ fun BreakpointEditor(start: Breakpoint, isNew: Boolean, tool: ToolContext) {
         Field("Method, or any", method) { method = it }
         SwitchRow("Hold the request", requests) { requests = it }
         SwitchRow("Hold the answer", responses) { responses = it }
-        SwitchRow("Stop here", enabled) { enabled = it }
+        SwitchRow("On", enabled) { enabled = it }
         problem?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(

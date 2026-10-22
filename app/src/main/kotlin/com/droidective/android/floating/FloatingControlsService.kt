@@ -27,6 +27,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
+import com.droidective.android.NoticeIds
 import com.droidective.android.R
 import com.droidective.android.droidective
 import com.droidective.android.screenrecord.ScreenRecorder
@@ -305,7 +306,7 @@ class FloatingControlsService : Service() {
 
     companion object {
         private const val CHANNEL = "floating-controls"
-        private const val NOTIFICATION_ID = 7_440
+        private const val NOTIFICATION_ID = NoticeIds.FLOATING
         private const val ACTION_STOP = "com.droidective.android.action.STOP_FLOATING_CONTROLS"
         private const val PREFS = "floating-controls"
         private const val KEY_X = "x"

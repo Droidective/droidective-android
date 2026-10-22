@@ -26,6 +26,7 @@ import android.view.WindowManager
 import android.widget.TextView
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import com.droidective.android.NoticeIds
 import com.droidective.android.R
 import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
@@ -237,7 +238,7 @@ class PerformanceOverlayService : Service() {
 
     companion object {
         private const val CHANNEL = "performance-overlay"
-        private const val NOTIFICATION_ID = 7_310
+        private const val NOTIFICATION_ID = NoticeIds.PERFORMANCE
         private const val ACTION_STOP = "com.droidective.android.action.STOP_OVERLAY"
         private const val TOOL = "performance"
         private const val TICK_MILLIS = 1_000L

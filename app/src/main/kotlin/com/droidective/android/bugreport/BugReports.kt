@@ -9,6 +9,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import com.droidective.android.MainActivity
+import com.droidective.android.NoticeIds
 import com.droidective.android.R
 import com.droidective.android.droidective
 import com.droidective.android.surface.Launch
@@ -42,7 +43,7 @@ sealed interface BugReportRun {
  */
 object BugReports {
     private const val CHANNEL = "bug-report"
-    private const val NOTIFICATION_ID = 7_402
+    private const val NOTIFICATION_ID = NoticeIds.BUG_REPORT
     const val TOOL = "bug-report"
 
     private val current = MutableStateFlow<BugReportRun?>(null)

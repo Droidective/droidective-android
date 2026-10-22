@@ -14,6 +14,7 @@ import android.os.IBinder
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.droidective.android.MainActivity
+import com.droidective.android.NoticeIds
 import com.droidective.android.R
 import com.droidective.android.crashes.CrashAlerts
 import com.droidective.android.droidective
@@ -218,7 +219,7 @@ class UiCaptureService : Service() {
 
     private companion object {
         const val CHANNEL = "ui-inspector"
-        const val NOTIFICATION_ID = 7_430
+        const val NOTIFICATION_ID = NoticeIds.UI_CAPTURE
         const val SECOND = 1_000L
         const val SCREENSHOT = "ui-inspector.png"
     }

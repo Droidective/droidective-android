@@ -9,6 +9,7 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import androidx.core.net.toUri
 import androidx.work.ForegroundInfo
+import com.droidective.android.NoticeIds
 import com.droidective.android.R
 import com.droidective.core.automations.Action
 import com.droidective.core.automations.Automation
@@ -17,7 +18,7 @@ import com.droidective.core.automations.Automation
 internal object AutomationNotifications {
     private const val CHANNEL = "automations"
     private const val CHANNEL_WORKING = "automations-working"
-    private const val WORKING_ID = 7_301
+    private const val WORKING_ID = NoticeIds.AUTOMATION_WORKING
     private const val MAX_BUTTONS = 3
 
     /** A Notify action: its title, text, and up to three buttons. */

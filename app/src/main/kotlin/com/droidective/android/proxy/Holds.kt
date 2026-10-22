@@ -5,7 +5,6 @@ import com.droidective.core.net.http.RequestHead
 import com.droidective.core.net.http.ResponseHead
 import com.droidective.core.net.proxy.Breaker
 import com.droidective.core.net.proxy.Breakpoint
-import com.droidective.core.net.proxy.BreakpointRepository
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.HeldRequest
 import com.droidective.core.net.proxy.HeldResponse
@@ -46,39 +45,25 @@ sealed interface Hold {
  * with an app waiting forever.
  */
 object Holds : Breaker {
-    private val points = MutableStateFlow<List<Breakpoint>>(emptyList())
-    @Volatile private var loaded = false
+    private val points =
+        KeptList(
+            "traffic-breakpoints.json",
+            Breakpoint.serializer(),
+            Breakpoint::id,
+            TrafficProxy::applyBreakpoints,
+        )
     private val waiting = MutableStateFlow<List<Hold>>(emptyList())
 
-    val breakpoints: StateFlow<List<Breakpoint>> = points.asStateFlow()
+    val breakpoints: StateFlow<List<Breakpoint>> = points.items
 
     /** What is held right now, oldest first. */
     val held: StateFlow<List<Hold>> = waiting.asStateFlow()
 
-    fun load(context: Context) {
-        if (loaded) return
-        synchronized(this) {
-            if (loaded) return
-            points.value = BreakpointRepository(context.filesDir).all()
-            loaded = true
-        }
-    }
+    fun load(context: Context) = points.load(context)
 
-    fun save(context: Context, point: Breakpoint) =
-        change(context) { all ->
-            if (all.any { it.id == point.id }) all.map { if (it.id == point.id) point else it }
-            else all + point
-        }
+    fun save(context: Context, point: Breakpoint) = points.save(context, point)
 
-    fun remove(context: Context, id: String) =
-        change(context) { all -> all.filterNot { it.id == id } }
-
-    private fun change(context: Context, edit: (List<Breakpoint>) -> List<Breakpoint>) {
-        load(context)
-        val changed = synchronized(this) { edit(points.value).also { points.value = it } }
-        BreakpointRepository(context.filesDir).save(changed)
-        TrafficProxy.applyBreakpoints(changed)
-    }
+    fun remove(context: Context, id: String) = points.remove(context, id)
 
     override fun request(held: HeldRequest): RequestVerdict {
         val hold = Hold.Request(held, CompletableFuture())

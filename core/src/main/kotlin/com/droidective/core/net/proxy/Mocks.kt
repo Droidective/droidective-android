@@ -2,13 +2,10 @@ package com.droidective.core.net.proxy
 
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.ResponseHead
-import com.droidective.core.store.JsonFileStore
-import java.io.File
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.StandardCharsets
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
 
 /** One header of a mocked answer. */
 @Serializable data class MockHeader(val name: String, val value: String)
@@ -192,16 +189,4 @@ data class MockDraft(
 
         private val STATUSES = 100..599
     }
-}
-
-/** The mocks, kept in `traffic-mocks.json`, in the order they were made. */
-class MockRepository(root: File) {
-    private val store =
-        JsonFileStore(File(root, "traffic-mocks.json"), ListSerializer(Mock.serializer())) {
-            emptyList()
-        }
-
-    fun all(): List<Mock> = store.load()
-
-    fun save(mocks: List<Mock>) = store.save(mocks)
 }

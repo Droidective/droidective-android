@@ -3,10 +3,7 @@ package com.droidective.core.net.proxy
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
 import com.droidective.core.net.http.ResponseHead
-import com.droidective.core.store.JsonFileStore
-import java.io.File
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
 
 /**
  * Where the proxy stops and waits: a request matching [url] (and [method], when named) is held
@@ -122,19 +119,4 @@ interface Breaker {
                 override fun response(held: HeldResponse) = ResponseVerdict.Go
             }
     }
-}
-
-/** The breakpoints, kept in `traffic-breakpoints.json`, in the order they were made. */
-class BreakpointRepository(root: File) {
-    private val store =
-        JsonFileStore(
-            File(root, "traffic-breakpoints.json"),
-            ListSerializer(Breakpoint.serializer()),
-        ) {
-            emptyList()
-        }
-
-    fun all(): List<Breakpoint> = store.load()
-
-    fun save(points: List<Breakpoint>) = store.save(points)
 }

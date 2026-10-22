@@ -20,7 +20,6 @@ import com.droidective.core.net.proxy.FlowOwners
 import com.droidective.core.net.proxy.FlowSink
 import com.droidective.core.net.proxy.FlowStore
 import com.droidective.core.net.proxy.Mock
-import com.droidective.core.net.proxy.MockRepository
 import com.droidective.core.net.proxy.Outgoing
 import com.droidective.core.net.proxy.ProxyRules
 import com.droidective.core.net.proxy.ProxyServer
@@ -288,7 +287,7 @@ object TrafficProxy {
             loadRules(context)
             running.rules = proxyRules(context, chosen.value)
             loadMocks(context)
-            running.mocks = answers.value
+            running.mocks = mocks.value
             running.throttle = speed.value
             Holds.load(context)
             running.breakpoints = Holds.breakpoints.value
@@ -338,38 +337,19 @@ object TrafficProxy {
         server?.breakpoints = points
     }
 
-    private val answers = MutableStateFlow<List<Mock>>(emptyList())
-    @Volatile private var mocksLoaded = false
+    private val keptMocks =
+        KeptList("traffic-mocks.json", Mock.serializer(), Mock::id) { server?.mocks = it }
 
     /** The answers given instead of the server's, in the order they were made. */
-    val mocks: StateFlow<List<Mock>> = answers.asStateFlow()
+    val mocks: StateFlow<List<Mock>> = keptMocks.items
 
     /** Reads the kept mocks, once; after that [mocks] is the truth. */
-    fun loadMocks(context: Context) {
-        if (mocksLoaded) return
-        synchronized(this) {
-            if (mocksLoaded) return
-            answers.value = MockRepository(context.filesDir).all()
-            mocksLoaded = true
-        }
-    }
+    fun loadMocks(context: Context) = keptMocks.load(context)
 
     /** Keeps [mock], replacing the one with its id, and applies it at once. */
-    fun saveMock(context: Context, mock: Mock) =
-        changeMocks(context) { all ->
-            if (all.any { it.id == mock.id }) all.map { if (it.id == mock.id) mock else it }
-            else all + mock
-        }
+    fun saveMock(context: Context, mock: Mock) = keptMocks.save(context, mock)
 
-    fun removeMock(context: Context, id: String) =
-        changeMocks(context) { all -> all.filterNot { it.id == id } }
-
-    private fun changeMocks(context: Context, edit: (List<Mock>) -> List<Mock>) {
-        loadMocks(context)
-        val changed = synchronized(this) { edit(answers.value).also { answers.value = it } }
-        MockRepository(context.filesDir).save(changed)
-        server?.mocks = changed
-    }
+    fun removeMock(context: Context, id: String) = keptMocks.remove(context, id)
 
     /** Reads the kept rules, once; after that [rules] is the truth. */
     fun loadRules(context: Context) {

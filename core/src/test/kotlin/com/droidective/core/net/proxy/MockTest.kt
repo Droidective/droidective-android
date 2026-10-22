@@ -6,7 +6,6 @@ import com.droidective.core.net.http.RequestHead
 import com.droidective.core.net.http.ResponseHead
 import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPOutputStream
-import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -147,14 +146,6 @@ class MockTest {
         assertFalse(Mock.isPattern("api.example.com/menu"))
         assertFalse(Mock.isPattern("https:///menu"))
         assertFalse(Mock.isPattern("https://a b.com/"))
-    }
-
-    @Test
-    fun theMocksAreKept() {
-        val repository = MockRepository(createTempDirectory("mocks").toFile())
-        assertEquals(emptyList(), repository.all())
-        repository.save(listOf(menu))
-        assertEquals(listOf(menu), repository.all())
     }
 
     @Test

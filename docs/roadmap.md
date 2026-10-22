@@ -8,6 +8,8 @@ another machine. Current release: **0.10.0**.
 - Mocks that answer from a file in the mocks folder, read again for every request, so a fixture
   pushed with `adb push` changes the answer (#111).
 - brotli bodies — what Chrome gets from most CDNs — are read, shown and exported decoded (#112).
+- An answer streamed slowly — server-sent events, a long poll — reaches the app as it is sent,
+  not in 8 KB lumps; one cut short by either end is on record rather than left pending (#113).
 
 ## Next
 

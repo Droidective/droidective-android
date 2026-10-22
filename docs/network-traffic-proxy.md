@@ -117,10 +117,6 @@ Roughly in the order people reach for them after the list itself:
 - **zstd.** Chrome asks for it, and a body in it is shown and exported as it arrived: it
   needs a decoder the app doesn't carry. brotli is read (`org.brotli:dec`).
 - **HTTP/2.** Only HTTP/1.1 is offered in ALPN, so clients fall back; gRPC can't.
-- **An app that hangs up part-way.** A flow whose app goes away while its answer is being
-  relayed stays pending in the list (`serve` treats a vanished client as ordinary). A held
-  answer is recorded as ended, since an app giving up while it waits is the usual case there;
-  the rest would need the exchange in progress known where the connection's failure is caught.
 
 ## What stops this working, and what to tell people
 
@@ -169,6 +165,10 @@ does exactly this.
   prefer IPv6 for that reason, so the desktop JVM can't hide it again.
 - **Bodies are forwarded whole** however little is kept. The app must behave exactly as it
   would with nothing in the way.
+- **An answer is passed on as it arrives**: flushed after every read, and the head before the
+  body. Server-sent events and long polls wait on it; a buffer left to fill held them back.
+- **An answer cut short is still on record**: with what the server sent and why it ended —
+  the app hanging up, or the server stopping part-way — never left pending.
 - **Stopping puts the setting back the way it was**: the proxy somebody had before, or `:0`
   (an empty value does not clear it), and nothing at all when somebody changed it since.
   Whether it points here is read back from the setting, never remembered, and the app's

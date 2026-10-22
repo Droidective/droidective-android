@@ -790,6 +790,68 @@ class ProxyServerTest {
     }
 
     @Test
+    fun anAnswerTheAppHungUpOnIsOnRecord() {
+        Trickle(length = 8_000_000, first = 10).use { server ->
+            val port = proxy()
+            Socket("127.0.0.1", port).use { socket ->
+                socket
+                    .getOutputStream()
+                    .write(
+                        wire("GET http://127.0.0.1:${server.port}/big HTTP/1.1\r\nHost: x\r\n\r\n")
+                    )
+                socket.getOutputStream().flush()
+                assertTrue(readUpToBlankLine(socket.getInputStream()).startsWith("HTTP/1.1 200"))
+                // Gone, hard, with most of the answer still to come.
+                socket.setSoLinger(true, 0)
+            }
+            server.go.countDown()
+
+            val flow = sink.next()
+            assertEquals(200, flow.status)
+            assertEquals("the app hung up before its answer was all there", flow.failure)
+        }
+    }
+
+    @Test
+    fun anAnswerReachesTheAppAsTheServerSendsIt() {
+        // Server-sent events and long polls depend on it: nothing waits for a buffer to fill.
+        Trickle(length = 1_000, first = 10).use { server ->
+            val port = proxy()
+            Socket("127.0.0.1", port).use { socket ->
+                socket.soTimeout = 5_000
+                socket
+                    .getOutputStream()
+                    .write(
+                        wire(
+                            "GET http://127.0.0.1:${server.port}/events HTTP/1.1\r\nHost: x\r\n\r\n"
+                        )
+                    )
+                socket.getOutputStream().flush()
+                val input = socket.getInputStream()
+                assertTrue(readUpToBlankLine(input).startsWith("HTTP/1.1 200"))
+                assertEquals(10, input.readNBytes(10).size)
+                server.go.countDown()
+                assertEquals(990, input.readNBytes(990).size)
+            }
+        }
+    }
+
+    @Test
+    fun anAnswerTheServerStoppedPartWayIsOnRecord() {
+        Trickle(length = 1_000, first = 10).use { server ->
+            server.hangUp = true
+            server.go.countDown()
+            val port = proxy()
+            // A short body or an error: what the app makes of it is its HTTP client's business.
+            runCatching { get("http://127.0.0.1:${server.port}/short", port) }
+
+            val flow = sink.next()
+            assertEquals(200, flow.status)
+            assertTrue("stopped 10 of 1000" in assertNotNull(flow.failure))
+        }
+    }
+
+    @Test
     fun aRequestNoBreakpointMatchesIsNotHeld() {
         FakeServer().use { origin ->
             val breaker = Scripted()
@@ -1037,6 +1099,48 @@ private fun readText(socket: Socket): String {
     return said.poll() ?: error("the socket closed before saying anything")
 }
 
+/** A head, a byte at a time, so nothing after it is taken from the stream. */
+private fun readUpToBlankLine(input: java.io.InputStream): String {
+    val bytes = ByteArrayOutputStream()
+    while (!bytes.toString(Charsets.ISO_8859_1).endsWith("\r\n\r\n")) {
+        val next = input.read()
+        if (next == -1) break
+        bytes.write(next)
+    }
+    return bytes.toString(Charsets.ISO_8859_1)
+}
+
+/**
+ * A server that promises [length] bytes, sends the [first] of them, and waits to be told to [go]
+ * on: with the rest, or — when it is to [hangUp] — with nothing at all.
+ */
+private class Trickle(private val length: Int, private val first: Int) : AutoCloseable {
+    private val server = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
+    val port: Int = server.localPort
+    val go = CountDownLatch(1)
+    @Volatile var hangUp = false
+
+    init {
+        thread(isDaemon = true) {
+            try {
+                server.accept().use { socket ->
+                    readUpToBlankLine(socket.getInputStream())
+                    val out = socket.getOutputStream()
+                    out.write("HTTP/1.1 200 OK\r\nContent-Length: $length\r\n\r\n".toByteArray())
+                    out.write(ByteArray(first))
+                    out.flush()
+                    go.await(10, TimeUnit.SECONDS)
+                    if (!hangUp) out.write(ByteArray(length - first))
+                }
+            } catch (_: java.io.IOException) {
+                // The proxy hanging up on a server that is still writing: what the test is about.
+            }
+        }
+    }
+
+    override fun close() = server.close()
+}
+
 /**
  * A server that agrees to any upgrade, then answers the first message with an echo of it, and waits
  * for the app to hang up — or, when it doesn't [hold], hangs up itself.
@@ -1050,7 +1154,7 @@ private class SocketEcho(private val hold: Boolean = true) : AutoCloseable {
         thread(isDaemon = true) {
             try {
                 server.accept().use { socket ->
-                    val asked = readRequestHead(socket.getInputStream())
+                    val asked = readUpToBlankLine(socket.getInputStream())
                     val protocol = asked.substringAfter("Upgrade: ").substringBefore("\r\n")
                     socket
                         .getOutputStream()
@@ -1078,16 +1182,6 @@ private class SocketEcho(private val hold: Boolean = true) : AutoCloseable {
                 // Closed by the test: that is how it ends.
             }
         }
-    }
-
-    private fun readRequestHead(input: java.io.InputStream): String {
-        val bytes = ByteArrayOutputStream()
-        while (!bytes.toString(Charsets.ISO_8859_1).endsWith("\r\n\r\n")) {
-            val next = input.read()
-            if (next == -1) break
-            bytes.write(next)
-        }
-        return bytes.toString(Charsets.ISO_8859_1)
     }
 
     override fun close() = server.close()

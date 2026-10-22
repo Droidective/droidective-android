@@ -332,9 +332,14 @@ class ProxyServer(
         val toServer = Paced.of(upstream.sink, slow.upBytesPerSecond)
         val out = Paced.of(client, slow.downBytesPerSecond)
         val forward = head.with(target = head.path, headers = forwardable(head.headers))
-        toServer.write((ends.remapped?.hosting(forward) ?: forward).bytes())
-        val requestBody = HttpBody.relay(BodyFraming.of(head), source, toServer)
-        toServer.flush()
+        val requestBody =
+            try {
+                toServer.write((ends.remapped?.hosting(forward) ?: forward).bytes())
+                HttpBody.relay(BodyFraming.of(head), source, toServer).also { toServer.flush() }
+            } catch (e: IOException) {
+                failed(flow, out, e, record)
+                return false
+            }
         val asked = flow.copy(requestBody = requestBody)
         record.started(asked)
 
@@ -357,11 +362,24 @@ class ProxyServer(
         record: FlowSink,
     ): Boolean {
         val (_, out, upstream) = ends
-        out.write(response.bytes())
-        if (response.status == SWITCHING) return upgrade(asked, response, ends, record)
+        val toApp = ToApp(out)
         val framing = BodyFraming.of(response, head.method)
-        val body = HttpBody.relay(framing, upstream.source, out)
-        out.flush()
+        val body =
+            try {
+                toApp.write(response.bytes())
+                if (response.status == SWITCHING) return upgrade(asked, response, ends, record)
+                // The head goes as soon as it is here, before a body that may be slow to start.
+                toApp.flush()
+                HttpBody.relay(framing, upstream.source, toApp).also { toApp.flush() }
+            } catch (e: IOException) {
+                // On record as far as it got, not left waiting for an answer that has been and
+                // gone.
+                val why = if (e is AppGone) APP_GONE else e.reason()
+                record.finished(
+                    asked.copy(response = response, finishedAt = clock(), failure = why)
+                )
+                return false
+            }
         record.finished(asked.copy(response = response, responseBody = body, finishedAt = clock()))
         return framing != BodyFraming.UntilClose &&
             !closes(head.headers) &&
@@ -648,6 +666,28 @@ class ProxyServer(
         }
     }
 
+    /**
+     * The app's end of an answer, saying so when a write fails there: the same failure from the
+     * server's end means something else.
+     */
+    private class ToApp(private val out: OutputStream) : OutputStream() {
+        override fun write(b: Int) = guarded { out.write(b) }
+
+        override fun write(b: ByteArray, off: Int, len: Int) = guarded { out.write(b, off, len) }
+
+        override fun flush() = guarded { out.flush() }
+
+        private inline fun guarded(write: () -> Unit) {
+            try {
+                write()
+            } catch (e: IOException) {
+                throw AppGone(e)
+            }
+        }
+    }
+
+    private class AppGone(cause: IOException) : IOException(APP_GONE, cause)
+
     /** The app's end of a connection. */
     private data class Client(val socket: Socket, val source: InputStream, val out: OutputStream)
 
@@ -673,6 +713,7 @@ class ProxyServer(
 
     private companion object {
         const val CONNECT = "CONNECT"
+        const val APP_GONE = "the app hung up before its answer was all there"
         const val UPGRADE = "Upgrade"
         const val WEBSOCKET = "websocket"
         const val EXTENSIONS = "Sec-WebSocket-Extensions"

@@ -1,9 +1,9 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.Loopback
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
-import java.net.ServerSocket
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -131,7 +131,7 @@ class RepeaterTest {
 
     @Test
     fun aServerThatIsNotThereIsAFailureOnRecord() {
-        val closed = ServerSocket(0).use { it.localPort }
+        val closed = Loopback.closedPort()
         val again = Repeater().send(ready(captured(port = closed)), id = 3, of = 7)
         assertNull(again.response)
         assertNotNull(again.failure)

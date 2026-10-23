@@ -106,7 +106,7 @@ class NetworkCheckTest {
 
     @Test
     fun aClosedPortStopsAtTheConnection() {
-        val port = ServerSocket(0).use { it.localPort }
+        val port = Loopback.closedPort()
         val report =
             NetworkProbe.check(CheckTarget("127.0.0.1", port, false, "/"), timeoutMillis = 2_000)
         assertIs<Step.Failed>(report.tcp)

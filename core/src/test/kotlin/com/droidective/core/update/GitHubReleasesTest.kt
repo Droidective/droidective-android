@@ -1,8 +1,8 @@
 package com.droidective.core.update
 
+import com.droidective.core.net.Loopback
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
-import java.net.ServerSocket
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -69,7 +69,7 @@ class GitHubReleasesTest {
 
     @Test
     fun nobodyListeningIsAFailureNotACrash() {
-        val port = ServerSocket(0).use { it.localPort }
+        val port = Loopback.closedPort()
         val failed =
             assertIs<Latest.Failed>(GitHubReleases("0.1.0", "http://127.0.0.1:$port/").latest())
         assertTrue(failed.reason.startsWith("Couldn’t reach GitHub"), failed.reason)

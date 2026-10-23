@@ -1,5 +1,6 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.Loopback
 import com.droidective.core.net.h2.FrameCutter
 import com.droidective.core.net.h2.H2Wire
 import com.droidective.core.net.h2.H2Wire.END_HEADERS
@@ -227,7 +228,9 @@ private fun Http2Frame.ends(): Boolean = (type == H2Wire.DATA || type == HEADERS
  */
 private class H2Origin(private vararg val alpn: String) : AutoCloseable {
     private val server =
-        TestAuthority.serverContext().serverSocketFactory.createServerSocket(0) as SSLServerSocket
+        TestAuthority.serverContext()
+            .serverSocketFactory
+            .createServerSocket(0, Loopback.BACKLOG, Loopback.localhost) as SSLServerSocket
 
     val port: Int
         get() = server.localPort

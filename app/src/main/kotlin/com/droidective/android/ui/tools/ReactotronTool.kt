@@ -76,13 +76,23 @@ fun ReactotronTool(tool: ToolContext) {
         }
     }
     var open by rememberSaveable { mutableStateOf<Long?>(null) }
+    var openSnapshot by rememberSaveable { mutableStateOf<String?>(null) }
+    val snapshots by Reactotron.snapshots.collectAsStateWithLifecycle()
     val kept = rememberSaveableStateHolder()
     val opened = open?.let { id -> entries.firstOrNull { it.id == id } }
     if (opened != null) {
         EntryDetail(opened, ToolContext(tool.snackbar, onBack = { open = null }, tool.onOpenSetup))
         return
     }
-    kept.SaveableStateProvider(LIST) { Timeline(tool, entries) { open = it } }
+    val snapshot = openSnapshot?.let { id -> snapshots.firstOrNull { it.id == id } }
+    if (snapshot != null) {
+        val back = ToolContext(tool.snackbar, onBack = { openSnapshot = null }, tool.onOpenSetup)
+        SnapshotDetail(snapshot, back)
+        return
+    }
+    kept.SaveableStateProvider(LIST) {
+        Timeline(tool, entries, onOpen = { open = it }, onOpenSnapshot = { openSnapshot = it })
+    }
 }
 
 @Composable
@@ -90,6 +100,7 @@ private fun Timeline(
     tool: ToolContext,
     entries: List<ReactotronTimeline.Entry>,
     onOpen: (Long) -> Unit,
+    onOpenSnapshot: (String) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var kindName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -124,6 +135,7 @@ private fun Timeline(
                 item { CommandsSection() }
                 item { StateSection() }
             }
+            item { SnapshotsSection(onOpenSnapshot) }
             item {
                 Filters(kind, query, onKind = { kindName = it?.name }, onQuery = { query = it })
             }
@@ -364,9 +376,9 @@ private fun EntryDetail(entry: ReactotronTimeline.Entry, tool: ToolContext) {
         when (event) {
             is ReactotronEvent.ApiResponse -> ApiDetail(event)
             is ReactotronEvent.StateAnswer ->
-                Payload(if (event.keys) "Keys" else "Value", event.value ?: JsonNull)
+                ReactotronPayload(if (event.keys) "Keys" else "Value", event.value ?: JsonNull)
             is ReactotronEvent.Log -> LogDetail(event, entry)
-            else -> Payload("Payload", entry.command.payload)
+            else -> ReactotronPayload("Payload", entry.command.payload)
         }
         val whole = entry.command.payload?.let(::pretty)
         if (whole != null) {
@@ -389,7 +401,7 @@ private fun ApiDetail(event: ReactotronEvent.ApiResponse) {
         InfoRow("Took", ReactotronLabels.millis(event.durationMillis))
         Headers(event.request.child("headers"))
     }
-    Payload("Request body", event.request.child("data"))
+    ReactotronPayload("Request body", event.request.child("data"))
     ToolSection("Response") {
         InfoRow(
             "Status",
@@ -397,12 +409,12 @@ private fun ApiDetail(event: ReactotronEvent.ApiResponse) {
         )
         Headers(event.response.child("headers"))
     }
-    Payload("Response body", event.response.child("body"))
+    ReactotronPayload("Response body", event.response.child("body"))
 }
 
 @Composable
 private fun LogDetail(event: ReactotronEvent.Log, entry: ReactotronTimeline.Entry) {
-    Payload("Message", entry.command.payload.child("message"))
+    ReactotronPayload("Message", entry.command.payload.child("message"))
     if (event.stack.isNotEmpty()) {
         ToolSection("Stack") {
             event.stack.forEach { frame ->
@@ -428,7 +440,7 @@ private fun Headers(headers: JsonElement?) {
 
 /** A part of the payload, laid out as JSON — text that is itself JSON, as a body often is, too. */
 @Composable
-private fun Payload(title: String, value: JsonElement?) {
+internal fun ReactotronPayload(title: String, value: JsonElement?) {
     if (value == null || value == JsonNull) return
     val shown = remember(value) { pretty(value) }
     ToolSection(title) {

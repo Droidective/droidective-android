@@ -1,6 +1,7 @@
 package com.droidective.core.reactotron
 
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -97,6 +98,25 @@ class ReactotronCommands {
             commands
                 .filter { it.name == name && appOf(it.connection) == app }
                 .maxByOrNull { it.connection }
+
+        /**
+         * What asks an app for its whole state, to keep: its store plugin, reactotron-redux or
+         * reactotron-mst, answers with [BACKUP_RESPONSE].
+         */
+        const val BACKUP_REQUEST = "state.backup.request"
+        const val BACKUP_RESPONSE = "state.backup.response"
+
+        /** What has an app's store plugin replace its state with the one sent. */
+        const val RESTORE_REQUEST = "state.restore.request"
+
+        /** The state [command] gives back when it answers [BACKUP_REQUEST], or null. */
+        fun backedUp(command: ReactotronCommand): JsonElement? =
+            command.payload["state"].takeIf {
+                command.type == BACKUP_RESPONSE && it != null && it !is JsonNull
+            }
+
+        /** What puts [state] back in place of the app's own. */
+        fun restore(state: JsonElement): JsonElement = JsonObject(mapOf("state" to state))
 
         /** What asks an app for the state at [path], its value or the keys under it. */
         fun stateRequest(path: String, keys: Boolean): Pair<String, JsonElement> =

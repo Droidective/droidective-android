@@ -22,10 +22,12 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `core/reactotron/ReactotronEvent.kt` | Each command read for what it says, as Droidective for Mac reads it |
 | `core/reactotron/ReactotronTimeline.kt` | What the apps said, bounded by count and by bytes |
 | `core/reactotron/ReactotronLabels.kt` | A row's tag and summary, the filter's kinds, the search |
-| `core/reactotron/ReactotronCommands.kt` | The custom commands apps register, running one, asking for state |
+| `core/reactotron/ReactotronCommands.kt` | The custom commands apps register, running one, asking for state, backing it up and restoring it |
+| `core/reactotron/ReactotronSnapshots.kt` | The states kept to put back: an index, a file each, bounded |
 | `app/reactotron/Reactotron.kt` | The one server, its state, the apps connected, the timeline |
 | `app/reactotron/ReactotronService.kt` | The foreground service that keeps it listening |
 | `app/ui/tools/ReactotronTool.kt` | The screen: start and stop, the timeline, an entry whole |
+| `app/ui/tools/ReactotronSnapshotsUi.kt` | Snapshots: taking one, and one whole, to restore, rename or delete |
 | `app/automation/ToolActions.kt` | A command run from a widget slot or an automation |
 
 ## Decisions worth not relitigating
@@ -52,12 +54,19 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 - **A slot or an automation finds its command by the app's name and the command's**, never by
   the connection, which is new on every reload. A reloading app briefly has two connections;
   the newer one is the live one. What the slot gives the arguments is kept with it.
+- **Snapshots are kept in the app's files**, where the Mac keeps them for the session: Android
+  ends a process in the background, and a snapshot is something to come back to — a filled cart,
+  a login, a step deep in a flow. An index, and each state in a file of its own, read only to
+  restore or show it; twenty, or 32 MB, the oldest going first. A backup answer is a snapshot,
+  not news, so it stays out of the timeline. A restore leaves no line there either:
+  reactotron-redux keeps its own `REACTOTRON_RESTORE_STATE` action out, so the screen says it
+  was sent, and the app's state is the proof.
 
 ## What is left
 
-- **The rest of talking back.** Commands and state reads are done; backing the state up and
-  restoring it (`state.backup.request`, `state.restore.request`), subscribing to paths so their
-  changes stream in (`state.values.subscribe` with paths), and the REPL are not.
+- **The rest of talking back.** Commands, state reads and snapshots are done; subscribing to
+  paths so their changes stream in (`state.values.subscribe` with paths), dispatching an action
+  (`state.action.dispatch`) and the REPL are not.
 - **Images.** An `image` command is listed, not shown.
 - **The MCP server** Droidective for Mac serves Reactotron's timeline through has no phone half.
 

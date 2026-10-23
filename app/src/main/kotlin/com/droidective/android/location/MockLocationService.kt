@@ -98,7 +98,8 @@ class MockLocationService : Service() {
             }
         } catch (_: SecurityException) {
             stopStandingIn()
-            MockLocation.state_.value = MockLocation.State.Failed(NOT_CHOSEN, notChosen = true)
+            MockLocation.state_.value =
+                MockLocation.State.Failed(MockLocation.NOT_CHOSEN, notChosen = true)
             return false
         } catch (e: IllegalArgumentException) {
             stopStandingIn()
@@ -167,7 +168,7 @@ class MockLocationService : Service() {
                 } catch (_: SecurityException) {
                     // Developer options picked another app since; it is that app's place now.
                     MockLocation.state_.value =
-                        MockLocation.State.Failed(NOT_CHOSEN, notChosen = true)
+                        MockLocation.State.Failed(MockLocation.NOT_CHOSEN, notChosen = true)
                     stopSelf()
                     return
                 } catch (_: IllegalArgumentException) {
@@ -268,9 +269,6 @@ class MockLocationService : Service() {
         private const val CHANNEL = "mock-location"
         private const val EVERY_MILLIS = 1_000L
         private const val ACCURACY_METRES = 3f
-        private const val NOT_CHOSEN =
-            "Droidective isn't the mock location app. Android lets only that app stand in for " +
-                "the phone's location."
 
         /** The route [intent] carries, when it carries one rather than a place. */
         private fun route(intent: Intent): Route? {

@@ -95,6 +95,10 @@ object AutomationRules {
             is Action.Wait -> waitProblems(action.seconds)
             is Action.RunAutomation ->
                 if (action.automationId == selfId) listOf("It can’t run itself") else emptyList()
+            is Action.SetLocation -> blankProblems(action.name, "place name")
+            Action.RealLocation -> emptyList()
+            is Action.ReactotronCommand ->
+                blankProblems(action.app, "app name") + blankProblems(action.command, "command")
         }
 
     private fun notifyProblems(
@@ -196,8 +200,8 @@ val Action.isDestructive: Boolean
 
 /**
  * The lowest level [this] runs at in place: a toggle's own level; the shell for a saved command and
- * for what `am` and `pm` do to an app; App for opening something, posting, waiting or running
- * another automation, whose own actions say what they need when it runs.
+ * for what `am` and `pm` do to an app; App for opening something, posting, waiting, Mock Location,
+ * Reactotron, or running another automation, whose own actions say what they need when it runs.
  */
 fun Action.level(toggles: (String) -> ToggleDef? = Toggles::byId): AccessLevel =
     when (this) {
@@ -211,7 +215,10 @@ fun Action.level(toggles: (String) -> ToggleDef? = Toggles::byId): AccessLevel =
         is Action.OpenSettings,
         is Action.Notify,
         is Action.Wait,
-        is Action.RunAutomation -> AccessLevel.App
+        is Action.RunAutomation,
+        is Action.SetLocation,
+        Action.RealLocation,
+        is Action.ReactotronCommand -> AccessLevel.App
     }
 
 /**

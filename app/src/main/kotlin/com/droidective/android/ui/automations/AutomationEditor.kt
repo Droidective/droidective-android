@@ -34,6 +34,7 @@ import com.droidective.android.automation.AutomationRunner
 import com.droidective.android.automation.Automations
 import com.droidective.android.automation.RunRequest
 import com.droidective.android.droidective
+import com.droidective.android.location.MockLocation
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.openSafely
 import com.droidective.android.ui.openUsageAccess
@@ -275,24 +276,38 @@ private fun ActionsSection(
             }
         }
         TextButton(onClick = { onDialog(EditorDialog.ActionKinds) }) { Text("Add an action") }
-        if (draft.actions.any { it.opensSomething } && !Settings.canDrawOverlays(context)) {
-            ToolNote(
-                "Android only lets an app open screens from the background with Display over " +
-                    "other apps, or through Shell. Without either, you get a notification to tap."
-            )
-            OutlinedButton(
-                onClick = {
-                    context.openSafely(
-                        Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            "package:${context.packageName}".toUri(),
-                        )
+        ActionNotes(draft.actions)
+    }
+}
+
+/** What the phone has to allow first for [actions] to run unattended. */
+@Composable
+private fun ActionNotes(actions: List<Action>) {
+    val context = LocalContext.current
+    if (actions.any { it.opensSomething } && !Settings.canDrawOverlays(context)) {
+        ToolNote(
+            "Android only lets an app open screens from the background with Display over " +
+                "other apps, or through Shell. Without either, you get a notification to tap."
+        )
+        OutlinedButton(
+            onClick = {
+                context.openSafely(
+                    Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        "package:${context.packageName}".toUri(),
                     )
-                }
-            ) {
-                Text("Allow Display over other apps")
+                )
             }
+        ) {
+            Text("Allow Display over other apps")
         }
+    }
+    if (actions.any { it is Action.SetLocation } && !MockLocation.chosen(context)) {
+        // Only a note: opening the tool from here would replace this editor and its draft.
+        ToolNote(
+            "Putting the phone at a place needs Droidective to be the mock location app. Set " +
+                "that up once in Tools ▸ Mock Location."
+        )
     }
 }
 

@@ -24,6 +24,8 @@ import com.droidective.android.ui.LevelChip
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.automations.AppChooser
 import com.droidective.android.ui.automations.ChoiceDialog
+import com.droidective.android.ui.automations.LocationChooser
+import com.droidective.android.ui.automations.ReactotronCommandChooser
 import com.droidective.android.ui.automations.TextDialog
 import com.droidective.android.ui.automations.ToggleStateChooser
 import com.droidective.core.apps.AppAction
@@ -52,6 +54,10 @@ private sealed interface ActionStep {
     data class PermissionGrant(val packageName: String, val label: String, val permission: String) :
         ActionStep
 
+    data object Place : ActionStep
+
+    data object ReactotronCommand : ActionStep
+
     data class Confirm(val item: Item.Action) : ActionStep
 }
 
@@ -79,6 +85,14 @@ internal fun ActionList(query: String, onPick: (Item) -> Unit) {
         item {
             PickRow("Grant or revoke a permission", "verified_user") {
                 step = ActionStep.AppForPermission
+            }
+        }
+        item {
+            PickRow("Put the phone at a place, or back", "location_on") { step = ActionStep.Place }
+        }
+        item {
+            PickRow("Run an app’s Reactotron command", "data_object") {
+                step = ActionStep.ReactotronCommand
             }
         }
         item { Header("Your automations") }
@@ -157,29 +171,30 @@ private fun ActionSteps(step: ActionStep?, onStep: (ActionStep?) -> Unit, onPick
                     "${if (grant) "Grant" else "Revoke"} $short: ${step.label}",
                 )
             }
+        ActionStep.Place -> LocationChooser(onDismiss = close, onPick = ::finish)
+        ActionStep.ReactotronCommand ->
+            ReactotronCommandChooser(onDismiss = close) { finish(it, it.label) }
         is ActionStep.Confirm ->
-            AlertDialog(
-                onDismissRequest = close,
-                title = { Text(step.item.label) },
-                text = {
-                    Text(
-                        "A tap on this slot will do it at once, with no question asked. " +
-                            "It can't be undone."
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            close()
-                            onPick(step.item)
-                        }
-                    ) {
-                        Text("Add it")
-                    }
-                },
-                dismissButton = { TextButton(onClick = close) { Text("Cancel") } },
-            )
+            ConfirmDialog(step.item, onDismiss = close) {
+                close()
+                onPick(step.item)
+            }
     }
+}
+
+@Composable
+private fun ConfirmDialog(item: Item.Action, onDismiss: () -> Unit, onAdd: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(item.label) },
+        text = {
+            Text(
+                "A tap on this slot will do it at once, with no question asked. It can't be undone."
+            )
+        },
+        confirmButton = { TextButton(onClick = onAdd) { Text("Add it") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 /** The Tools tab: any of Droidective's tool screens, one tap away. */

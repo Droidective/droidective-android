@@ -42,4 +42,21 @@ object ShellStarts {
         require(actionName.matches(action)) { "\"$action\" isn’t an intent action" }
         return ShellCommand.of("am", "start", "-a", shellQuote(action))
     }
+
+    /**
+     * Lets [packageName] start a foreground service for the next ten seconds. From Android 12 an
+     * app off screen may not, unless a widget, tile, notification or alarm started it; the shell
+     * may allow one for a while.
+     */
+    fun allowForegroundService(packageName: String): ShellCommand {
+        require(AppActions.isPackageName(packageName)) { "\"$packageName\" isn’t a package name" }
+        return ShellCommand.of(
+            "cmd",
+            "deviceidle",
+            "tempwhitelist",
+            "-d",
+            "10000",
+            shellQuote(packageName),
+        )
+    }
 }

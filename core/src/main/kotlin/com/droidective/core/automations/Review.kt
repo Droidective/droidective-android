@@ -53,6 +53,9 @@ object Review {
             is Action.Notify -> "Notify: ${action.title}"
             is Action.Wait -> "Wait ${action.seconds} s"
             is Action.RunAutomation -> "Run the automation “${action.automationId}”"
+            is Action.SetLocation -> "Put the phone at ${action.name}"
+            Action.RealLocation -> "Give the phone its own location back"
+            is Action.ReactotronCommand -> "Run “${action.label}” in ${action.app}"
         }
 
     /** The shell lines [action] can run; settings written through Android's API run none. */

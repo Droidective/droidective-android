@@ -51,6 +51,9 @@ internal class AutomationActions(private val context: Context) {
                     Step(description, ok = true)
                 }
                 is Action.RunAutomation -> runAutomation(action, automation, chain, description)
+                is Action.SetLocation -> ToolActions.setLocation(context, action, description)
+                Action.RealLocation -> ToolActions.realLocation(context, description)
+                is Action.ReactotronCommand -> ToolActions.reactotronCommand(action, description)
                 // The runner hands a Wait to a delayed run instead.
                 is Action.Wait -> Step(description, ok = true)
             }

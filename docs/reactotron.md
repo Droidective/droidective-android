@@ -26,6 +26,7 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `app/reactotron/Reactotron.kt` | The one server, its state, the apps connected, the timeline |
 | `app/reactotron/ReactotronService.kt` | The foreground service that keeps it listening |
 | `app/ui/tools/ReactotronTool.kt` | The screen: start and stop, the timeline, an entry whole |
+| `app/automation/ToolActions.kt` | A command run from a widget slot or an automation |
 
 ## Decisions worth not relitigating
 
@@ -48,14 +49,15 @@ cleartext to localhost, which is all a `ws://` connection there needs.
   Reactotron's desktop keeps them in a tab of their own.
 - **The frame reader is the proxy's** (`core/net/ws`), at a 16 MB limit; a larger frame arrives
   as an `(undecodable)` command that says so.
+- **A slot or an automation finds its command by the app's name and the command's**, never by
+  the connection, which is new on every reload. A reloading app briefly has two connections;
+  the newer one is the live one. What the slot gives the arguments is kept with it.
 
 ## What is left
 
 - **The rest of talking back.** Commands and state reads are done; backing the state up and
   restoring it (`state.backup.request`, `state.restore.request`), subscribing to paths so their
   changes stream in (`state.values.subscribe` with paths), and the REPL are not.
-- **An app's commands outside the screen.** A command as a widget slot or an automation's
-  action would run it without opening Droidective — while that app is connected.
 - **Images.** An `image` command is listed, not shown.
 - **The MCP server** Droidective for Mac serves Reactotron's timeline through has no phone half.
 

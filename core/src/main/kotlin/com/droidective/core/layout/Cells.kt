@@ -240,6 +240,9 @@ object Cells {
             is Action.Notify -> "notifications"
             is Action.Wait -> "timer"
             is Action.RunAutomation -> "bolt"
+            is Action.SetLocation -> "location_on"
+            Action.RealLocation -> "location_off"
+            is Action.ReactotronCommand -> "data_object"
         }
 
     private fun commandCell(

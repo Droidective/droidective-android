@@ -84,6 +84,20 @@ class ReactotronCommands {
                 )
             )
 
+        /**
+         * The command [app] offers by [name] now, or null when it offers none. An app that has just
+         * reconnected can briefly have two connections; the newer one is the live one.
+         */
+        fun find(
+            commands: List<Command>,
+            appOf: (connection: Int) -> String?,
+            app: String,
+            name: String,
+        ): Command? =
+            commands
+                .filter { it.name == name && appOf(it.connection) == app }
+                .maxByOrNull { it.connection }
+
         /** What asks an app for the state at [path], its value or the keys under it. */
         fun stateRequest(path: String, keys: Boolean): Pair<String, JsonElement> =
             (if (keys) "state.keys.request" else "state.values.request") to

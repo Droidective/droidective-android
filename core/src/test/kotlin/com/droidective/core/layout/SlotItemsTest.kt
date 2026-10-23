@@ -10,6 +10,7 @@ import com.droidective.core.automations.Event
 import com.droidective.core.automations.Trigger
 import com.droidective.core.automations.level
 import com.droidective.core.commands.CustomCommand
+import com.droidective.core.location.Coordinates
 import com.droidective.core.store.JsonFileStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -58,6 +59,21 @@ class SlotItemsTest {
         val missing = plan(Item.Action("a", stop, "Force stop Example"), access = noShell)
         assertEquals(Tap.Open(Target.Setup(AccessLevel.Shell)), missing?.tap)
         assertTrue(missing!!.degraded)
+    }
+
+    @Test
+    fun aPlaceOrAReactotronCommandRunsInPlaceWithoutTheShell() {
+        listOf(
+                Action.SetLocation("London", Coordinates(51.5074, -0.1278)) to "location_on",
+                Action.RealLocation to "location_off",
+                Action.ReactotronCommand("StreamLab", "resetStore", "Reset store") to "data_object",
+            )
+            .forEach { (action, icon) ->
+                val cell = plan(Item.Action("a", action, "Slot"), access = noShell)
+                assertEquals(Tap.RunAction(action, "Slot"), cell?.tap)
+                assertEquals(CellIcon.Symbol(icon), cell?.icon)
+                assertFalse(cell!!.degraded)
+            }
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.droidective.core.apps.AppAction
 import com.droidective.core.automations.Action
 import com.droidective.core.features.Features
 import com.droidective.core.layout.Cells
+import com.droidective.core.location.Coordinates
 import com.droidective.core.toggles.Toggles
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -56,6 +57,9 @@ class SymbolsTest {
                     Action.Wait(1),
                     Action.RunAutomation("a"),
                     Action.SetToggle("no-such-toggle", "on"),
+                    Action.SetLocation("London", Coordinates(51.5074, -0.1278)),
+                    Action.RealLocation,
+                    Action.ReactotronCommand("StreamLab", "resetStore", "Reset store"),
                 )
         val icons = actions.map(Cells::actionIcon) + Features.all.map { it.icon } + "bolt"
         assertEquals(emptyList(), icons.filterNot(Symbols.byName::containsKey))

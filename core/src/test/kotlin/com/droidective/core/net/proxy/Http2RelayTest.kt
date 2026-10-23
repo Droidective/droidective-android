@@ -1,12 +1,10 @@
 package com.droidective.core.net.proxy
 
-import com.droidective.core.net.Loopback
 import com.droidective.core.net.h2.FrameCutter
 import com.droidective.core.net.h2.H2Wire
 import com.droidective.core.net.h2.H2Wire.END_HEADERS
 import com.droidective.core.net.h2.H2Wire.END_STREAM
 import com.droidective.core.net.h2.H2Wire.HEADERS
-import com.droidective.core.net.h2.H2Wire.SETTINGS
 import com.droidective.core.net.h2.H2Wire.data
 import com.droidective.core.net.h2.H2Wire.frame
 import com.droidective.core.net.h2.H2Wire.headers
@@ -20,13 +18,10 @@ import com.droidective.core.net.http.HttpReader
 import com.droidective.core.net.proxy.ProxyTls.H2
 import com.droidective.core.net.proxy.ProxyTls.HTTP_1_1
 import com.droidective.core.net.proxy.TestAuthority.trust
-import java.io.IOException
 import java.net.Socket
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
-import javax.net.ssl.SSLServerSocket
 import javax.net.ssl.SSLSocket
-import kotlin.concurrent.thread
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -220,69 +215,3 @@ class Http2RelayTest {
 }
 
 private fun Http2Frame.ends(): Boolean = (type == H2Wire.DATA || type == HEADERS) && has(END_STREAM)
-
-/**
- * A TLS server of the test's own speaking [alpn] — or, given none, paying ALPN no attention. When
- * it speaks HTTP/2 it reads frames, not fields, and answers each stream the app ends with [answer]:
- * so it answers even what the proxy can't make sense of.
- */
-private class H2Origin(private vararg val alpn: String) : AutoCloseable {
-    private val server =
-        TestAuthority.serverContext()
-            .serverSocketFactory
-            .createServerSocket(0, Loopback.BACKLOG, Loopback.localhost) as SSLServerSocket
-
-    val port: Int
-        get() = server.localPort
-
-    @Volatile
-    var answer: (Int) -> ByteArray = { stream ->
-        headers(stream, ":status" to "200", "content-type" to "text/plain", end = false) +
-            data(stream, "hello")
-    }
-
-    init {
-        thread(isDaemon = true, name = "h2-origin") {
-            while (true) {
-                val socket =
-                    try {
-                        server.accept() as SSLSocket
-                    } catch (_: IOException) {
-                        return@thread
-                    }
-                thread(isDaemon = true) { serve(socket) }
-            }
-        }
-    }
-
-    private fun serve(socket: SSLSocket) {
-        try {
-            socket.use {
-                if (alpn.isNotEmpty()) {
-                    it.sslParameters = it.sslParameters.apply { applicationProtocols = alpn }
-                }
-                it.startHandshake()
-                val out = it.outputStream
-                out.write(frame(SETTINGS, 0, 0))
-                out.flush()
-                val frames =
-                    FrameCutter(preface = true) { frame ->
-                        if (frame.ends()) {
-                            out.write(answer(frame.stream))
-                            out.flush()
-                        }
-                    }
-                val buffer = ByteArray(4096)
-                while (true) {
-                    val read = it.inputStream.read(buffer)
-                    if (read == -1) break
-                    frames.feed(buffer, 0, read)
-                }
-            }
-        } catch (_: IOException) {
-            // The proxy hanging up is how every connection here ends.
-        }
-    }
-
-    override fun close() = server.close()
-}

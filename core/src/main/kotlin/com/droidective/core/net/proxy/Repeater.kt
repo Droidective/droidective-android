@@ -1,19 +1,23 @@
 package com.droidective.core.net.proxy
 
 import com.droidective.core.net.grpc.Grpc
+import com.droidective.core.net.h2.Http2Client
 import com.droidective.core.net.http.BodyFraming
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.HTTP_1_1
+import com.droidective.core.net.http.HTTP_2
 import com.droidective.core.net.http.Header
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.HttpBody
 import com.droidective.core.net.http.HttpReader
 import com.droidective.core.net.http.RequestHead
+import com.droidective.core.net.http.ResponseHead
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.IOException
 import java.net.Socket
 import javax.net.ssl.SSLException
+import javax.net.ssl.SSLSocket
 
 /** A request ready to go out again: where to, the head as the server will see it, the body. */
 class Outgoing(
@@ -66,7 +70,11 @@ class Repeater(
         val server = via ?: Server(outgoing.secure, outgoing.origin)
         val head = via?.hosting(outgoing.head) ?: outgoing.head
         return try {
-            open(server).use { exchange(flow, head, body, it) }
+            if (head.version == HTTP_2) {
+                http2(flow, server, head, body)
+            } else {
+                open(server, ProxyTls.HTTP_1_1).use { exchange(flow, head, body, it) }
+            }
         } catch (e: SSLException) {
             flow.copy(finishedAt = clock(), failure = TlsFailure.upstream(e.message))
         } catch (e: IOException) {
@@ -74,9 +82,43 @@ class Repeater(
         }
     }
 
-    private fun open(server: Server): Socket =
-        if (server.secure) upstream.connect(server.origin, CONNECT_MILLIS, ProxyTls.HTTP_1_1)
+    private fun open(server: Server, protocol: String): Socket =
+        if (server.secure) upstream.connect(server.origin, CONNECT_MILLIS, protocol)
         else Dial.connect(server.origin.host, server.origin.port, CONNECT_MILLIS)
+
+    /**
+     * One stream on a connection of its own: over TLS with `h2` agreed, or in the clear to a server
+     * taking HTTP/2 from the first byte, as a gRPC server in development does.
+     */
+    private fun http2(flow: Flow, server: Server, head: RequestHead, body: ByteArray): Flow =
+        open(server, ProxyTls.H2).use { socket ->
+            if (socket is SSLSocket && socket.applicationProtocol != ProxyTls.H2) {
+                throw IOException(NO_HTTP2)
+            }
+            socket.soTimeout = IDLE_MILLIS
+            val answer =
+                Http2Client(socket.getInputStream(), socket.getOutputStream())
+                    .send(fields(head, server), body)
+            val status =
+                answer.fields.firstOrNull { it.name == STATUS }?.value?.toIntOrNull()
+                    ?: throw IOException(NO_STATUS)
+            val headers = Headers(answer.fields.filterNot { it.name.startsWith(':') })
+            flow.copy(
+                response = ResponseHead(HTTP_2, status, "", headers),
+                responseBody = answer.body,
+                trailers = Headers(answer.trailers),
+                finishedAt = clock(),
+            )
+        }
+
+    /** [head] as HTTP/2 carries it: what the request line and `Host` said, as pseudo-headers. */
+    private fun fields(head: RequestHead, server: Server): List<Header> =
+        listOf(
+            Header(":method", head.method),
+            Header(":scheme", if (server.secure) "https" else "http"),
+            Header(":authority", head.headers[Headers.HOST] ?: server.authority),
+            Header(":path", head.target),
+        ) + head.headers.without(Headers.HOST).all.map { Header(it.name.lowercase(), it.value) }
 
     private fun exchange(flow: Flow, head: RequestHead, body: ByteArray, socket: Socket): Flow {
         socket.soTimeout = IDLE_MILLIS
@@ -100,14 +142,16 @@ class Repeater(
          *
          * The head is the one the server saw — a path, not the whole URL a proxy is handed — with
          * the hop's own headers left out and the length stated, since the body goes in one piece
-         * however it was framed the first time. It goes as HTTP/1.1 even when the app spoke HTTP/2.
+         * however it was framed the first time. It goes as HTTP/1.1 even when the app spoke HTTP/2,
+         * except a gRPC call, which only HTTP/2 can carry.
          */
         fun prepare(flow: Flow): Repeat {
             if (flow.opening) return Repeat.Refused(NEVER_READ)
             if (flow.socket) return Repeat.Refused(SOCKET)
-            if (Grpc.carries(flow.request.headers.contentType)) return Repeat.Refused(GRPC)
             if (flow.requestBody.truncated) return Repeat.Refused(CLIPPED)
             val body = flow.requestBody.bytes
+            if (Grpc.carries(flow.request.headers.contentType))
+                return Repeat.Ready(grpc(flow, body))
             val head =
                 flow.request
                     .with(
@@ -116,6 +160,22 @@ class Repeater(
                     )
                     .copy(version = HTTP_1_1)
             return Repeat.Ready(Outgoing(flow.secure, Origin(flow.host, flow.port), head, body))
+        }
+
+        /**
+         * A gRPC call on HTTP/2, its messages as they were framed: its headers less the ones HTTP/2
+         * has no place for, and `te: trailers`, which a gRPC server may refuse a call without.
+         */
+        private fun grpc(flow: Flow, body: ByteArray): Outgoing {
+            var headers = flow.request.headers.without(*Headers.HOP_BY_HOP, Headers.CONTENT_LENGTH)
+            if (!headers.has(Headers.HOST)) {
+                headers = Headers(listOf(Header(Headers.HOST, flow.authority)) + headers.all)
+            }
+            val head =
+                flow.request
+                    .with(target = flow.request.path, headers = headers.add(TE, TRAILERS))
+                    .copy(version = HTTP_2)
+            return Outgoing(flow.secure, Origin(flow.host, flow.port), head, body)
         }
 
         private fun sendable(headers: Headers, authority: String, length: Int): Headers {
@@ -163,6 +223,10 @@ class Repeater(
         private const val NEVER_READ = "Nothing was read on this connection, so there's no request."
         private const val CLIPPED =
             "Only part of the body was kept, so sending it again would send something else."
-        private const val GRPC = "gRPC needs HTTP/2, and a request sent again goes out as HTTP/1.1."
+        private const val TE = "te"
+        private const val TRAILERS = "trailers"
+        private const val STATUS = ":status"
+        private const val NO_HTTP2 = "the server would not speak HTTP/2, which gRPC needs"
+        private const val NO_STATUS = "the server answered with no status"
     }
 }

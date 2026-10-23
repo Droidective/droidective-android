@@ -47,7 +47,7 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/net/proxy/BodyView.kt` | Decoding and shaping a captured body |
 | `core/net/proxy/Curl.kt` | A flow written back out as a command |
 | `core/net/proxy/Har.kt` | Flows as a HAR 1.2 file, written an entry at a time |
-| `core/net/proxy/Repeater.kt` | Sending a captured request again, straight to its server |
+| `core/net/proxy/Repeater.kt` | Sending a captured request again, straight to its server; a gRPC call on HTTP/2 |
 | `core/net/proxy/RequestDraft.kt` | A request as typed, checked before it is sent |
 | `core/net/proxy/UrlPattern.kt` | The `*` URL patterns mocks and breakpoints are named by |
 | `core/net/proxy/Mocks.kt` | Mocks, their draft, and `traffic-mocks.json` |
@@ -57,7 +57,8 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/net/ws/SocketFrames.kt` | WebSocket frames read out of a copy of each direction: messages, permessage-deflate |
 | `core/net/ws/SocketLog.kt` | What the sockets said, by flow, bounded like the flows |
 | `core/net/h2/Http2Frames.kt` | HTTP/2 frames cut out of a copy of one direction, the preface checked |
-| `core/net/h2/Hpack.kt` | HPACK: the static table, each direction's dynamic one, size updates |
+| `core/net/h2/Hpack.kt` | HPACK: the static table, each direction's dynamic one, size updates; blocks written as plain literals |
+| `core/net/h2/Http2Client.kt` | An HTTP/2 client, a stream at a time: settings, pings, flow control both ways |
 | `core/net/h2/Huffman.kt` | HPACK's Huffman code, built from its 257 lengths since the code is canonical |
 | `core/net/h2/Http2Reader.kt` | Both directions into one `Http2Exchange` a stream, whichever arrives first |
 | `core/net/proxy/Http2Flows.kt` | A stream as a `Flow`: pseudo-headers to method, path and status; trailers kept |
@@ -125,9 +126,7 @@ Roughly in the order people reach for them after the list itself:
   over `/apex/com.android.conscrypt/cacerts` in every app's mount namespace (HTTP Toolkit's
   approach), redone after each reboot. `CertificateTrust.System` already reads the result.
 - **Schemas from the server.** A gRPC server with reflection on would give its schema to
-  whoever asks, so no file would need pushing; asking means an HTTP/2 client of its own.
-- **Sending a gRPC call again.** A repeat goes out as HTTP/1.1, so gRPC is refused it;
-  repeating one means an HTTP/2 client of its own.
+  whoever asks, so no file would need pushing; `Http2Client` can now do the asking.
 
 ## What stops this working, and what to tell people
 
@@ -240,6 +239,12 @@ does exactly this.
   because protoc has already resolved the imports and the names, and reading one is reading
   protobuf. Every file there is one schema together, read again only when the folder
   changes; a file that isn't one is passed over, and a type it lacks is read without.
+- **A gRPC call sent again goes on HTTP/2, through a client of its own** (`Http2Client`), since
+  gRPC can't be carried any other way; every other repeat still goes as HTTP/1.1. It sends each
+  field as a literal the table never keeps, so no block depends on another; it asks for a 16 MB
+  window and hands back what it reads at once, so a long answer never waits on it. A server
+  that won't agree to `h2` is the reason given, not a TLS failure. A call can be sent again but
+  not edited: its body is framed protobuf, nothing to type over.
 - **The proxy never dials itself.** An app asking for `127.0.0.1:8888`, or a remap there,
   would have it ask itself again for ever; it fails as a 502 instead.
 

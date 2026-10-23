@@ -5,7 +5,10 @@ another machine. Current release: **0.18.0**.
 
 ## Shipped since 0.18.0, waiting for a release
 
-Nothing yet. 0.18.0 carried Reactotron watches (#142) and dispatch, from the screen and from a
+- **gRPC calls sent again.** A captured gRPC call goes back to its server from the phone, on
+  HTTP/2 through a client of Droidective's own, its status and trailers read as the app's were.
+
+0.18.0 carried Reactotron watches (#142) and dispatch, from the screen and from a
 slot (#143, #144); see `RELEASE_NOTES.md`.
 
 ## Next

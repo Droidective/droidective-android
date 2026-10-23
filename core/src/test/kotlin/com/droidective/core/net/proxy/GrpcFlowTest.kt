@@ -127,10 +127,12 @@ class GrpcFlowTest {
     }
 
     @Test
-    fun aCallIsNotSentAgainOrEdited() {
-        // A repeat goes out as HTTP/1.1, which a gRPC server turns away.
-        val refused = assertIs<Repeat.Refused>(Repeater.prepare(call(status = "0")))
-        assertTrue("HTTP/2" in refused.reason, refused.reason)
+    fun aCallIsSentAgainOnHttp2ButNotEdited() {
+        val ready = assertIs<Repeat.Ready>(Repeater.prepare(call(status = "0"))).outgoing
+        assertEquals(HTTP_2, ready.head.version)
+        assertEquals("trailers", ready.head.headers["te"])
+        assertEquals("firestore.googleapis.com", ready.head.headers["host"])
+        assertNull(ready.head.headers["content-length"])
         assertNull(RequestDraft.of(call(status = "0")))
     }
 

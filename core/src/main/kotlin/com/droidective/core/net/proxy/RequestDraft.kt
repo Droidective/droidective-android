@@ -95,7 +95,7 @@ data class RequestDraft(
          */
         fun of(flow: Flow): RequestDraft? {
             if (flow.opening || flow.socket || flow.requestBody.truncated) return null
-            // Its body is framed protobuf, and it would go out as HTTP/1.1, which gRPC refuses.
+            // Its body is framed protobuf, which is no text to type over; it can only go again.
             if (Grpc.carries(flow.request.headers.contentType)) return null
             val body = text(flow.requestBody.bytes) ?: return null
             var shown =

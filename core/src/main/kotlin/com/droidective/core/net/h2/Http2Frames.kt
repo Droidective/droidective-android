@@ -6,6 +6,63 @@ class Http2Exception(message: String) : Exception(message)
 /** One HTTP/2 frame (RFC 9113, section 4.1): its type, its flags, its stream, what it carries. */
 class Http2Frame(val type: Int, val flags: Int, val stream: Int, val payload: ByteArray) {
     fun has(flag: Int): Boolean = flags and flag != 0
+
+    /** Where a DATA or HEADERS frame's own octets start and end, its padding left out. */
+    internal fun unpadded(): Pair<Int, Int> {
+        if (!has(PADDED)) return 0 to payload.size
+        if (payload.isEmpty()) throw Http2Exception("a padded frame with no padding length")
+        val padding = payload[0].toInt() and BYTE
+        val to = payload.size - padding
+        if (to < 1) throw Http2Exception("more padding than frame")
+        return 1 to to
+    }
+
+    companion object {
+        const val DATA = 0x0
+        const val HEADERS = 0x1
+        const val PRIORITY_FRAME = 0x2
+        const val RST_STREAM = 0x3
+        const val SETTINGS = 0x4
+        const val PUSH_PROMISE = 0x5
+        const val PING = 0x6
+        const val GOAWAY = 0x7
+        const val WINDOW_UPDATE = 0x8
+        const val CONTINUATION = 0x9
+
+        const val END_STREAM = 0x1
+        const val ACK = 0x1
+        const val END_HEADERS = 0x4
+        const val PADDED = 0x8
+        const val PRIORITY = 0x20
+
+        /** The octets a HEADERS frame's priority takes, when its flag says it has one. */
+        const val PRIORITY_OCTETS = 5
+
+        const val NO_ERROR = 0
+
+        /** RFC 9113's error code [code], in words. */
+        fun error(code: Int): String = ERRORS.getOrElse(code) { "error $code" }
+
+        private const val BYTE = 0xff
+
+        private val ERRORS =
+            listOf(
+                "no error",
+                "protocol error",
+                "internal error",
+                "flow control error",
+                "settings timeout",
+                "stream closed",
+                "frame size error",
+                "refused",
+                "cancelled",
+                "compression error",
+                "connect error",
+                "enhance your calm",
+                "inadequate security",
+                "HTTP/1.1 required",
+            )
+    }
 }
 
 /**

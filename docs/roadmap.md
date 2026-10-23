@@ -5,6 +5,8 @@ another machine. Current release: **0.19.0**.
 
 ## Shipped since 0.19.0, waiting for a release
 
+- **Reactotron's REPL.** The values an app shares with `Reactotron.repl`, listed, and code run in
+  the app with them as `this`, its answer in the timeline.
 - **Copy as cURL that runs.** A gRPC call copies as `curl --http2` with its bytes piped in, and
   a binary or half-kept body no longer copies a command the shell splits in two.
 
@@ -13,10 +15,11 @@ server's reflection (#148); see `RELEASE_NOTES.md`.
 
 ## Next
 
-- **The proxy's next step** — the certificate in the system store with root, waiting on the
-  person's go-ahead — is in [network-traffic-proxy.md](network-traffic-proxy.md).
-- **Reactotron's next step** — the REPL — is
-  in [reactotron.md](reactotron.md).
+- **The proxy's last step** — the certificate in the system store with root — is not being
+  worked on: starting it was stopped by a safety check. The plan is in
+  [network-traffic-proxy.md](network-traffic-proxy.md).
+- **Reactotron** has every part of Reactotron's desktop that talks to an app; what is left
+  (images shown, the MCP server) is in [reactotron.md](reactotron.md).
 - **The Mac tools not yet on the phone**: none on the list. `app-info` stays the Apps tool's
   detail screen, which already is that.
 - **Real-device passes on the OnePlus Pad** need the person there: OxygenOS holds every

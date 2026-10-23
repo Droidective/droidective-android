@@ -28,6 +28,7 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `app/reactotron/Reactotron.kt` | The one server, its state, the apps connected, the timeline |
 | `app/reactotron/ReactotronService.kt` | The foreground service that keeps it listening |
 | `app/ui/tools/ReactotronTool.kt` | The screen: start and stop, the timeline, an entry whole |
+| `app/ui/tools/ReactotronReplUi.kt` | The REPL: what the app shares, and code run in it |
 | `app/ui/tools/ReactotronSnapshotsUi.kt` | Snapshots: taking one, and one whole, to restore, rename or delete |
 | `app/ui/tools/ReactotronWatchUi.kt` | Watch: the paths, and their values as they change |
 | `app/automation/ToolActions.kt` | A command run from a widget slot or an automation |
@@ -75,14 +76,17 @@ cleartext to localhost, which is all a `ws://` connection there needs.
   as a state read does, and shows in the timeline as the ACTION the app reports back. A slot or
   an automation dispatches in one app, found by its name, so `logout` on a widget logs that app
   out and no other.
+- **The REPL runs code in the app, as Reactotron's does.** `repl.ls` lists what the app shares
+  with `Reactotron.repl(name, value)`, kept as chips that put `this.<name>` in the field, not as
+  lines in the timeline; `repl.execute` sends the code, which the client runs with those values
+  as `this`, and what it comes to is a REPL line in the timeline. The client doesn't catch what
+  the code throws, so a throw brings nothing back, and the screen says so.
 - **A slot or an automation restores a snapshot by its id**, so renaming it changes nothing. A
   snapshot deleted, or dropped past the bounds, makes the slot say it is gone rather than guess
   at another.
 
 ## What is left
 
-- **The REPL.** Commands, state reads, snapshots, watched paths and dispatching an action are
-  done; `repl.ls` and `repl.execute` are not.
 - **Images.** An `image` command is listed, not shown.
 - **The MCP server** Droidective for Mac serves Reactotron's timeline through has no phone half.
 

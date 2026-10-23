@@ -1,18 +1,12 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.17.0**.
+another machine. Current release: **0.18.0**.
 
-## Shipped since 0.17.0, waiting for a release
+## Shipped since 0.18.0, waiting for a release
 
-- **Reactotron watches.** State paths watched in the app, their values kept up to date on the
-  phone as the app's state changes, and asked of every app as it connects.
-- **Reactotron dispatch.** An action dispatched in the app's store from the phone — a type such
-  as `logout`, or a whole action as JSON — from the Reactotron screen, or from a slot or an
-  automation in one tap.
-
-0.17.0 carried places and Reactotron commands as slots and actions (#138), and
-Reactotron snapshots, restored from the screen or a slot (#139, #140); see `RELEASE_NOTES.md`.
+Nothing yet. 0.18.0 carried Reactotron watches (#142) and dispatch, from the screen and from a
+slot (#143, #144); see `RELEASE_NOTES.md`.
 
 ## Next
 

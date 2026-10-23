@@ -3,6 +3,18 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.18.0
+
+Reactotron watches your app's state as it changes, and dispatches actions into it.
+
+- **Watch.** Name a path in the app's store — `cart.items`, or `user.*` for each key under
+  `user` — and its value shows on the Reactotron screen, changing as the app's state does. The
+  paths are kept, and every app is asked for them as it connects.
+- **Dispatch.** Type an action and the app's store dispatches it: a type alone, such as
+  `logout`, or a whole action as JSON, such as `{"type":"cart/add","item":"tea"}`.
+- **Dispatch from a slot.** The same action on a widget, tile or notification bar, or in an
+  automation: `logout` in one tap, in the app you chose.
+
 ## 0.17.0
 
 Mock Location and Reactotron without opening Droidective, and an app's state kept to put back.

@@ -8,6 +8,8 @@ another machine. Current release: **0.16.0**.
 - **Places and Reactotron commands as slots and actions.** A widget, tile, notification bar,
   folder or automation can put the phone at a place, give it its own location back, or run a
   connected React Native app's Reactotron command, without opening Droidective.
+- **Reactotron snapshots.** An app's whole state, backed up through its store plugin, kept on
+  the phone, and restored into the app.
 
 0.16.0 carried Mock Location (#135, #136) and Reactotron talking back (#134); see
 `RELEASE_NOTES.md`.
@@ -17,7 +19,7 @@ another machine. Current release: **0.16.0**.
 - **The proxy's next steps** — the certificate in the system store with root, schemas from
   a server's reflection — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
-- **Reactotron's next steps** — state backup and restore, path subscriptions, the REPL — are
+- **Reactotron's next steps** — path subscriptions, dispatching an action, the REPL — are
   in [reactotron.md](reactotron.md).
 - **The Mac tools not yet on the phone**: none on the list. `app-info` stays the Apps tool's
   detail screen, which already is that.

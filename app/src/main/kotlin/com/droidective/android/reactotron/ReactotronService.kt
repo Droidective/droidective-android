@@ -22,6 +22,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Keeps Reactotron listening while the person has it on. A React Native app reconnects whenever it
@@ -61,6 +62,8 @@ class ReactotronService : Service() {
     }
 
     private suspend fun listen() {
+        // Before an app connects, so a state it backs up has somewhere to go.
+        withContext(Dispatchers.IO) { Reactotron.loadSnapshots(this@ReactotronService) }
         if (!Reactotron.listen()) {
             // The screen says why; a notification for a server that isn't would not.
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)

@@ -7,15 +7,23 @@ import com.droidective.core.reactotron.ReactotronCommands
 import com.droidective.core.reactotron.ReactotronEvent
 import com.droidective.core.reactotron.ReactotronServer
 import com.droidective.core.reactotron.ReactotronSink
+import com.droidective.core.reactotron.ReactotronSnapshot
+import com.droidective.core.reactotron.ReactotronSnapshots
 import com.droidective.core.reactotron.ReactotronTimeline
+import java.io.File
 import java.io.IOException
 import java.net.BindException
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Reactotron on the phone: the server a React Native app's Reactotron client connects to, the apps
@@ -57,6 +65,19 @@ object Reactotron : ReactotronSink {
     val changes: StateFlow<Long> = changes_.asStateFlow()
 
     @Volatile private var server: ReactotronServer? = null
+
+    @Volatile private var shelf: ReactotronSnapshots? = null
+    private val snapshots_ = MutableStateFlow<List<ReactotronSnapshot>>(emptyList())
+
+    /** The apps' states kept to put back, newest first. */
+    val snapshots: StateFlow<List<ReactotronSnapshot>> = snapshots_.asStateFlow()
+
+    /** What came of putting a snapshot back. */
+    enum class Restore {
+        Sent,
+        NotConnected,
+        Gone,
+    }
 
     fun start(context: Context) {
         context.startForegroundService(Intent(context, ReactotronService::class.java))
@@ -105,6 +126,52 @@ object Reactotron : ReactotronSink {
         )
     }
 
+    /** Reads the snapshots kept in the app's files, the first time; from a background thread. */
+    fun loadSnapshots(context: Context) {
+        if (shelf != null) return
+        synchronized(this) {
+            if (shelf != null) return
+            val opened = ReactotronSnapshots(File(context.filesDir, SNAPSHOTS))
+            snapshots_.value = opened.all()
+            shelf = opened
+        }
+    }
+
+    /** Asks every connected app for its whole state, which comes back as a snapshot. */
+    fun backUp() {
+        val request = JsonObject(emptyMap())
+        clients_.value.keys.forEach { server?.send(it, ReactotronCommands.BACKUP_REQUEST, request) }
+    }
+
+    /**
+     * Puts [snapshot] back in its app, through the app's newest connection. From a background
+     * thread: the state is read from the files.
+     */
+    fun restore(snapshot: ReactotronSnapshot): Restore {
+        val connection =
+            clients_.value.filterValues { it.name == snapshot.app }.keys.maxOrNull()
+                ?: return Restore.NotConnected
+        val state = shelf?.state(snapshot.id) ?: return Restore.Gone
+        val running = server ?: return Restore.NotConnected
+        running.send(
+            connection,
+            ReactotronCommands.RESTORE_REQUEST,
+            ReactotronCommands.restore(state),
+        )
+        return Restore.Sent
+    }
+
+    /** The state [snapshot] holds, to show; from a background thread. */
+    fun state(snapshot: ReactotronSnapshot): JsonElement? = shelf?.state(snapshot.id)
+
+    fun rename(snapshot: ReactotronSnapshot, name: String) {
+        shelf?.let { snapshots_.value = it.rename(snapshot.id, name) }
+    }
+
+    fun delete(snapshot: ReactotronSnapshot) {
+        shelf?.let { snapshots_.value = it.delete(snapshot.id) }
+    }
+
     /**
      * Asks every connected app for its state at [path] — the value there, or the keys under it —
      * whose answer comes into the timeline. An app needs a state plugin, reactotron-redux or
@@ -135,6 +202,9 @@ object Reactotron : ReactotronSink {
             commands_.value = registry.all()
             return
         }
+        // A backed-up state is a snapshot, kept; one that can't be stays in the timeline.
+        val state = ReactotronCommands.backedUp(command)
+        if (state != null && keep(connection, state)) return
         timeline.add(System.currentTimeMillis(), connection, name(connection), command, size)
         changes_.update { it + 1 }
     }
@@ -150,6 +220,21 @@ object Reactotron : ReactotronSink {
     }
 
     private fun name(connection: Int): String? = clients_.value[connection]?.name
+
+    private fun keep(connection: Int, state: JsonElement): Boolean {
+        val kept = shelf ?: return false
+        val app = name(connection) ?: "App"
+        val at = CLOCK.format(LocalTime.now())
+        return try {
+            snapshots_.value = kept.keep(app, "Snapshot at $at", state, System.currentTimeMillis())
+            true
+        } catch (_: IOException) {
+            false
+        }
+    }
+
+    private const val SNAPSHOTS = "reactotron-snapshots"
+    private val CLOCK = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
     private const val TAKEN =
         "Something else is listening on port 9090 — a computer's adb reverse, most likely."

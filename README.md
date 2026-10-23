@@ -18,8 +18,8 @@ toggles Android keeps from ordinary apps. The macOS app lives in
   copied as cURL or shared as HAR. Read only the apps you choose and the rest pass through
   untouched; stopping always puts the phone's proxy setting back.
 - **Reactotron.** A React Native app's Reactotron client reports to the phone it runs on: its
-  logs, API calls, state actions and benchmarks, read and searched there, with no computer,
-  cable or host to set.
+  logs, API calls, state actions and benchmarks, read and searched there; its own commands run
+  and its state read, kept as snapshots and put back, with no computer, cable or host to set.
 - **Floating controls.** A bubble over any app for a screenshot, a clean screenshot, a screen
   recording, a capture of the views, the activity on screen and the debugging proxy, without
   leaving the app you are working on. It keeps out of what it captures.

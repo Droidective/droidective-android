@@ -1,19 +1,12 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.16.0**.
+another machine. Current release: **0.17.0**.
 
-## Shipped since 0.16.0, waiting for a release
+## Shipped since 0.17.0, waiting for a release
 
-- **Places and Reactotron commands as slots and actions.** A widget, tile, notification bar,
-  folder or automation can put the phone at a place, give it its own location back, or run a
-  connected React Native app's Reactotron command, without opening Droidective.
-- **Reactotron snapshots.** An app's whole state, backed up through its store plugin, kept on
-  the phone, and restored into the app — from the Reactotron screen, or from a slot or an
-  automation in one tap.
-
-0.16.0 carried Mock Location (#135, #136) and Reactotron talking back (#134); see
-`RELEASE_NOTES.md`.
+Nothing yet. 0.17.0 carried places and Reactotron commands as slots and actions (#138), and
+Reactotron snapshots, restored from the screen or a slot (#139, #140); see `RELEASE_NOTES.md`.
 
 ## Next
 

@@ -3,6 +3,25 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.17.0
+
+Mock Location and Reactotron without opening Droidective, and an app's state kept to put back.
+
+- **Places as slots and actions.** A widget, tile, notification bar, folder or automation can
+  put the phone at a place you kept or a ready one, or give it its own location back, in one
+  tap. Android lets an app start this from the background only from a widget, tile,
+  notification or schedule; an automation on another trigger, such as joining a Wi-Fi network,
+  manages it with Shizuku or root.
+- **Reactotron commands as slots and actions.** A command your React Native app registers with
+  `Reactotron.onCustomCommand`, arguments filled in, runs from a slot or an automation while
+  the app is connected; if it isn't, the slot says so.
+- **Reactotron snapshots.** Take a snapshot of the app's whole state through reactotron-redux
+  or reactotron-mst, keep it on the phone, and restore it into the app: a filled cart, a login,
+  a step deep in a flow, without going through the app to reach it again. Snapshots can be
+  renamed, read and deleted; twenty are kept.
+- **Restore from a slot.** A snapshot goes on a widget, tile or notification bar, or into an
+  automation, and puts the app back in that state in one tap.
+
 ## 0.16.0
 
 Put the phone anywhere, or set it moving; and Reactotron answers back.

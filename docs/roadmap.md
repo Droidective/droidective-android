@@ -1,17 +1,12 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.19.0**.
+another machine. Current release: **0.20.0**.
 
-## Shipped since 0.19.0, waiting for a release
+## Shipped since 0.20.0, waiting for a release
 
-- **Reactotron's REPL.** The values an app shares with `Reactotron.repl`, listed, and code run in
-  the app with them as `this`, its answer in the timeline.
-- **Copy as cURL that runs.** A gRPC call copies as `curl --http2` with its bytes piped in, and
-  a binary or half-kept body no longer copies a command the shell splits in two.
-
-0.19.0 carried gRPC calls sent again over HTTP/2 (#147) and schemas from a
-server's reflection (#148); see `RELEASE_NOTES.md`.
+Nothing yet. 0.20.0 carried Reactotron's REPL (#152) and Copy as cURL that runs (#150); see
+`RELEASE_NOTES.md`.
 
 ## Next
 

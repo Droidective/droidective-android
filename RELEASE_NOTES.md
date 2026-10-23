@@ -3,6 +3,17 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.20.0
+
+Reactotron's REPL, and a copied cURL command that does what the app did.
+
+- **Reactotron's REPL.** List what your app shares with `Reactotron.repl(name, value)`, tap a
+  name to put it in the code, and run it in the app: `this.store.cart.items.length`, or a
+  function you shared. What it comes to shows in the timeline as REPL.
+- **Copy as cURL that runs.** A gRPC call copies as `curl --http2` with its bytes piped in, and
+  any binary body up to 64 KB comes along the same way. A body kept only in part used to copy a
+  command the shell split in two; what is left out is now said ahead of the command instead.
+
 ## 0.19.0
 
 gRPC calls go again from the phone, and a server can name their fields itself.

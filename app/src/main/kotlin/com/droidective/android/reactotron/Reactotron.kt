@@ -193,9 +193,7 @@ object Reactotron : ReactotronSink {
      * thread: the state is read from the files.
      */
     fun restore(snapshot: ReactotronSnapshot): Restore {
-        val connection =
-            clients_.value.filterValues { it.name == snapshot.app }.keys.maxOrNull()
-                ?: return Restore.NotConnected
+        val connection = newest(snapshot.app) ?: return Restore.NotConnected
         val state = shelf?.state(snapshot.id) ?: return Restore.Gone
         val running = server ?: return Restore.NotConnected
         running.send(
@@ -232,6 +230,20 @@ object Reactotron : ReactotronSink {
         val payload = ReactotronCommands.dispatch(action)
         clients_.value.keys.forEach { server?.send(it, ReactotronCommands.DISPATCH, payload) }
     }
+
+    /**
+     * Dispatches [action] in [app] alone, through its newest connection; false when it has none.
+     */
+    fun dispatchIn(app: String, action: JsonObject): Boolean {
+        val connection = newest(app) ?: return false
+        val running = server ?: return false
+        running.send(connection, ReactotronCommands.DISPATCH, ReactotronCommands.dispatch(action))
+        return true
+    }
+
+    /** The newest connection of the app called [app]: a reload connects before its old one goes. */
+    private fun newest(app: String): Int? =
+        clients_.value.filterValues { it.name == app }.keys.maxOrNull()
 
     fun clear() {
         timeline.clear()

@@ -80,6 +80,8 @@ internal sealed interface EditorDialog {
 
     data object SnapshotPick : EditorDialog
 
+    data object DispatchPick : EditorDialog
+
     data class ConfirmDestructive(val action: Action) : EditorDialog
 
     data class ButtonTarget(val actionIndex: Int) : EditorDialog
@@ -150,6 +152,7 @@ internal fun EditorDialogs(
         EditorDialog.LocationPick -> LocationChooser(onDismiss = close) { action, _ -> add(action) }
         EditorDialog.ReactotronPick -> ReactotronCommandChooser(onDismiss = close, onPick = ::add)
         EditorDialog.SnapshotPick -> SnapshotChooser(onDismiss = close, onPick = ::add)
+        EditorDialog.DispatchPick -> DispatchChooser(onDismiss = close, onPick = ::add)
         else -> ActionDialogs(dialog, draft, onDialog, ::add)
     }
 }
@@ -290,6 +293,7 @@ private val actionKinds: List<Pair<String, EditorDialog>> =
         "Put the phone at a place, or back" to EditorDialog.LocationPick,
         "Run an app’s Reactotron command" to EditorDialog.ReactotronPick,
         "Put a Reactotron snapshot back" to EditorDialog.SnapshotPick,
+        "Dispatch an action in an app" to EditorDialog.DispatchPick,
     )
 
 /** What a widget item does, as an action; a toggle needs its state first, so it's null here. */

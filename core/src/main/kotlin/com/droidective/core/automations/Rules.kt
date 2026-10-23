@@ -3,6 +3,7 @@ package com.droidective.core.automations
 import com.droidective.core.AccessLevel
 import com.droidective.core.apps.AppActions
 import com.droidective.core.commands.DeepLinkRepository
+import com.droidective.core.reactotron.ReactotronCommands
 import com.droidective.core.toggles.Probe
 import com.droidective.core.toggles.ToggleDef
 import com.droidective.core.toggles.Toggles
@@ -100,6 +101,13 @@ object AutomationRules {
             is Action.ReactotronCommand ->
                 blankProblems(action.app, "app name") + blankProblems(action.command, "command")
             is Action.ReactotronRestore -> blankProblems(action.snapshotId, "snapshot")
+            is Action.ReactotronDispatch ->
+                blankProblems(action.app, "app name") +
+                    if (ReactotronCommands.action(action.action) == null) {
+                        listOf("“${action.action}” isn’t an action")
+                    } else {
+                        emptyList()
+                    }
         }
 
     private fun notifyProblems(
@@ -220,7 +228,8 @@ fun Action.level(toggles: (String) -> ToggleDef? = Toggles::byId): AccessLevel =
         is Action.SetLocation,
         Action.RealLocation,
         is Action.ReactotronCommand,
-        is Action.ReactotronRestore -> AccessLevel.App
+        is Action.ReactotronRestore,
+        is Action.ReactotronDispatch -> AccessLevel.App
     }
 
 /**

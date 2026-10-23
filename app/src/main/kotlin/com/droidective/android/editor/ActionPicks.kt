@@ -24,6 +24,7 @@ import com.droidective.android.ui.LevelChip
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.automations.AppChooser
 import com.droidective.android.ui.automations.ChoiceDialog
+import com.droidective.android.ui.automations.DispatchChooser
 import com.droidective.android.ui.automations.LocationChooser
 import com.droidective.android.ui.automations.ReactotronCommandChooser
 import com.droidective.android.ui.automations.SnapshotChooser
@@ -36,6 +37,7 @@ import com.droidective.core.automations.Review
 import com.droidective.core.automations.isDestructive
 import com.droidective.core.features.Features
 import com.droidective.core.layout.Item
+import com.droidective.core.reactotron.ReactotronCommands
 import com.droidective.core.toggles.Toggles
 import com.droidective.platform.hasHardwareFor
 import java.util.UUID
@@ -60,6 +62,8 @@ private sealed interface ActionStep {
     data object ReactotronCommand : ActionStep
 
     data object Snapshot : ActionStep
+
+    data object Dispatch : ActionStep
 
     data class Confirm(val item: Item.Action) : ActionStep
 }
@@ -99,6 +103,9 @@ internal fun ActionList(query: String, onPick: (Item) -> Unit) {
             }
         }
         item { PickRow("Put a Reactotron snapshot back", "history") { step = ActionStep.Snapshot } }
+        item {
+            PickRow("Dispatch an action in an app", "play_circle") { step = ActionStep.Dispatch }
+        }
         item { Header("Your automations") }
         if (automations.isEmpty()) {
             item { Note("Automations you make show here, to run with one tap.") }
@@ -179,6 +186,10 @@ private fun ActionSteps(step: ActionStep?, onStep: (ActionStep?) -> Unit, onPick
         ActionStep.ReactotronCommand ->
             ReactotronCommandChooser(onDismiss = close) { finish(it, it.label) }
         ActionStep.Snapshot -> SnapshotChooser(onDismiss = close) { finish(it, it.name) }
+        ActionStep.Dispatch ->
+            DispatchChooser(onDismiss = close) {
+                finish(it, ReactotronCommands.type(it.action) ?: it.action)
+            }
         is ActionStep.Confirm ->
             ConfirmDialog(step.item, onDismiss = close) {
                 close()

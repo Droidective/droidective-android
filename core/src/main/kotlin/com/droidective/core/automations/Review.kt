@@ -2,6 +2,7 @@ package com.droidective.core.automations
 
 import com.droidective.core.apps.AppActions
 import com.droidective.core.commands.CustomCommand
+import com.droidective.core.reactotron.ReactotronCommands
 import com.droidective.core.shell.shellQuote
 import com.droidective.core.toggles.ToggleDef
 import com.droidective.core.toggles.Toggles
@@ -57,6 +58,8 @@ object Review {
             Action.RealLocation -> "Give the phone its own location back"
             is Action.ReactotronCommand -> "Run “${action.label}” in ${action.app}"
             is Action.ReactotronRestore -> "Put “${action.name}” back in ${action.app}"
+            is Action.ReactotronDispatch ->
+                "Dispatch “${ReactotronCommands.type(action.action) ?: action.action}” in ${action.app}"
         }
 
     /** The shell lines [action] can run; settings written through Android's API run none. */

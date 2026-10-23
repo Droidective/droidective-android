@@ -244,6 +244,7 @@ object Cells {
             Action.RealLocation -> "location_off"
             is Action.ReactotronCommand -> "data_object"
             is Action.ReactotronRestore -> "history"
+            is Action.ReactotronDispatch -> "play_circle"
         }
 
     private fun commandCell(

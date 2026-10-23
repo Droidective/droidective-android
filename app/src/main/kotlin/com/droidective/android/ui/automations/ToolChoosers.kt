@@ -112,6 +112,44 @@ fun SnapshotChooser(onDismiss: () -> Unit, onPick: (Action.ReactotronRestore) ->
     }
 }
 
+/**
+ * An action to dispatch in a connected app's store: which app, when more than one is connected,
+ * then the action, a type alone or a whole action as JSON.
+ */
+@Composable
+fun DispatchChooser(onDismiss: () -> Unit, onPick: (Action.ReactotronDispatch) -> Unit) {
+    val clients by Reactotron.clients.collectAsStateWithLifecycle()
+    val apps = clients.values.map { it.name }.distinct()
+    var chosen by remember { mutableStateOf<String?>(null) }
+    val app = chosen ?: apps.singleOrNull()
+    if (app != null) {
+        TextDialog(
+            "Dispatch in $app",
+            "Action, such as logout",
+            valid = { ReactotronCommands.action(it) != null },
+            onDismiss = onDismiss,
+        ) {
+            onPick(Action.ReactotronDispatch(app, ReactotronCommands.action(it).toString()))
+        }
+        return
+    }
+    if (apps.isEmpty()) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("No app connected") },
+            text = {
+                Text(
+                    "Start Reactotron in Droidective and open your app, so its name is here to " +
+                        "choose."
+                )
+            },
+            confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+        )
+        return
+    }
+    ChoiceDialog("Which app", apps.map { it to it }, onDismiss) { chosen = it }
+}
+
 /** What each of [command]'s arguments is given, kept with the action and sent on every run. */
 @Composable
 private fun ArgsDialog(

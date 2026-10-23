@@ -110,6 +110,7 @@ class AutomationRulesTest {
                 Action.ReactotronCommand("StreamLab", "resetStore", "Reset store"),
                 Action.ReactotronCommand("StreamLab", "login", "Log in", mapOf("user" to "ada")),
                 Action.ReactotronRestore("4f1c", "Two in the cart", "StreamLab"),
+                Action.ReactotronDispatch("StreamLab", """{"type":"logout"}"""),
             )
         val triggers =
             everyState.flatMap { listOf(Trigger.Starts(it), Trigger.Ends(it), Trigger.While(it)) } +
@@ -137,6 +138,7 @@ class AutomationRulesTest {
                 Action.RealLocation,
                 Action.ReactotronCommand("StreamLab", "login", "Log in", mapOf("user" to "ada")),
                 Action.ReactotronRestore("4f1c", "Two in the cart", "StreamLab"),
+                Action.ReactotronDispatch("StreamLab", """{"type":"cart/add","item":"tea"}"""),
             )
         assertEquals(
             Json.parseToJsonElement(
@@ -146,7 +148,9 @@ class AutomationRulesTest {
                     """{"type":"reactotron-command","app":"StreamLab","command":"login",""" +
                     """"label":"Log in","args":{"user":"ada"}},""" +
                     """{"type":"reactotron-restore","snapshotId":"4f1c",""" +
-                    """"name":"Two in the cart","app":"StreamLab"}]"""
+                    """"name":"Two in the cart","app":"StreamLab"},""" +
+                    """{"type":"reactotron-dispatch","app":"StreamLab",""" +
+                    """"action":"{\"type\":\"cart/add\",\"item\":\"tea\"}"}]"""
             ),
             Json.encodeToJsonElement(ListSerializer(Action.serializer()), actions),
         )
@@ -156,6 +160,7 @@ class AutomationRulesTest {
                 "Give the phone its own location back",
                 "Run “Log in” in StreamLab",
                 "Put “Two in the cart” back in StreamLab",
+                "Dispatch “cart/add” in StreamLab",
             ),
             actions.map { Review.describe(it, commands = { null }) },
         )
@@ -249,6 +254,7 @@ class AutomationRulesTest {
                             Action.ReactotronCommand("", "resetStore", "Reset store"),
                             Action.ReactotronCommand("StreamLab", "", "Reset store"),
                             Action.ReactotronRestore(" ", "Two in the cart", "StreamLab"),
+                            Action.ReactotronDispatch("StreamLab", """{"item":"tea"}"""),
                         ),
                 )
             )
@@ -267,6 +273,7 @@ class AutomationRulesTest {
                 "The app name is empty",
                 "The command is empty",
                 "The snapshot is empty",
+                """“{"item":"tea"}” isn’t an action""",
             )
             .forEach { expected -> assertTrue(problems.any { expected in it }, expected) }
     }

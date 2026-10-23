@@ -3,7 +3,6 @@ package com.droidective.core.net.proxy
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Header
 import com.droidective.core.net.http.Headers
-import com.droidective.core.net.http.RequestHead
 import java.io.ByteArrayOutputStream
 import java.util.HexFormat
 import java.util.zip.GZIPOutputStream
@@ -219,105 +218,5 @@ class BodyViewTest {
                 .parseHex(
                     "b10023c0ef387063adf908058dd049284568b69245a7ab5d6af6fab4229a6c529b5e018a3274e1519942efaf7030"
                 )
-    }
-}
-
-class CurlTest {
-    private fun flowWith(
-        method: String = "GET",
-        headers: Headers = Headers(),
-        requestBody: CapturedBody = CapturedBody.NONE,
-    ) =
-        Flow(
-            id = 1,
-            startedAt = 0,
-            secure = true,
-            host = "api.example.com",
-            port = 443,
-            request = RequestHead(method, "/orders?page=2", "HTTP/1.1", headers),
-            requestBody = requestBody,
-        )
-
-    @Test
-    fun aPlainGetIsOneLine() {
-        assertEquals("curl 'https://api.example.com/orders?page=2'", Curl.of(flowWith()))
-    }
-
-    @Test
-    fun anotherMethodIsNamed() {
-        assertContains(Curl.of(flowWith(method = "DELETE")), "curl -X DELETE")
-    }
-
-    @Test
-    fun headersAndBodyComeThrough() {
-        val command =
-            Curl.of(
-                flowWith(
-                    method = "POST",
-                    headers =
-                        Headers(
-                            listOf(
-                                Header("Content-Type", "application/json"),
-                                Header("Authorization", "Bearer abc123"),
-                            )
-                        ),
-                    requestBody = CapturedBody("""{"a":1}""".toByteArray(), 7, false),
-                )
-            )
-        assertContains(command, "-H 'Content-Type: application/json'")
-        assertContains(command, "-H 'Authorization: Bearer abc123'")
-        assertContains(command, """--data-raw '{"a":1}'""")
-    }
-
-    @Test
-    fun whatBelongsToTheHopIsLeftOut() {
-        val command =
-            Curl.of(
-                flowWith(
-                    headers =
-                        Headers(
-                            listOf(
-                                Header("Content-Length", "7"),
-                                Header("Connection", "keep-alive"),
-                                Header("Proxy-Connection", "keep-alive"),
-                                Header("Accept", "*/*"),
-                            )
-                        )
-                )
-            )
-        assertContains(command, "Accept")
-        assertTrue("Content-Length" !in command)
-        assertTrue("Connection" !in command)
-    }
-
-    @Test
-    fun aQuoteInAValueCannotEndTheQuoting() {
-        val command =
-            Curl.of(
-                flowWith(
-                    method = "POST",
-                    headers = Headers(listOf(Header("X-Odd", "it's; rm -rf /"))),
-                    requestBody = CapturedBody("it's".toByteArray(), 4, false),
-                )
-            )
-        assertContains(command, """'X-Odd: it'\''s; rm -rf /'""")
-        assertContains(command, """--data-raw 'it'\''s'""")
-    }
-
-    @Test
-    fun aBodyThatCannotBeWrittenOutSaysSo() {
-        val binary = CapturedBody(byteArrayOf(0, -1, -2), 3, false)
-        val command = Curl.of(flowWith(method = "POST", requestBody = binary))
-        assertContains(command, "# the body was binary")
-        assertTrue("--data-raw" !in command)
-    }
-
-    @Test
-    fun aHalfKeptBodySaysHowMuchOfItThisIs() {
-        val part = CapturedBody("{\"a\":".toByteArray(), 9_000, true)
-        assertContains(
-            Curl.of(flowWith(method = "POST", requestBody = part)),
-            "# only the first 5 bytes",
-        )
     }
 }

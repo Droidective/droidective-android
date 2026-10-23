@@ -5,7 +5,10 @@ another machine. Current release: **0.19.0**.
 
 ## Shipped since 0.19.0, waiting for a release
 
-Nothing yet. 0.19.0 carried gRPC calls sent again over HTTP/2 (#147) and schemas from a
+- **Copy as cURL that runs.** A gRPC call copies as `curl --http2` with its bytes piped in, and
+  a binary or half-kept body no longer copies a command the shell splits in two.
+
+0.19.0 carried gRPC calls sent again over HTTP/2 (#147) and schemas from a
 server's reflection (#148); see `RELEASE_NOTES.md`.
 
 ## Next

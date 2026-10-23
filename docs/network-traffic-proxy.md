@@ -253,6 +253,11 @@ does exactly this.
   a file with everything it needs, others only the file asked for. What comes back is kept as
   `reflected-<host>.protoset` in the protos folder, so it is read exactly as a pushed file is,
   replaced when asked again, and deleted the same way.
+- **A copied cURL command is one command that sends what the app sent.** A binary body up to
+  64 KB is piped in by `printf` with octal escapes, so no byte can end the quoting; a gRPC call
+  gets `--http2` and keeps `te: trailers`; a text body with a NUL in it goes as bytes, since no
+  argument can hold one. Anything left out is said on comment lines ahead of the command: a
+  comment inside one ends it there, which is how a half-kept body used to copy a broken command.
 - **The proxy never dials itself.** An app asking for `127.0.0.1:8888`, or a remap there,
   would have it ask itself again for ever; it fails as a 502 instead.
 

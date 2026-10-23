@@ -1,6 +1,7 @@
 package com.droidective.core.net.h2
 
 import com.droidective.core.net.http.Header
+import java.io.ByteArrayOutputStream
 
 /**
  * Reads the header blocks one end of a connection sends (RFC 7541).
@@ -208,4 +209,54 @@ class HpackDecoder(private val limit: Int = MAX_TABLE) {
                 Header("www-authenticate", ""),
             )
     }
+}
+
+/**
+ * Writes header blocks the plainest way RFC 7541 allows: every field a literal the table never
+ * keeps, its name and value spelled out uncompressed. Nothing a block says depends on another, so a
+ * block can't be read wrong for a lost one, and the peer's table is never used — though when the
+ * peer shrinks its table this still says so first, as the RFC requires of every encoder.
+ */
+internal object HpackEncoder {
+    /** [fields] as one block, opening with a table size update when [tableSize] isn't null. */
+    fun encode(fields: List<Header>, tableSize: Int? = null): ByteArray {
+        val out = ByteArrayOutputStream()
+        if (tableSize != null) integer(out, tableSize, SIZE_BITS, SIZE_UPDATE)
+        for (field in fields) {
+            integer(out, 0, LITERAL_BITS, 0)
+            string(out, field.name)
+            string(out, field.value)
+        }
+        return out.toByteArray()
+    }
+
+    private fun string(out: ByteArrayOutputStream, text: String) {
+        val bytes = text.toByteArray(Charsets.ISO_8859_1)
+        integer(out, bytes.size, LENGTH_BITS, 0)
+        out.write(bytes)
+    }
+
+    /** RFC 7541's integer: in the low [prefix] bits of the first octet, carried on when full. */
+    private fun integer(out: ByteArrayOutputStream, value: Int, prefix: Int, flags: Int) {
+        val mask = (1 shl prefix) - 1
+        if (value < mask) {
+            out.write(flags or value)
+            return
+        }
+        out.write(flags or mask)
+        var rest = value - mask
+        while (rest >= CONTINUES) {
+            out.write((rest and SEVEN_BITS) or CONTINUES)
+            rest = rest ushr SEVEN
+        }
+        out.write(rest)
+    }
+
+    private const val SIZE_UPDATE = 0x20
+    private const val SIZE_BITS = 5
+    private const val LITERAL_BITS = 4
+    private const val LENGTH_BITS = 7
+    private const val CONTINUES = 0x80
+    private const val SEVEN_BITS = 0x7f
+    private const val SEVEN = 7
 }

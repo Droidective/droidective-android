@@ -84,6 +84,36 @@ class HpackTest {
         assertFailsWith<Http2Exception> { decoder.decode(indexed(62)) }
     }
 
+    @Test
+    fun whatTheEncoderWritesEveryDecoderReadsTheSame() {
+        val fields =
+            listOf(
+                Header(":method", "POST"),
+                Header(":path", "/helloworld.Greeter/SayHello"),
+                Header("content-type", "application/grpc"),
+                Header("x-empty", ""),
+                // Past one octet of length, and of name length, both.
+                Header("x-long-${"n".repeat(140)}", "v".repeat(300)),
+                Header("x-latin", "café"),
+            )
+        val decoder = HpackDecoder()
+        val block = HpackEncoder.encode(fields)
+        assertEquals(fields, decoder.decode(block))
+        // Nothing went in the table: the same block reads the same again.
+        assertEquals(fields, decoder.decode(block))
+    }
+
+    @Test
+    fun aSmallerTableIsSaidBeforeTheFields() {
+        val decoder = HpackDecoder(limit = 100)
+        val block = HpackEncoder.encode(listOf(Header("a", "b")), tableSize = 0)
+        assertEquals(0x20, block[0].toInt() and 0xff, "a size update to 0 opens the block")
+        assertEquals(listOf(Header("a", "b")), decoder.decode(block))
+        assertFailsWith<Http2Exception> {
+            HpackDecoder(limit = 100).decode(HpackEncoder.encode(emptyList(), tableSize = 4095))
+        }
+    }
+
     /**
      * Each block in [blocks] decoded in turn by one [decoder], as RFC 7541's Appendix C does. The
      * answers there assume a 256-octet table, which a sender says with a size update first.

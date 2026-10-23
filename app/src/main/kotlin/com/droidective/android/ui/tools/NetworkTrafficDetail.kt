@@ -262,6 +262,7 @@ private fun RuleShortcuts(flow: Flow, labels: AppLabels, say: (String) -> Unit) 
 
 private fun connection(flow: Flow): String =
     when {
+        flow.repeatOf != null && flow.http2 -> "HTTP/2, sent again by Droidective"
         flow.repeatOf != null && flow.secure -> "HTTPS, sent again by Droidective"
         flow.repeatOf != null -> "HTTP, sent again by Droidective"
         flow.tunnelled && flow.response == null ->

@@ -1,7 +1,11 @@
 package com.droidective.core.net.proxy
 
 import com.droidective.core.net.Loopback
+import com.droidective.core.net.h2.H2Wire.frame
+import com.droidective.core.net.h2.H2Wire.headers
+import com.droidective.core.net.h2.Http2Frame
 import com.droidective.core.net.http.CapturedBody
+import com.droidective.core.net.http.HTTP_2
 import com.droidective.core.net.http.Headers
 import com.droidective.core.net.http.RequestHead
 import kotlin.test.Test
@@ -151,7 +155,84 @@ class RepeaterTest {
         }
     }
 
+    @Test
+    fun aGrpcCallGoesAgainOnHttp2AndItsTrailersComeBack() {
+        H2Origin(ProxyTls.H2).use { origin ->
+            origin.answer = { stream ->
+                headers(
+                    stream,
+                    ":status" to "200",
+                    "content-type" to "application/grpc",
+                    end = false,
+                ) +
+                    frame(Http2Frame.DATA, 0, stream, framed("hi")) +
+                    headers(stream, "grpc-status" to "0")
+            }
+            val again =
+                Repeater(TestAuthority.upstream).send(ready(grpcCall(origin.port)), id = 9, of = 7)
+
+            assertNull(again.failure)
+            assertEquals(200, again.status)
+            assertTrue(again.http2)
+            assertContentEquals(framed("hi"), assertNotNull(again.responseBody).bytes)
+            assertEquals("0", again.trailers["grpc-status"])
+            val asked = origin.asked.single()
+            assertEquals(
+                listOf(
+                    ":method" to "POST",
+                    ":scheme" to "https",
+                    ":authority" to "localhost:${origin.port}",
+                    ":path" to "/droidective.check.Check/Echo",
+                ),
+                asked.take(4).map { it.name to it.value },
+            )
+            assertEquals("trailers", asked.single { it.name == "te" }.value)
+            assertEquals("grpc-java-okhttp/1.70.0", asked.single { it.name == "user-agent" }.value)
+            assertTrue(asked.none { it.name == "host" }, "Host goes as :authority")
+        }
+    }
+
+    @Test
+    fun aServerThatWontSpeakHttp2IsWhyACallCantGoAgain() {
+        // One that pays ALPN no attention agrees to nothing, as a server with HTTP/1.1 alone does.
+        H2Origin().use { origin ->
+            val again =
+                Repeater(TestAuthority.upstream).send(ready(grpcCall(origin.port)), id = 9, of = 7)
+            assertNull(again.response)
+            assertEquals("the server would not speak HTTP/2, which gRPC needs", again.failure)
+        }
+    }
+
+    /** A gRPC call an app made, as the proxy read it off HTTP/2. */
+    private fun grpcCall(port: Int): Flow {
+        val body = framed("hello")
+        return Flow(
+            id = 7,
+            startedAt = 1_000,
+            secure = true,
+            host = "localhost",
+            port = port,
+            request =
+                RequestHead(
+                    "POST",
+                    "/droidective.check.Check/Echo",
+                    HTTP_2,
+                    Headers()
+                        .add("content-type", "application/grpc")
+                        .add("te", "trailers")
+                        .add("user-agent", "grpc-java-okhttp/1.70.0"),
+                ),
+            requestBody = CapturedBody(body, body.size.toLong(), truncated = false),
+        )
+    }
+
     private companion object {
         fun ok(body: String) = "HTTP/1.1 200 OK\r\nContent-Length: ${body.length}\r\n\r\n$body"
+
+        /** One gRPC message, uncompressed, in its five-byte frame. */
+        fun framed(message: String): ByteArray {
+            val bytes = message.toByteArray()
+            return byteArrayOf(0, 0, 0, 0, bytes.size.toByte()) + bytes
+        }
     }
 }

@@ -1,5 +1,15 @@
 package com.droidective.core.net.h2
 
+import com.droidective.core.net.h2.Http2Frame.Companion.CONTINUATION
+import com.droidective.core.net.h2.Http2Frame.Companion.DATA
+import com.droidective.core.net.h2.Http2Frame.Companion.END_HEADERS
+import com.droidective.core.net.h2.Http2Frame.Companion.END_STREAM
+import com.droidective.core.net.h2.Http2Frame.Companion.HEADERS
+import com.droidective.core.net.h2.Http2Frame.Companion.NO_ERROR
+import com.droidective.core.net.h2.Http2Frame.Companion.PRIORITY
+import com.droidective.core.net.h2.Http2Frame.Companion.PRIORITY_OCTETS
+import com.droidective.core.net.h2.Http2Frame.Companion.PUSH_PROMISE
+import com.droidective.core.net.h2.Http2Frame.Companion.RST_STREAM
 import com.droidective.core.net.http.CapturedBody
 import com.droidective.core.net.http.Header
 import com.droidective.core.net.http.HttpBody
@@ -134,13 +144,13 @@ class Http2Reader(private val events: Http2Events, private val keep: Int = HttpB
 
     private fun data(side: Side, frame: Http2Frame) {
         val exchange = exchange(frame.stream, side) ?: return
-        val (from, to) = unpadded(frame)
+        val (from, to) = frame.unpadded()
         (if (side.fromApp) exchange.sent else exchange.answered).add(frame.payload, from, to)
         if (frame.has(END_STREAM)) ended(exchange, side)
     }
 
     private fun headers(side: Side, frame: Http2Frame) {
-        var (from, to) = unpadded(frame)
+        var (from, to) = frame.unpadded()
         if (frame.has(PRIORITY)) from += PRIORITY_OCTETS
         if (from > to) throw Http2Exception("a HEADERS frame shorter than its own priority")
         side.block = Block(frame.stream, frame.has(END_STREAM), promised = false)
@@ -148,7 +158,7 @@ class Http2Reader(private val events: Http2Events, private val keep: Int = HttpB
     }
 
     private fun promise(side: Side, frame: Http2Frame) {
-        var (from, to) = unpadded(frame)
+        var (from, to) = frame.unpadded()
         from += PROMISED_OCTETS
         if (from > to) throw Http2Exception("a PUSH_PROMISE with no stream to promise")
         // Read so the table stays right; a pushed answer is not something the app asked for.
@@ -198,7 +208,7 @@ class Http2Reader(private val events: Http2Events, private val keep: Int = HttpB
         // A server that has answered may reset to stop the rest of an upload; that is no error.
         if (code != NO_ERROR) {
             val who = if (side.fromApp) "the app" else "the server"
-            exchange.reset = "$who reset it (${ERRORS.getOrElse(code) { "error $code" }})"
+            exchange.reset = "$who reset it (${Http2Frame.error(code)})"
         }
         exchange.appEnded = true
         exchange.serverEnded = true
@@ -238,15 +248,6 @@ class Http2Reader(private val events: Http2Events, private val keep: Int = HttpB
         return Http2Exchange(stream, keep).also { open[stream] = it }
     }
 
-    private fun unpadded(frame: Http2Frame): Pair<Int, Int> {
-        if (!frame.has(PADDED)) return 0 to frame.payload.size
-        if (frame.payload.isEmpty()) throw Http2Exception("a padded frame with no padding length")
-        val padding = frame.payload[0].toInt() and 0xff
-        val to = frame.payload.size - padding
-        if (to < 1) throw Http2Exception("more padding than frame")
-        return 1 to to
-    }
-
     private fun informational(fields: List<Header>): Boolean =
         fields.firstOrNull { it.name == STATUS }?.value?.toIntOrNull() in INFORMATIONAL
 
@@ -271,43 +272,11 @@ class Http2Reader(private val events: Http2Events, private val keep: Int = HttpB
     }
 
     private companion object {
-        const val DATA = 0x0
-        const val HEADERS = 0x1
-        const val RST_STREAM = 0x3
-        const val PUSH_PROMISE = 0x5
-        const val CONTINUATION = 0x9
-
-        const val END_STREAM = 0x1
-        const val END_HEADERS = 0x4
-        const val PADDED = 0x8
-        const val PRIORITY = 0x20
-
-        const val PRIORITY_OCTETS = 5
         const val PROMISED_OCTETS = 4
         const val RST_OCTETS = 4
-        const val NO_ERROR = 0
         const val STATUS = ":status"
         const val CLOSED = "the connection closed before it finished"
         val INFORMATIONAL = 100..199
-
-        /** RFC 9113's error codes, in words, by number. */
-        val ERRORS =
-            listOf(
-                "no error",
-                "protocol error",
-                "internal error",
-                "flow control error",
-                "settings timeout",
-                "stream closed",
-                "frame size error",
-                "refused",
-                "cancelled",
-                "compression error",
-                "connect error",
-                "enhance your calm",
-                "inadequate security",
-                "HTTP/1.1 required",
-            )
     }
 }
 

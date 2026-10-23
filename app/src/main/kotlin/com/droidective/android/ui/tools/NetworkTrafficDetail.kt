@@ -93,8 +93,10 @@ fun FlowDetail(
     }
     val labels = remember { AppLabels(context) }
     // A gRPC call's bodies read with the app's own schema, when the protos folder has it.
+    var schemasKept by remember { mutableIntStateOf(0) }
+    val ask = rememberServerAsk(flow, say) { schemasKept++ }
     val schemas by
-        produceState(Schemas.NONE, flow.id) {
+        produceState(Schemas.NONE, flow.id, schemasKept) {
             if (FlowLabels.grpcMethod(flow) != null) {
                 value = withContext(Dispatchers.IO) { Schemas.of(ProtoFolder(context)) }
             }
@@ -156,7 +158,7 @@ fun FlowDetail(
                     flow.request.headers,
                     flow.requestBody,
                     "request",
-                    reading = schemas.reading(flow, answer = false),
+                    reading = schemas.reading(flow, answer = false, ask),
                 )
             } else {
                 val response = flow.response
@@ -168,7 +170,7 @@ fun FlowDetail(
                         flow.responseBody,
                         "response",
                         flow.trailers,
-                        schemas.reading(flow, answer = true),
+                        schemas.reading(flow, answer = true, ask),
                     )
                 }
             }
@@ -298,9 +300,9 @@ private class Schemas(val schema: ProtoSchema?, val folder: String?) {
     /**
      * How [flow]'s request, or its answer, is read: with its type, or with a word on finding it.
      */
-    fun reading(flow: Flow, answer: Boolean): Reading? {
+    fun reading(flow: Flow, answer: Boolean, ask: ServerAsk): Reading? {
         if (FlowLabels.grpcMethod(flow) == null) return null
-        return Reading(schema, schema?.typed(flow.request.path, answer), folder)
+        return Reading(schema, schema?.typed(flow.request.path, answer), folder, ask)
     }
 
     companion object {
@@ -310,11 +312,15 @@ private class Schemas(val schema: ProtoSchema?, val folder: String?) {
     }
 }
 
-/** A gRPC body's reading: the schema, the message type it is in it, the folder for one. */
+/**
+ * A gRPC body's reading: the schema, the message type it is in it, the folder for one, and asking
+ * the server for one.
+ */
 internal class Reading(
     val schema: ProtoSchema?,
     val typed: ProtoSchema.Typed?,
     val folder: String?,
+    val ask: ServerAsk? = null,
 )
 
 /** A message's headers, its body decoded, and the trailers after it when there were any. */
@@ -402,11 +408,7 @@ private fun GrpcBody(body: BodyShape.Grpc, what: String, reading: Reading?) {
     val rest = body.messages.size - MAX_SHOWN_MESSAGES
     if (rest > 0) ToolNote("And $rest more. Copy the body for all of them.")
     if (reading != null && reading.typed == null && body.messages.isNotEmpty()) {
-        ToolNote(
-            "Fields have names when the app's schema is on the phone: compile its .proto files " +
-                "with protoc --include_imports --descriptor_set_out=app.protoset, then adb push " +
-                "app.protoset to ${reading.folder ?: "the protos folder"}."
-        )
+        SchemaNote(reading)
     }
 }
 

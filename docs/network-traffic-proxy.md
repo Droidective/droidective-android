@@ -67,6 +67,8 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/zstd/ZstdTables.kt` | zstd's bitstreams read backwards, FSE tables, Huffman tables from weights |
 | `core/net/grpc/ProtoWire.kt` | The protobuf wire format, nothing guessed: fields, varints, packed runs |
 | `core/net/grpc/ProtoRaw.kt` | Protobuf read without its schema, printed as `protoc --decode_raw` prints it |
+| `core/net/grpc/GrpcReflection.kt` | Server reflection's requests and answers, and gathering a symbol's files with every import |
+| `core/net/proxy/ServerSchema.kt` | Asking the server a call went to for its schema: v1 then v1alpha, with the call's metadata |
 | `core/net/grpc/ProtoSchema.kt` | A descriptor set read: messages, enums, methods; a message printed as `protoc --decode` would, `Any` opened |
 
 `core/net` and `core/zstd` carry **400 tests**, nearly all of them this work.
@@ -125,8 +127,6 @@ Roughly in the order people reach for them after the list itself:
   Android 14 and later the store lives in the Conscrypt APEX, so it means a tmpfs mounted
   over `/apex/com.android.conscrypt/cacerts` in every app's mount namespace (HTTP Toolkit's
   approach), redone after each reboot. `CertificateTrust.System` already reads the result.
-- **Schemas from the server.** A gRPC server with reflection on would give its schema to
-  whoever asks, so no file would need pushing; `Http2Client` can now do the asking.
 
 ## What stops this working, and what to tell people
 
@@ -245,6 +245,14 @@ does exactly this.
   window and hands back what it reads at once, so a long answer never waits on it. A server
   that won't agree to `h2` is the reason given, not a TLS failure. A call can be sent again but
   not edited: its body is framed protobuf, nothing to type over.
+- **A server's own schema is asked for from the call, and kept like a pushed one.** "Ask the
+  server for its schema" under a call's messages asks by reflection, `v1` first and `v1alpha`
+  when that is unimplemented (grpcio still answers only `v1alpha`), carrying the call's own
+  metadata, since a server that guards its reflection guards it as it guards its calls. Each
+  file a server sends names its imports, and any it didn't send is asked for by name: some send
+  a file with everything it needs, others only the file asked for. What comes back is kept as
+  `reflected-<host>.protoset` in the protos folder, so it is read exactly as a pushed file is,
+  replaced when asked again, and deleted the same way.
 - **The proxy never dials itself.** An app asking for `127.0.0.1:8888`, or a remap there,
   would have it ask itself again for ever; it fails as a 502 instead.
 

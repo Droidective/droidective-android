@@ -2,6 +2,7 @@ package com.droidective.android.proxy
 
 import android.content.Context
 import com.droidective.core.net.grpc.ProtoSchema
+import com.droidective.core.net.proxy.ServerSchema
 import java.io.File
 
 /**
@@ -35,6 +36,19 @@ class ProtoFolder(private val context: Context) {
             files.mapNotNull { ProtoSchema.parse(it.readBytes()) }.reduceOrNull(ProtoSchema::plus)
         read = key to schema
         return schema
+    }
+
+    /**
+     * Keeps [set], the descriptor set the server at [host] gave by reflection, beside the ones
+     * pushed, in place of any it gave before; false when there is no shared storage to keep it on.
+     */
+    fun keep(host: String, set: ByteArray): Boolean {
+        val folder = folder() ?: return false
+        if (!folder.isDirectory && !folder.mkdirs()) return false
+        val file = File(folder, ServerSchema.fileName(host))
+        val temp = File(folder, ".${file.name}.part")
+        temp.writeBytes(set)
+        return temp.renameTo(file)
     }
 
     companion object {

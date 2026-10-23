@@ -1,0 +1,23 @@
+// A service whose file imports a sibling and a well-known type, for GrpcReflectionTest. The answers
+// beside it were recorded from grpcio-reflection 1.84 serving it (see README.md).
+syntax = "proto3";
+
+package droidective.reflected;
+
+import "google/protobuf/timestamp.proto";
+import "reflected_types.proto";
+
+service Shop {
+  rpc Order(OrderRequest) returns (Receipt);
+}
+
+message OrderRequest {
+  string item = 1;
+  Size size = 2;
+}
+
+message Receipt {
+  string id = 1;
+  google.protobuf.Timestamp at = 2;
+  Money total = 3;
+}

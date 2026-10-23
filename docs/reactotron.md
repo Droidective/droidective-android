@@ -61,6 +61,9 @@ cleartext to localhost, which is all a `ws://` connection there needs.
   not news, so it stays out of the timeline. A restore leaves no line there either:
   reactotron-redux keeps its own `REACTOTRON_RESTORE_STATE` action out, so the screen says it
   was sent, and the app's state is the proof.
+- **A slot or an automation restores a snapshot by its id**, so renaming it changes nothing. A
+  snapshot deleted, or dropped past the bounds, makes the slot say it is gone rather than guess
+  at another.
 
 ## What is left
 

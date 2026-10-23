@@ -10,9 +10,10 @@ toggles Android keeps from ordinary apps. The macOS app lives in
 - **Widgets everywhere.** Home-screen bars, buttons and lists, folders, a notification bar, Quick
   Settings tiles and shortcuts, all built from the same items: 60 toggles (network, sound,
   display, device and developer), single actions (a toggle set to one state, an app force-stopped,
-  a permission granted, the phone put at a place, a React Native app's Reactotron command), apps,
-  other apps' shortcuts, your own shell commands, deep links, automations and tools. Every widget can be styled: grid or list, sizes, chips, labels, states,
-  colours, and each slot's own label, icon and colour.
+  a permission granted, the phone put at a place, a React Native app's Reactotron command or
+  snapshot), apps, other apps' shortcuts, your own shell commands, deep links, automations and
+  tools. Every widget can be styled: grid or list, sizes, chips, labels, states, colours, and
+  each slot's own label, icon and colour.
 - **Network Traffic.** An HTTPS debugging proxy on the phone itself, with no computer or network
   to set up: every request the phone's apps make, attributed to its app, decoded and searchable,
   copied as cURL or shared as HAR. Read only the apps you choose and the rest pass through

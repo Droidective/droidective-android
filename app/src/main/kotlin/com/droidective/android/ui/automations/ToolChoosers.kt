@@ -83,6 +83,35 @@ fun ReactotronCommandChooser(onDismiss: () -> Unit, onPick: (Action.ReactotronCo
     }
 }
 
+/** A Reactotron snapshot kept on the phone, to put back in its app. */
+@Composable
+fun SnapshotChooser(onDismiss: () -> Unit, onPick: (Action.ReactotronRestore) -> Unit) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { Reactotron.loadSnapshots(context) } }
+    val snapshots by Reactotron.snapshots.collectAsStateWithLifecycle()
+    if (snapshots.isEmpty()) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("No snapshots yet") },
+            text = {
+                Text(
+                    "Take one in Reactotron while your app is connected. The snapshots kept there " +
+                        "show here."
+                )
+            },
+            confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+        )
+        return
+    }
+    ChoiceDialog(
+        "Which snapshot",
+        snapshots.map { "${it.name} · ${it.app}" to it },
+        onDismiss,
+    ) {
+        onPick(Action.ReactotronRestore(it.id, it.name, it.app))
+    }
+}
+
 /** What each of [command]'s arguments is given, kept with the action and sent on every run. */
 @Composable
 private fun ArgsDialog(

@@ -67,6 +67,7 @@ class SlotItemsTest {
                 Action.SetLocation("London", Coordinates(51.5074, -0.1278)) to "location_on",
                 Action.RealLocation to "location_off",
                 Action.ReactotronCommand("StreamLab", "resetStore", "Reset store") to "data_object",
+                Action.ReactotronRestore("4f1c", "Two in the cart", "StreamLab") to "history",
             )
             .forEach { (action, icon) ->
                 val cell = plan(Item.Action("a", action, "Slot"), access = noShell)

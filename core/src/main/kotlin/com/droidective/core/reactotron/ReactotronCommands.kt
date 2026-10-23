@@ -148,6 +148,21 @@ class ReactotronCommands {
         /** What dispatches [action] in the app. */
         fun dispatch(action: JsonObject): JsonElement = JsonObject(mapOf("action" to action))
 
+        /** What asks an app for the names it shares with `Reactotron.repl(name, value)`. */
+        const val REPL_LIST = "repl.ls"
+        const val REPL_NAMES = "repl.ls.response"
+
+        /**
+         * What runs code in the app, with what it shares as `this`; [REPL_RESULT] brings back what
+         * it came to. Code that throws brings nothing back: the client doesn't catch it.
+         */
+        const val REPL_RUN = "repl.execute"
+        const val REPL_RESULT = "repl.execute.response"
+
+        /** The names a [REPL_NAMES] answer gives, or null for any other command. */
+        fun replNames(command: ReactotronCommand): List<String>? =
+            if (command.type == REPL_NAMES) command.payload.list.mapNotNull { it.text } else null
+
         /** What asks an app for the state at [path], its value or the keys under it. */
         fun stateRequest(path: String, keys: Boolean): Pair<String, JsonElement> =
             (if (keys) "state.keys.request" else "state.values.request") to

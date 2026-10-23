@@ -27,7 +27,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Reactotron on the phone: the server a React Native app's Reactotron client connects to, the apps
@@ -78,6 +80,11 @@ object Reactotron : ReactotronSink {
 
     /** The state paths each app sends as they change. */
     val watched: StateFlow<List<String>> = watched_.asStateFlow()
+
+    private val replNames_ = MutableStateFlow<Map<Int, List<String>>>(emptyMap())
+
+    /** The names each connection shares with its REPL, as it last said, by connection. */
+    val replNames: StateFlow<Map<Int, List<String>>> = replNames_.asStateFlow()
 
     private val values_ = MutableStateFlow<Map<Int, List<Pair<String, JsonElement>>>>(emptyMap())
 
@@ -134,6 +141,7 @@ object Reactotron : ReactotronSink {
         clients_.value = emptyMap()
         commands_.value = emptyList()
         values_.value = emptyMap()
+        replNames_.value = emptyMap()
         if (state_.value is State.Listening) state_.value = State.Off
     }
 
@@ -225,6 +233,17 @@ object Reactotron : ReactotronSink {
         clients_.value.keys.forEach { server?.send(it, type, payload) }
     }
 
+    /** Asks every connected app for the names it shares with its REPL. */
+    fun listRepl() {
+        clients_.value.keys.forEach { server?.send(it, ReactotronCommands.REPL_LIST, JsonNull) }
+    }
+
+    /** Runs [code] in every connected app's REPL; what it comes to arrives in the timeline. */
+    fun runRepl(code: String) {
+        val payload = JsonPrimitive(code)
+        clients_.value.keys.forEach { server?.send(it, ReactotronCommands.REPL_RUN, payload) }
+    }
+
     /** Dispatches [action] in every connected app, through its store plugin. */
     fun dispatch(action: JsonObject) {
         val payload = ReactotronCommands.dispatch(action)
@@ -265,6 +284,12 @@ object Reactotron : ReactotronSink {
             commands_.value = registry.all()
             return
         }
+        // The names a REPL shares are chips to tap, as commands are buttons.
+        val names = ReactotronCommands.replNames(command)
+        if (names != null) {
+            replNames_.update { it + (connection to names) }
+            return
+        }
         // Watched values are a panel that changes, not a line per change.
         if (watch.heard(connection, command)) {
             values_.value = watch.all()
@@ -284,6 +309,7 @@ object Reactotron : ReactotronSink {
         commands_.value = registry.all()
         watch.gone(connection)
         values_.value = watch.all()
+        replNames_.update { it - connection }
         // A reload taking its own place is no news.
         if (why != null) timeline.gone(System.currentTimeMillis(), connection, gone?.name, why)
         changes_.update { it + 1 }

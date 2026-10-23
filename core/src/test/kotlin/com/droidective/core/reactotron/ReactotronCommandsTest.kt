@@ -151,6 +151,39 @@ class ReactotronCommandsTest {
     }
 
     @Test
+    fun aReplSaysWhatItSharesAndWhatCodeCameTo() {
+        // As reactotron-core-client 2.9.7 sends them: Object.keys(myRepls), then eval's result.
+        assertEquals(
+            listOf("store", "api"),
+            ReactotronCommands.replNames(
+                command("""{"type":"repl.ls.response","payload":["store","api"]}""")
+            ),
+        )
+        assertNull(
+            ReactotronCommands.replNames(
+                command("""{"type":"repl.execute.response","payload":1}""")
+            )
+        )
+        fun result(payload: String) =
+            assertIs<ReactotronEvent.ReplResult>(
+                ReactotronEvent.of(
+                    command("""{"type":"repl.execute.response","payload":$payload}""")
+                )
+            )
+        val count = result("2")
+        assertEquals("REPL", ReactotronLabels.tag(count))
+        assertEquals("2", ReactotronLabels.summary(count))
+        assertEquals("tea", ReactotronLabels.summary(result("\"tea\"")))
+        assertEquals(
+            """{"items":["tea"]}""",
+            ReactotronLabels.summary(result("""{"items":["tea"]}""")),
+        )
+        assertEquals("undefined or null", ReactotronLabels.summary(result("\"~~~ undefined ~~~\"")))
+        assertEquals(200, ReactotronLabels.summary(result("\"${"x".repeat(500)}\"")).length)
+        assertEquals(ReactotronKind.Other, ReactotronLabels.kind(count))
+    }
+
+    @Test
     fun anActionIsATypeAloneOrAWholeObjectWithAType() {
         assertEquals("""{"type":"logout"}""", ReactotronCommands.action("  logout ").toString())
         assertEquals(

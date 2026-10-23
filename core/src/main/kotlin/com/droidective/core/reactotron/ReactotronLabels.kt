@@ -8,11 +8,15 @@ import com.droidective.core.reactotron.ReactotronEvent.ClientIntro
 import com.droidective.core.reactotron.ReactotronEvent.Display
 import com.droidective.core.reactotron.ReactotronEvent.Image
 import com.droidective.core.reactotron.ReactotronEvent.Log
+import com.droidective.core.reactotron.ReactotronEvent.ReplResult
 import com.droidective.core.reactotron.ReactotronEvent.StateAction
 import com.droidective.core.reactotron.ReactotronEvent.StateAnswer
 import com.droidective.core.reactotron.ReactotronEvent.StateChange
 import com.droidective.core.reactotron.ReactotronEvent.Unknown
 import java.util.Locale
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 
 /** The timeline's sorts, as its filter chips name them. */
 enum class ReactotronKind(val title: String) {
@@ -48,6 +52,7 @@ object ReactotronLabels {
             is Display -> "DISPLAY"
             is Image -> "IMAGE"
             is Benchmark -> "BENCH"
+            is ReplResult -> "REPL"
             Clear -> "CLEAR"
             is Unknown -> if (event.type == ReactotronTimeline.GONE) "GONE" else "OTHER"
         }
@@ -67,6 +72,7 @@ object ReactotronLabels {
             is Image -> event.caption ?: event.uri
             is Benchmark ->
                 event.title + (event.steps.lastOrNull()?.let { " · ${millis(it.time)}" } ?: "")
+            is ReplResult -> replied(event.value)
             Clear -> "The app cleared its timeline"
             is Unknown ->
                 if (event.type == ReactotronTimeline.GONE) event.payload.text.orEmpty()
@@ -82,10 +88,19 @@ object ReactotronLabels {
             .any { it.contains(wanted, ignoreCase = true) }
     }
 
+    /** A REPL answer in a line: text as itself, anything else as the JSON it came as. */
+    private fun replied(value: JsonElement?): String =
+        when {
+            value == null || value is JsonNull -> "undefined or null"
+            value is JsonPrimitive && value.isString -> value.content
+            else -> value.toString()
+        }.take(REPLIED)
+
     /** "38 ms", "1.2 s": as long as it took. */
     fun millis(value: Double): String =
         if (value < SECOND) "${value.toLong()} ms"
         else String.format(Locale.ROOT, "%.1f s", value / SECOND)
 
     private const val SECOND = 1_000.0
+    private const val REPLIED = 200
 }

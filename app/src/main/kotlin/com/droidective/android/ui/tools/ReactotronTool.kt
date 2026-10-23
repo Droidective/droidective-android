@@ -134,6 +134,7 @@ private fun Timeline(
             if (clients.isNotEmpty()) {
                 item { CommandsSection() }
                 item { StateSection() }
+                item { ReplSection() }
             }
             item { WatchSection() }
             item { SnapshotsSection(onOpenSnapshot) }

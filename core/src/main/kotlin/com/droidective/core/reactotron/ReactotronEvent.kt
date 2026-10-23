@@ -65,6 +65,9 @@ sealed interface ReactotronEvent {
     data class StateAnswer(val path: String, val value: JsonElement?, val keys: Boolean) :
         ReactotronEvent
 
+    /** What code sent to the app's REPL came to, as the app sent it back. */
+    data class ReplResult(val value: JsonElement?) : ReactotronEvent
+
     data class Unknown(val type: String, val payload: JsonElement?) : ReactotronEvent
 
     /** A frame in a stack trace, as the client sends it. */
@@ -109,6 +112,7 @@ sealed interface ReactotronEvent {
                             it["path"].text.orEmpty() to (it["value"] ?: JsonNull)
                         }
                     )
+                ReactotronCommands.REPL_RESULT -> ReplResult(payload)
                 else -> Unknown(command.type, payload)
             }
         }

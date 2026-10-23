@@ -153,17 +153,17 @@ class Http2Client(
     }
 
     private fun data(frame: Http2Frame, call: Call) {
+        // Judged before anything is written: a server talking nonsense may already have gone.
+        val ours = frame.stream == call.stream
+        if (ours && call.fields == null) throw Http2Exception("a body before any answer")
         val size = frame.payload.size
         // Handed back at once, padding and all, so a long answer never waits on this end.
         if (size > 0) {
             write(WINDOW_UPDATE, 0, 0, int32(size))
-            if (frame.stream == call.stream && !frame.has(END_STREAM)) {
-                write(WINDOW_UPDATE, 0, call.stream, int32(size))
-            }
+            if (ours && !frame.has(END_STREAM)) write(WINDOW_UPDATE, 0, call.stream, int32(size))
             output.flush()
         }
-        if (frame.stream != call.stream) return
-        if (call.fields == null) throw Http2Exception("a body before any answer")
+        if (!ours) return
         val (from, to) = frame.unpadded()
         call.kept.add(frame.payload, from, to)
         if (frame.has(END_STREAM)) call.end()

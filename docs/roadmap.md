@@ -1,17 +1,12 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.18.0**.
+another machine. Current release: **0.19.0**.
 
-## Shipped since 0.18.0, waiting for a release
+## Shipped since 0.19.0, waiting for a release
 
-- **gRPC calls sent again.** A captured gRPC call goes back to its server from the phone, on
-  HTTP/2 through a client of Droidective's own, its status and trailers read as the app's were.
-- **Schemas from the server.** A gRPC call's server is asked for its schema by reflection, and
-  the call reads with field names with no `.proto` file pushed.
-
-0.18.0 carried Reactotron watches (#142) and dispatch, from the screen and from a
-slot (#143, #144); see `RELEASE_NOTES.md`.
+Nothing yet. 0.19.0 carried gRPC calls sent again over HTTP/2 (#147) and schemas from a
+server's reflection (#148); see `RELEASE_NOTES.md`.
 
 ## Next
 

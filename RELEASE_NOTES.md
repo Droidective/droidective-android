@@ -3,6 +3,18 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.19.0
+
+gRPC calls go again from the phone, and a server can name their fields itself.
+
+- **Send a gRPC call again.** Send again works on gRPC calls now, which need HTTP/2: the call
+  goes back to its server on a connection of Droidective's own, and its answer, status and
+  trailers are read as the app's were.
+- **Ask the server for its schema.** Under a gRPC call's messages, a server with reflection on
+  gives its own schema: the call reads with field names, enum names and message types, with no
+  `.proto` file compiled or pushed. What it gives is kept with the pushed schemas, and a server
+  without reflection says so.
+
 ## 0.18.0
 
 Reactotron watches your app's state as it changes, and dispatches actions into it.

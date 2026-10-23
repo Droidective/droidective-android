@@ -1,5 +1,6 @@
 package com.droidective.core.net.proxy
 
+import com.droidective.core.net.Loopback
 import com.droidective.core.net.http.BodyFraming
 import com.droidective.core.net.http.HttpBody
 import com.droidective.core.net.http.HttpReader
@@ -13,7 +14,6 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
-import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.ServerSocket
@@ -305,7 +305,7 @@ class ProxyServerTest {
 
     @Test
     fun aServerThatCannotBeReachedIsAnswered502AndStillRecorded() {
-        val closed = ServerSocket(0).use { it.localPort }
+        val closed = Loopback.closedPort()
         val port = proxy()
         Socket("127.0.0.1", port).use { socket ->
             socket
@@ -901,7 +901,7 @@ class ProxyServerTest {
 
     @Test
     fun aRequestIsOnRecordBeforeTheServerIsReached() {
-        val closed = ServerSocket(0).use { it.localPort }
+        val closed = Loopback.closedPort()
         val port = proxy()
         assertFailsWith<IOException> { get("http://127.0.0.1:$closed/slow", port) }
 
@@ -1116,7 +1116,7 @@ private fun readUpToBlankLine(input: java.io.InputStream): String {
  * on: with the rest, or — when it is to [hangUp] — with nothing at all.
  */
 private class Trickle(private val length: Int, private val first: Int) : AutoCloseable {
-    private val server = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
+    private val server = Loopback.server()
     val port: Int = server.localPort
     val go = CountDownLatch(1)
     @Volatile var hangUp = false
@@ -1150,8 +1150,7 @@ private class SocketEcho(
     private val hold: Boolean = true,
     private val extensions: String? = null,
 ) : AutoCloseable {
-    // 127.0.0.1 by name: these tests prefer IPv6, and the loopback address is ::1 then.
-    private val server = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
+    private val server = Loopback.server()
     val port: Int = server.localPort
 
     init {
@@ -1258,7 +1257,8 @@ internal data class Asked(
 /** A server on loopback that answers whatever [reply] says, plain or over TLS. */
 internal class FakeServer(context: SSLContext? = null) : AutoCloseable {
     private val server: ServerSocket =
-        context?.serverSocketFactory?.createServerSocket(0) ?: ServerSocket(0)
+        context?.serverSocketFactory?.createServerSocket(0, Loopback.BACKLOG, Loopback.localhost)
+            ?: Loopback.server()
 
     val port: Int
         get() = server.localPort

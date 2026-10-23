@@ -103,7 +103,7 @@ internal object ToolActions {
         val gone = "The snapshot “${action.name}” is no longer on this phone."
         val restored =
             withContext(Dispatchers.IO) {
-                Reactotron.loadSnapshots(context)
+                Reactotron.load(context)
                 Reactotron.snapshots.value
                     .firstOrNull { it.id == action.snapshotId }
                     ?.let(Reactotron::restore)

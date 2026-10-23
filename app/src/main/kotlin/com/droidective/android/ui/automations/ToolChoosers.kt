@@ -87,7 +87,7 @@ fun ReactotronCommandChooser(onDismiss: () -> Unit, onPick: (Action.ReactotronCo
 @Composable
 fun SnapshotChooser(onDismiss: () -> Unit, onPick: (Action.ReactotronRestore) -> Unit) {
     val context = LocalContext.current
-    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { Reactotron.loadSnapshots(context) } }
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { Reactotron.load(context) } }
     val snapshots by Reactotron.snapshots.collectAsStateWithLifecycle()
     if (snapshots.isEmpty()) {
         AlertDialog(

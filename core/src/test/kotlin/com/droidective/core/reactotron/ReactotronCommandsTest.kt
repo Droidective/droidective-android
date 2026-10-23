@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -28,6 +29,30 @@ class ReactotronCommandsTest {
         assertEquals("Reset store", offered.label)
         assertEquals("Back to a fresh install", offered.description)
         assertEquals(listOf("user"), offered.args)
+    }
+
+    @Test
+    fun aSlotFindsItsCommandByAppAndNameOnTheNewestConnection() {
+        fun register(connection: Int, id: Int, name: String) =
+            commands.heard(
+                connection,
+                command(
+                    """{"type":"customCommand.register","payload":{"id":$id,"command":"$name"}}"""
+                ),
+            )
+        register(1, 1, "resetStore")
+        register(2, 1, "resetStore")
+        register(3, 7, "resetStore")
+        register(3, 8, "login")
+        // StreamLab reconnected as 3 before its first connection, 1, was seen to go.
+        val apps = mapOf(1 to "StreamLab", 2 to "Other", 3 to "StreamLab")
+        val all = commands.all()
+        val found = ReactotronCommands.find(all, apps::get, "StreamLab", "resetStore")
+        assertEquals(3 to 7, found?.let { it.connection to it.id })
+        assertEquals(2, ReactotronCommands.find(all, apps::get, "Other", "resetStore")?.connection)
+        assertNull(ReactotronCommands.find(all, apps::get, "Other", "login"))
+        assertNull(ReactotronCommands.find(all, apps::get, "Gone", "resetStore"))
+        assertNull(ReactotronCommands.find(all, { null }, "StreamLab", "resetStore"))
     }
 
     @Test

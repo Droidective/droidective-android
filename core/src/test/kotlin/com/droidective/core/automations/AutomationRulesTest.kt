@@ -1,7 +1,9 @@
 package com.droidective.core.automations
 
+import com.droidective.core.AccessLevel
 import com.droidective.core.apps.AppAction
 import com.droidective.core.automations.Clock.holdsAt
+import com.droidective.core.location.Coordinates
 import java.io.File
 import java.time.LocalDateTime
 import kotlin.io.path.createTempDirectory
@@ -10,6 +12,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
 class AutomationRulesTest {
@@ -102,6 +105,10 @@ class AutomationRulesTest {
                 ),
                 Action.Wait(5),
                 Action.RunAutomation("other"),
+                Action.SetLocation("London", Coordinates(51.5074, -0.1278)),
+                Action.RealLocation,
+                Action.ReactotronCommand("StreamLab", "resetStore", "Reset store"),
+                Action.ReactotronCommand("StreamLab", "login", "Log in", mapOf("user" to "ada")),
             )
         val triggers =
             everyState.flatMap { listOf(Trigger.Starts(it), Trigger.Ends(it), Trigger.While(it)) } +
@@ -118,6 +125,40 @@ class AutomationRulesTest {
             val original = automation(trigger = trigger, actions = actions)
             val text = Json.encodeToString(Automation.serializer(), original)
             assertEquals(original, Json.decodeFromString(Automation.serializer(), text))
+        }
+    }
+
+    @Test
+    fun toolActionsKeepTheirFormatAndSayWhatTheyDo() {
+        val actions =
+            listOf(
+                Action.SetLocation("London", Coordinates(51.5074, -0.1278)),
+                Action.RealLocation,
+                Action.ReactotronCommand("StreamLab", "login", "Log in", mapOf("user" to "ada")),
+            )
+        assertEquals(
+            Json.parseToJsonElement(
+                """[{"type":"set-location","name":"London",""" +
+                    """"where":{"latitude":51.5074,"longitude":-0.1278}},""" +
+                    """{"type":"real-location"},""" +
+                    """{"type":"reactotron-command","app":"StreamLab","command":"login",""" +
+                    """"label":"Log in","args":{"user":"ada"}}]"""
+            ),
+            Json.encodeToJsonElement(ListSerializer(Action.serializer()), actions),
+        )
+        assertEquals(
+            listOf(
+                "Put the phone at London",
+                "Give the phone its own location back",
+                "Run “Log in” in StreamLab",
+            ),
+            actions.map { Review.describe(it, commands = { null }) },
+        )
+        // No shell, nothing to undo, and the app alone runs them.
+        assertEquals(emptyList(), actions.flatMap { Review.shell(it, commands = { null }) })
+        actions.forEach { action ->
+            assertEquals(AccessLevel.App, action.level(), "$action")
+            assertFalse(action.isDestructive, "$action")
         }
     }
 
@@ -199,6 +240,9 @@ class AutomationRulesTest {
                             Action.ForApp("com.x'; reboot; '", AppAction.ForceStop),
                             Action.Wait(0),
                             Action.Notify("Hi", buttons = listOf(Button("Stop", Action.Wait(1)))),
+                            Action.SetLocation(" ", Coordinates(0.0, 0.0)),
+                            Action.ReactotronCommand("", "resetStore", "Reset store"),
+                            Action.ReactotronCommand("StreamLab", "", "Reset store"),
                         ),
                 )
             )
@@ -213,6 +257,9 @@ class AutomationRulesTest {
                 "isn’t a package name",
                 "A wait is from 1 second to an hour",
                 "A notification button can open something or run an automation",
+                "The place name is empty",
+                "The app name is empty",
+                "The command is empty",
             )
             .forEach { expected -> assertTrue(problems.any { expected in it }, expected) }
     }

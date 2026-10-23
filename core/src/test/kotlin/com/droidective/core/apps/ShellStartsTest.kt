@@ -25,6 +25,10 @@ class ShellStartsTest {
             "am start -a 'android.settings.WIFI_SETTINGS'",
             ShellStarts.settingsScreen("android.settings.WIFI_SETTINGS").line,
         )
+        assertEquals(
+            "cmd deviceidle tempwhitelist -d 10000 'com.droidective.android'",
+            ShellStarts.allowForegroundService("com.droidective.android").line,
+        )
     }
 
     @Test
@@ -33,6 +37,9 @@ class ShellStartsTest {
         assertFailsWith<IllegalArgumentException> { ShellStarts.activity("x'; reboot", "A") }
         assertFailsWith<IllegalArgumentException> { ShellStarts.link("not a link") }
         assertFailsWith<IllegalArgumentException> { ShellStarts.settingsScreen("a b") }
+        assertFailsWith<IllegalArgumentException> {
+            ShellStarts.allowForegroundService("x; reboot")
+        }
     }
 
     @Test

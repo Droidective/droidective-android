@@ -5,7 +5,11 @@ another machine. Current release: **0.16.0**.
 
 ## Shipped since 0.16.0, waiting for a release
 
-Nothing yet. 0.16.0 carried Mock Location (#135, #136) and Reactotron talking back (#134); see
+- **Places and Reactotron commands as slots and actions.** A widget, tile, notification bar,
+  folder or automation can put the phone at a place, give it its own location back, or run a
+  connected React Native app's Reactotron command, without opening Droidective.
+
+0.16.0 carried Mock Location (#135, #136) and Reactotron talking back (#134); see
 `RELEASE_NOTES.md`.
 
 ## Next
@@ -13,8 +17,8 @@ Nothing yet. 0.16.0 carried Mock Location (#135, #136) and Reactotron talking ba
 - **The proxy's next steps** — the certificate in the system store with root, schemas from
   a server's reflection — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
-- **Reactotron's next steps** — state backup and restore, path subscriptions, the REPL, an
-  app's commands as widget slots — are in [reactotron.md](reactotron.md).
+- **Reactotron's next steps** — state backup and restore, path subscriptions, the REPL — are
+  in [reactotron.md](reactotron.md).
 - **The Mac tools not yet on the phone**: none on the list. `app-info` stays the Apps tool's
   detail screen, which already is that.
 - **Real-device passes on the OnePlus Pad** need the person there: OxygenOS holds every

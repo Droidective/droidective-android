@@ -20,6 +20,10 @@ import kotlinx.coroutines.flow.asStateFlow
 object MockLocation {
     const val TOOL = "mock-location"
 
+    internal const val NOT_CHOSEN =
+        "Droidective isn't the mock location app. Android lets only that app stand in for the " +
+            "phone's location."
+
     sealed interface State {
         data object Off : State
 

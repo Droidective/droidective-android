@@ -2,6 +2,7 @@ package com.droidective.core.automations
 
 import com.droidective.core.AccessLevel
 import com.droidective.core.apps.AppAction
+import com.droidective.core.location.Coordinates
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -414,6 +415,27 @@ sealed interface Action {
     @Serializable
     @SerialName("run-automation")
     data class RunAutomation(val automationId: String) : Action
+
+    /** Mock Location at [where]: every app asking where the phone is hears [name]. */
+    @Serializable
+    @SerialName("set-location")
+    data class SetLocation(val name: String, val where: Coordinates) : Action
+
+    /** Mock Location off, so the phone reports where it really is. */
+    @Serializable @SerialName("real-location") data object RealLocation : Action
+
+    /**
+     * A custom command a React Native app registered with Reactotron, run in that app when it is
+     * connected: found by the [app]'s name and the [command]'s, so it survives reconnecting.
+     */
+    @Serializable
+    @SerialName("reactotron-command")
+    data class ReactotronCommand(
+        val app: String,
+        val command: String,
+        val label: String,
+        val args: Map<String, String> = emptyMap(),
+    ) : Action
 }
 
 @Serializable data class Button(val label: String, val action: Action)

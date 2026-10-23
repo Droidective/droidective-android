@@ -19,6 +19,27 @@ import java.net.Socket
 import javax.net.ssl.SSLException
 import javax.net.ssl.SSLSocket
 
+/**
+ * A connection to [server] speaking HTTP/2: over TLS with `h2` agreed, or in the clear to a server
+ * taking HTTP/2 from the first byte, as a gRPC server in development does.
+ *
+ * @throws IOException when it can't be reached, or won't agree to `h2`, which gRPC needs.
+ */
+internal fun openHttp2(upstream: UpstreamTls, server: Server): Socket {
+    val socket =
+        if (server.secure) upstream.connect(server.origin, HTTP2_CONNECT_MILLIS, ProxyTls.H2)
+        else Dial.connect(server.origin.host, server.origin.port, HTTP2_CONNECT_MILLIS)
+    if (socket is SSLSocket && socket.applicationProtocol != ProxyTls.H2) {
+        socket.close()
+        throw IOException("the server would not speak HTTP/2, which gRPC needs")
+    }
+    socket.soTimeout = HTTP2_IDLE_MILLIS
+    return socket
+}
+
+private const val HTTP2_CONNECT_MILLIS = 15_000
+private const val HTTP2_IDLE_MILLIS = 60_000
+
 /** A request ready to go out again: where to, the head as the server will see it, the body. */
 class Outgoing(
     val secure: Boolean,
@@ -86,16 +107,9 @@ class Repeater(
         if (server.secure) upstream.connect(server.origin, CONNECT_MILLIS, protocol)
         else Dial.connect(server.origin.host, server.origin.port, CONNECT_MILLIS)
 
-    /**
-     * One stream on a connection of its own: over TLS with `h2` agreed, or in the clear to a server
-     * taking HTTP/2 from the first byte, as a gRPC server in development does.
-     */
+    /** The call as one stream, on an HTTP/2 connection of its own. */
     private fun http2(flow: Flow, server: Server, head: RequestHead, body: ByteArray): Flow =
-        open(server, ProxyTls.H2).use { socket ->
-            if (socket is SSLSocket && socket.applicationProtocol != ProxyTls.H2) {
-                throw IOException(NO_HTTP2)
-            }
-            socket.soTimeout = IDLE_MILLIS
+        openHttp2(upstream, server).use { socket ->
             val answer =
                 Http2Client(socket.getInputStream(), socket.getOutputStream())
                     .send(fields(head, server), body)
@@ -226,7 +240,6 @@ class Repeater(
         private const val TE = "te"
         private const val TRAILERS = "trailers"
         private const val STATUS = ":status"
-        private const val NO_HTTP2 = "the server would not speak HTTP/2, which gRPC needs"
         private const val NO_STATUS = "the server answered with no status"
     }
 }

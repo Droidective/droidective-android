@@ -1,0 +1,15 @@
+// What reflected.proto imports beside the well-known types, for GrpcReflectionTest.
+syntax = "proto3";
+
+package droidective.reflected;
+
+enum Size {
+  SIZE_UNSET = 0;
+  SMALL = 1;
+  LARGE = 2;
+}
+
+message Money {
+  string currency = 1;
+  int64 units = 2;
+}

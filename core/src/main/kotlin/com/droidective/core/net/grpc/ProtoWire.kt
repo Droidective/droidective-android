@@ -1,5 +1,7 @@
 package com.droidective.core.net.grpc
 
+import java.io.ByteArrayOutputStream
+
 /**
  * One field as the protobuf wire has it: its number, its wire type, and its value — the bits of a
  * number, or the bytes of anything length-delimited, which only a schema (or a guess) can name.
@@ -12,6 +14,24 @@ internal object ProtoWire {
     const val FIXED64 = 1
     const val LENGTH = 2
     const val FIXED32 = 5
+
+    /** A length-delimited field: [number]'s tag, [value]'s length, and [value]. */
+    fun field(number: Int, value: ByteArray): ByteArray =
+        varint((number.toLong() shl WIRE_BITS) or LENGTH.toLong()) +
+            varint(value.size.toLong()) +
+            value
+
+    /** [value] as a varint: seven bits an octet, low ones first. */
+    fun varint(value: Long): ByteArray {
+        val out = ByteArrayOutputStream()
+        var rest = value
+        while (rest and SEVEN_BITS.toLong().inv() != 0L) {
+            out.write((rest and SEVEN_BITS.toLong()).toInt() or CONTINUES)
+            rest = rest ushr SEVEN
+        }
+        out.write(rest.toInt())
+        return out.toByteArray()
+    }
 
     /** The fields of [bytes], or null when they don't read as fields through to the end. */
     fun fields(bytes: ByteArray): List<WireField>? {
@@ -104,4 +124,5 @@ internal object ProtoWire {
     private const val BYTE = 0xff
     private const val SEVEN_BITS = 0x7f
     private const val CONTINUES = 0x80
+    private const val SEVEN = 7
 }

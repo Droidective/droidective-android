@@ -7,15 +7,16 @@ another machine. Current release: **0.18.0**.
 
 - **gRPC calls sent again.** A captured gRPC call goes back to its server from the phone, on
   HTTP/2 through a client of Droidective's own, its status and trailers read as the app's were.
+- **Schemas from the server.** A gRPC call's server is asked for its schema by reflection, and
+  the call reads with field names with no `.proto` file pushed.
 
 0.18.0 carried Reactotron watches (#142) and dispatch, from the screen and from a
 slot (#143, #144); see `RELEASE_NOTES.md`.
 
 ## Next
 
-- **The proxy's next steps** — the certificate in the system store with root, schemas from
-  a server's reflection — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
-  order people reach for them.
+- **The proxy's next step** — the certificate in the system store with root, waiting on the
+  person's go-ahead — is in [network-traffic-proxy.md](network-traffic-proxy.md).
 - **Reactotron's next step** — the REPL — is
   in [reactotron.md](reactotron.md).
 - **The Mac tools not yet on the phone**: none on the list. `app-info` stays the Apps tool's

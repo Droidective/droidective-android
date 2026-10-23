@@ -116,6 +116,20 @@ internal object ToolActions {
         }
     }
 
+    /** Sent to the app's store plugin; the app's timeline shows the action it dispatched. */
+    fun reactotronDispatch(action: Action.ReactotronDispatch, description: String): Step {
+        if (Reactotron.state.value !is Reactotron.State.Listening) {
+            return Step(description, ok = false, notListening(action.app))
+        }
+        val dispatched =
+            ReactotronCommands.action(action.action)
+                ?: return Step(description, ok = false, "“${action.action}” isn’t an action.")
+        if (!Reactotron.dispatchIn(action.app, dispatched)) {
+            return Step(description, ok = false, "${action.app} isn’t connected to Reactotron.")
+        }
+        return Step(description, ok = true)
+    }
+
     private fun notListening(app: String) =
         "Reactotron isn’t on. Start it in Droidective, then open $app."
 }

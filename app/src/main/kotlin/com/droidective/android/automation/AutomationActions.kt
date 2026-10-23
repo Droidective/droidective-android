@@ -56,6 +56,7 @@ internal class AutomationActions(private val context: Context) {
                 is Action.ReactotronCommand -> ToolActions.reactotronCommand(action, description)
                 is Action.ReactotronRestore ->
                     ToolActions.reactotronRestore(context, action, description)
+                is Action.ReactotronDispatch -> ToolActions.reactotronDispatch(action, description)
                 // The runner hands a Wait to a delayed run instead.
                 is Action.Wait -> Step(description, ok = true)
             }

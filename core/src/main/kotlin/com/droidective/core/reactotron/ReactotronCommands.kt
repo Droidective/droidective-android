@@ -142,6 +142,9 @@ class ReactotronCommands {
             return parsed.takeIf { type != null && type.isString && type.content.isNotBlank() }
         }
 
+        /** The type of the action [text] names, or null when it names none. */
+        fun type(text: String): String? = (action(text)?.get("type") as? JsonPrimitive)?.content
+
         /** What dispatches [action] in the app. */
         fun dispatch(action: JsonObject): JsonElement = JsonObject(mapOf("action" to action))
 

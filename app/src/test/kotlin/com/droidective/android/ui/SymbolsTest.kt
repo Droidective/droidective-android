@@ -61,6 +61,7 @@ class SymbolsTest {
                     Action.RealLocation,
                     Action.ReactotronCommand("StreamLab", "resetStore", "Reset store"),
                     Action.ReactotronRestore("4f1c", "Two in the cart", "StreamLab"),
+                    Action.ReactotronDispatch("StreamLab", """{"type":"logout"}"""),
                 )
         val icons = actions.map(Cells::actionIcon) + Features.all.map { it.icon } + "bolt"
         assertEquals(emptyList(), icons.filterNot(Symbols.byName::containsKey))

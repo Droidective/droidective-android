@@ -444,6 +444,14 @@ sealed interface Action {
     @Serializable
     @SerialName("reactotron-restore")
     data class ReactotronRestore(val snapshotId: String, val name: String, val app: String) : Action
+
+    /**
+     * An action dispatched in the store of a connected React Native app, found by its name:
+     * `logout` on a slot logs the app out in one tap. [action] is the action as JSON.
+     */
+    @Serializable
+    @SerialName("reactotron-dispatch")
+    data class ReactotronDispatch(val app: String, val action: String) : Action
 }
 
 @Serializable data class Button(val label: String, val action: Action)

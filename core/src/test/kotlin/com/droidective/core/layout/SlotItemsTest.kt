@@ -68,6 +68,7 @@ class SlotItemsTest {
                 Action.RealLocation to "location_off",
                 Action.ReactotronCommand("StreamLab", "resetStore", "Reset store") to "data_object",
                 Action.ReactotronRestore("4f1c", "Two in the cart", "StreamLab") to "history",
+                Action.ReactotronDispatch("StreamLab", """{"type":"logout"}""") to "play_circle",
             )
             .forEach { (action, icon) ->
                 val cell = plan(Item.Action("a", action, "Slot"), access = noShell)

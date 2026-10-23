@@ -163,6 +163,9 @@ class ReactotronCommandsTest {
         )
         listOf("", "   ", """{"item":"tea"}""", """{"type":7}""", """{"type":" "}""", "{type")
             .forEach { assertNull(ReactotronCommands.action(it), it) }
+        assertEquals("cart/add", ReactotronCommands.type("""{"type":"cart/add","item":"tea"}"""))
+        assertEquals("logout", ReactotronCommands.type("logout"))
+        assertNull(ReactotronCommands.type("""{"item":"tea"}"""))
         // As reactotron-redux 3.2.1 reads it: reduxStore.dispatch(payload.action).
         assertEquals(
             """{"action":{"type":"logout"}}""",

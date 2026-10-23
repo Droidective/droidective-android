@@ -72,7 +72,9 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 - **An action is a type alone or a whole object.** Typing braces and quotes on a phone is a
   chore and many actions are only a type, so `logout` dispatches `{"type":"logout"}`; anything
   starting with `{` must be a JSON object with a string `type`. It goes to every connected app,
-  as a state read does, and shows in the timeline as the ACTION the app reports back.
+  as a state read does, and shows in the timeline as the ACTION the app reports back. A slot or
+  an automation dispatches in one app, found by its name, so `logout` on a widget logs that app
+  out and no other.
 - **A slot or an automation restores a snapshot by its id**, so renaming it changes nothing. A
   snapshot deleted, or dropped past the bounds, makes the slot say it is gone rather than guess
   at another.

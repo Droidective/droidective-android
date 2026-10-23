@@ -158,7 +158,12 @@ class Http2ClientTest {
 
     @Test
     fun aStreamPastWhatTheServerTookFails() =
-        talk(server = { write(goAway(last = 0, code = 11)) }) { client ->
+        talk(
+            server = {
+                write(goAway(last = 0, code = 11))
+                drain()
+            }
+        ) { client ->
             val gone = assertFailsWith<IOException> { client.send(call, ByteArray(0)) }
             assertEquals("the server closed the connection (enhance your calm)", gone.message)
         }
@@ -276,6 +281,7 @@ class Http2ClientTest {
             server = {
                 request()
                 write(data(1, "orphan"))
+                drain()
             }
         ) { client ->
             val wrong = assertFailsWith<IOException> { client.send(call, ByteArray(0)) }
@@ -300,7 +306,11 @@ class Http2ClientTest {
                     runCatching {
                         client(Http2Client(socket.getInputStream(), socket.getOutputStream()))
                     }
-                        .also { serving.join(TIMEOUT.toLong()) }
+                        .also {
+                            // Done talking: a server reading on sees the end of what it was sent.
+                            if (!socket.isClosed) socket.shutdownOutput()
+                            serving.join(TIMEOUT.toLong())
+                        }
                         .exceptionOrNull()
                 }
             // The server's failure first: a client that failed was most often told to.
@@ -366,6 +376,18 @@ class Http2ClientTest {
         }
 
         fun available(): Int = input.available()
+
+        /**
+         * Reads on until the client hangs up, as a server does after its last word: one that closes
+         * at once can have the client's next write refused before it reads that word.
+         */
+        fun drain() {
+            try {
+                while (true) frame()
+            } catch (_: java.io.EOFException) {
+                // The client is done.
+            }
+        }
 
         fun settings(frame: Http2Frame): Map<Int, Long> =
             frame.payload.toList().chunked(6).associate { six ->

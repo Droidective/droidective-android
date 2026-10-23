@@ -150,5 +150,25 @@ class ReactotronCommandsTest {
         assertEquals(ReactotronKind.State, ReactotronLabels.kind(keys))
     }
 
+    @Test
+    fun anActionIsATypeAloneOrAWholeObjectWithAType() {
+        assertEquals("""{"type":"logout"}""", ReactotronCommands.action("  logout ").toString())
+        assertEquals(
+            """{"type":"cart/clear"}""",
+            ReactotronCommands.action("cart/clear").toString(),
+        )
+        assertEquals(
+            """{"type":"cart/add","item":"tea"}""",
+            ReactotronCommands.action("""{"type":"cart/add","item":"tea"}""").toString(),
+        )
+        listOf("", "   ", """{"item":"tea"}""", """{"type":7}""", """{"type":" "}""", "{type")
+            .forEach { assertNull(ReactotronCommands.action(it), it) }
+        // As reactotron-redux 3.2.1 reads it: reduxStore.dispatch(payload.action).
+        assertEquals(
+            """{"action":{"type":"logout"}}""",
+            ReactotronCommands.dispatch(ReactotronCommands.action("logout")!!).toString(),
+        )
+    }
+
     private fun command(text: String) = ReactotronCommand.parse(text)!!
 }

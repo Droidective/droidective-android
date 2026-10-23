@@ -436,6 +436,14 @@ sealed interface Action {
         val label: String,
         val args: Map<String, String> = emptyMap(),
     ) : Action
+
+    /**
+     * A Reactotron snapshot put back in the app it came from, while that app is connected: a known
+     * state, such as a filled cart, in one tap.
+     */
+    @Serializable
+    @SerialName("reactotron-restore")
+    data class ReactotronRestore(val snapshotId: String, val name: String, val app: String) : Action
 }
 
 @Serializable data class Button(val label: String, val action: Action)

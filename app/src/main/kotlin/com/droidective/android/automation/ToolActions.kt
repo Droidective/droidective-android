@@ -10,6 +10,8 @@ import com.droidective.core.apps.ShellStarts
 import com.droidective.core.automations.Action
 import com.droidective.core.automations.Step
 import com.droidective.core.reactotron.ReactotronCommands
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** The actions that reach into a tool, Mock Location or Reactotron, without opening it. */
 internal object ToolActions {
@@ -66,11 +68,7 @@ internal object ToolActions {
     /** Sent to the app; what its handler does with it is the app's to say, in its timeline. */
     fun reactotronCommand(action: Action.ReactotronCommand, description: String): Step {
         if (Reactotron.state.value !is Reactotron.State.Listening) {
-            return Step(
-                description,
-                ok = false,
-                "Reactotron isn’t on. Start it in Droidective, then open ${action.app}.",
-            )
+            return Step(description, ok = false, notListening(action.app))
         }
         val clients = Reactotron.clients.value
         val command =
@@ -92,4 +90,32 @@ internal object ToolActions {
         Reactotron.run(command, action.args)
         return Step(description, ok = true)
     }
+
+    /** Sent to the app's store plugin, which replaces the app's state with the snapshot's. */
+    suspend fun reactotronRestore(
+        context: Context,
+        action: Action.ReactotronRestore,
+        description: String,
+    ): Step {
+        if (Reactotron.state.value !is Reactotron.State.Listening) {
+            return Step(description, ok = false, notListening(action.app))
+        }
+        val gone = "The snapshot “${action.name}” is no longer on this phone."
+        val restored =
+            withContext(Dispatchers.IO) {
+                Reactotron.loadSnapshots(context)
+                Reactotron.snapshots.value
+                    .firstOrNull { it.id == action.snapshotId }
+                    ?.let(Reactotron::restore)
+            } ?: return Step(description, ok = false, gone)
+        return when (restored) {
+            Reactotron.Restore.Sent -> Step(description, ok = true)
+            Reactotron.Restore.NotConnected ->
+                Step(description, ok = false, "${action.app} isn’t connected to Reactotron.")
+            Reactotron.Restore.Gone -> Step(description, ok = false, gone)
+        }
+    }
+
+    private fun notListening(app: String) =
+        "Reactotron isn’t on. Start it in Droidective, then open $app."
 }

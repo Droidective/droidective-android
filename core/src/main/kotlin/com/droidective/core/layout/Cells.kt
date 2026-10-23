@@ -243,6 +243,7 @@ object Cells {
             is Action.SetLocation -> "location_on"
             Action.RealLocation -> "location_off"
             is Action.ReactotronCommand -> "data_object"
+            is Action.ReactotronRestore -> "history"
         }
 
     private fun commandCell(

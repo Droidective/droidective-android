@@ -60,6 +60,7 @@ class SymbolsTest {
                     Action.SetLocation("London", Coordinates(51.5074, -0.1278)),
                     Action.RealLocation,
                     Action.ReactotronCommand("StreamLab", "resetStore", "Reset store"),
+                    Action.ReactotronRestore("4f1c", "Two in the cart", "StreamLab"),
                 )
         val icons = actions.map(Cells::actionIcon) + Features.all.map { it.icon } + "bolt"
         assertEquals(emptyList(), icons.filterNot(Symbols.byName::containsKey))

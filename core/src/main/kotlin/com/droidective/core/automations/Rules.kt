@@ -99,6 +99,7 @@ object AutomationRules {
             Action.RealLocation -> emptyList()
             is Action.ReactotronCommand ->
                 blankProblems(action.app, "app name") + blankProblems(action.command, "command")
+            is Action.ReactotronRestore -> blankProblems(action.snapshotId, "snapshot")
         }
 
     private fun notifyProblems(
@@ -218,7 +219,8 @@ fun Action.level(toggles: (String) -> ToggleDef? = Toggles::byId): AccessLevel =
         is Action.RunAutomation,
         is Action.SetLocation,
         Action.RealLocation,
-        is Action.ReactotronCommand -> AccessLevel.App
+        is Action.ReactotronCommand,
+        is Action.ReactotronRestore -> AccessLevel.App
     }
 
 /**

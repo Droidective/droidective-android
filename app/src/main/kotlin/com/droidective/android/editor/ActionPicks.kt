@@ -26,6 +26,7 @@ import com.droidective.android.ui.automations.AppChooser
 import com.droidective.android.ui.automations.ChoiceDialog
 import com.droidective.android.ui.automations.LocationChooser
 import com.droidective.android.ui.automations.ReactotronCommandChooser
+import com.droidective.android.ui.automations.SnapshotChooser
 import com.droidective.android.ui.automations.TextDialog
 import com.droidective.android.ui.automations.ToggleStateChooser
 import com.droidective.core.apps.AppAction
@@ -57,6 +58,8 @@ private sealed interface ActionStep {
     data object Place : ActionStep
 
     data object ReactotronCommand : ActionStep
+
+    data object Snapshot : ActionStep
 
     data class Confirm(val item: Item.Action) : ActionStep
 }
@@ -95,6 +98,7 @@ internal fun ActionList(query: String, onPick: (Item) -> Unit) {
                 step = ActionStep.ReactotronCommand
             }
         }
+        item { PickRow("Put a Reactotron snapshot back", "history") { step = ActionStep.Snapshot } }
         item { Header("Your automations") }
         if (automations.isEmpty()) {
             item { Note("Automations you make show here, to run with one tap.") }
@@ -174,6 +178,7 @@ private fun ActionSteps(step: ActionStep?, onStep: (ActionStep?) -> Unit, onPick
         ActionStep.Place -> LocationChooser(onDismiss = close, onPick = ::finish)
         ActionStep.ReactotronCommand ->
             ReactotronCommandChooser(onDismiss = close) { finish(it, it.label) }
+        ActionStep.Snapshot -> SnapshotChooser(onDismiss = close) { finish(it, it.name) }
         is ActionStep.Confirm ->
             ConfirmDialog(step.item, onDismiss = close) {
                 close()

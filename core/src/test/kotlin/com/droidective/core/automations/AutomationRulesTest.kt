@@ -109,6 +109,7 @@ class AutomationRulesTest {
                 Action.RealLocation,
                 Action.ReactotronCommand("StreamLab", "resetStore", "Reset store"),
                 Action.ReactotronCommand("StreamLab", "login", "Log in", mapOf("user" to "ada")),
+                Action.ReactotronRestore("4f1c", "Two in the cart", "StreamLab"),
             )
         val triggers =
             everyState.flatMap { listOf(Trigger.Starts(it), Trigger.Ends(it), Trigger.While(it)) } +
@@ -135,6 +136,7 @@ class AutomationRulesTest {
                 Action.SetLocation("London", Coordinates(51.5074, -0.1278)),
                 Action.RealLocation,
                 Action.ReactotronCommand("StreamLab", "login", "Log in", mapOf("user" to "ada")),
+                Action.ReactotronRestore("4f1c", "Two in the cart", "StreamLab"),
             )
         assertEquals(
             Json.parseToJsonElement(
@@ -142,7 +144,9 @@ class AutomationRulesTest {
                     """"where":{"latitude":51.5074,"longitude":-0.1278}},""" +
                     """{"type":"real-location"},""" +
                     """{"type":"reactotron-command","app":"StreamLab","command":"login",""" +
-                    """"label":"Log in","args":{"user":"ada"}}]"""
+                    """"label":"Log in","args":{"user":"ada"}},""" +
+                    """{"type":"reactotron-restore","snapshotId":"4f1c",""" +
+                    """"name":"Two in the cart","app":"StreamLab"}]"""
             ),
             Json.encodeToJsonElement(ListSerializer(Action.serializer()), actions),
         )
@@ -151,6 +155,7 @@ class AutomationRulesTest {
                 "Put the phone at London",
                 "Give the phone its own location back",
                 "Run “Log in” in StreamLab",
+                "Put “Two in the cart” back in StreamLab",
             ),
             actions.map { Review.describe(it, commands = { null }) },
         )
@@ -243,6 +248,7 @@ class AutomationRulesTest {
                             Action.SetLocation(" ", Coordinates(0.0, 0.0)),
                             Action.ReactotronCommand("", "resetStore", "Reset store"),
                             Action.ReactotronCommand("StreamLab", "", "Reset store"),
+                            Action.ReactotronRestore(" ", "Two in the cart", "StreamLab"),
                         ),
                 )
             )
@@ -260,6 +266,7 @@ class AutomationRulesTest {
                 "The place name is empty",
                 "The app name is empty",
                 "The command is empty",
+                "The snapshot is empty",
             )
             .forEach { expected -> assertTrue(problems.any { expected in it }, expected) }
     }

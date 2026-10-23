@@ -47,7 +47,7 @@ internal fun SnapshotsSection(onOpen: (String) -> Unit) {
     val clients by Reactotron.clients.collectAsStateWithLifecycle()
     var askedAt by remember { mutableStateOf<Long?>(null) }
     var unanswered by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { Reactotron.loadSnapshots(context) } }
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { Reactotron.load(context) } }
     LaunchedEffect(askedAt) {
         val at = askedAt ?: return@LaunchedEffect
         unanswered = false

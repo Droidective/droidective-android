@@ -24,10 +24,12 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `core/reactotron/ReactotronLabels.kt` | A row's tag and summary, the filter's kinds, the search |
 | `core/reactotron/ReactotronCommands.kt` | The custom commands apps register, running one, asking for state, backing it up and restoring it |
 | `core/reactotron/ReactotronSnapshots.kt` | The states kept to put back: an index, a file each, bounded |
+| `core/reactotron/ReactotronWatch.kt` | Watched paths: what each app last said they hold, and which answer which |
 | `app/reactotron/Reactotron.kt` | The one server, its state, the apps connected, the timeline |
 | `app/reactotron/ReactotronService.kt` | The foreground service that keeps it listening |
 | `app/ui/tools/ReactotronTool.kt` | The screen: start and stop, the timeline, an entry whole |
 | `app/ui/tools/ReactotronSnapshotsUi.kt` | Snapshots: taking one, and one whole, to restore, rename or delete |
+| `app/ui/tools/ReactotronWatchUi.kt` | Watch: the paths, and their values as they change |
 | `app/automation/ToolActions.kt` | A command run from a widget slot or an automation |
 
 ## Decisions worth not relitigating
@@ -61,15 +63,20 @@ cleartext to localhost, which is all a `ws://` connection there needs.
   not news, so it stays out of the timeline. A restore leaves no line there either:
   reactotron-redux keeps its own `REACTOTRON_RESTORE_STATE` action out, so the screen says it
   was sent, and the app's state is the proof.
+- **Watched paths are the server's to send**, as reactotron-core-server does: the list goes out
+  in place of the empty one at every connect and again whenever it changes, and is kept in the
+  app's files. A store plugin sends every watched value on each change, so an app's latest
+  `state.values.change` is the whole picture; those messages update the Watch panel and stay out
+  of the timeline. With its last path gone an app sends nothing at all (the client skips an
+  empty change), so what is shown is filtered to the paths still watched.
 - **A slot or an automation restores a snapshot by its id**, so renaming it changes nothing. A
   snapshot deleted, or dropped past the bounds, makes the slot say it is gone rather than guess
   at another.
 
 ## What is left
 
-- **The rest of talking back.** Commands, state reads and snapshots are done; subscribing to
-  paths so their changes stream in (`state.values.subscribe` with paths), dispatching an action
-  (`state.action.dispatch`) and the REPL are not.
+- **The rest of talking back.** Commands, state reads, snapshots and watched paths are done;
+  dispatching an action (`state.action.dispatch`) and the REPL are not.
 - **Images.** An `image` command is listed, not shown.
 - **The MCP server** Droidective for Mac serves Reactotron's timeline through has no phone half.
 

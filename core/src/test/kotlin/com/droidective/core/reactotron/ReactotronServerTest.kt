@@ -55,6 +55,21 @@ class ReactotronServerTest {
     }
 
     @Test
+    fun anAppIsAskedForTheWatchedPathsAsItConnectsAndAgainWhenTheyChange() {
+        heard.paths = listOf("cart.items")
+        val app = App(start())
+        app.send("""{"type":"client.intro","payload":{"name":"A","clientId":"c"}}""")
+        val subscribe = app.next()
+        assertEquals("state.values.subscribe", subscribe.type())
+        assertEquals("""{"paths":["cart.items"]}""", subscribe["payload"].toString())
+        heard.connected.poll(5, TimeUnit.SECONDS)!!
+        server!!.watch(listOf("cart.items", "user.*"))
+        val again = app.next()
+        assertEquals("state.values.subscribe", again.type())
+        assertEquals("""{"paths":["cart.items","user.*"]}""", again["payload"].toString())
+    }
+
+    @Test
     fun anAppWithAnIdKeepsIt() {
         val app = App(start())
         app.send("""{"type":"client.intro","payload":{"name":"A","clientId":"abc-123"}}""")
@@ -272,6 +287,10 @@ class ReactotronServerTest {
         override fun disconnected(connection: Int, why: String?) {
             disconnected += connection to why
         }
+
+        @Volatile var paths: List<String> = emptyList()
+
+        override fun watched(): List<String> = paths
     }
 
     private fun JsonObject.type() = this["type"]!!.jsonPrimitive.content

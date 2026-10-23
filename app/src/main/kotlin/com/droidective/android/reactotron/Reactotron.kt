@@ -10,6 +10,8 @@ import com.droidective.core.reactotron.ReactotronSink
 import com.droidective.core.reactotron.ReactotronSnapshot
 import com.droidective.core.reactotron.ReactotronSnapshots
 import com.droidective.core.reactotron.ReactotronTimeline
+import com.droidective.core.reactotron.ReactotronWatch
+import com.droidective.core.store.JsonFileStore
 import java.io.File
 import java.io.IOException
 import java.net.BindException
@@ -22,6 +24,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
@@ -67,6 +71,18 @@ object Reactotron : ReactotronSink {
     @Volatile private var server: ReactotronServer? = null
 
     @Volatile private var shelf: ReactotronSnapshots? = null
+    @Volatile private var paths: JsonFileStore<List<String>>? = null
+
+    private val watch = ReactotronWatch()
+    private val watched_ = MutableStateFlow<List<String>>(emptyList())
+
+    /** The state paths each app sends as they change. */
+    val watched: StateFlow<List<String>> = watched_.asStateFlow()
+
+    private val values_ = MutableStateFlow<Map<Int, List<Pair<String, JsonElement>>>>(emptyMap())
+
+    /** What each connection last said the watched paths hold, by connection. */
+    val values: StateFlow<Map<Int, List<Pair<String, JsonElement>>>> = values_.asStateFlow()
     private val snapshots_ = MutableStateFlow<List<ReactotronSnapshot>>(emptyList())
 
     /** The apps' states kept to put back, newest first. */
@@ -111,9 +127,13 @@ object Reactotron : ReactotronSink {
     internal fun shutDown() {
         server?.stop()
         server = null
-        clients_.value.keys.forEach(registry::gone)
+        clients_.value.keys.forEach {
+            registry.gone(it)
+            watch.gone(it)
+        }
         clients_.value = emptyMap()
         commands_.value = emptyList()
+        values_.value = emptyMap()
         if (state_.value is State.Listening) state_.value = State.Off
     }
 
@@ -126,16 +146,41 @@ object Reactotron : ReactotronSink {
         )
     }
 
-    /** Reads the snapshots kept in the app's files, the first time; from a background thread. */
-    fun loadSnapshots(context: Context) {
+    /**
+     * Reads what is kept in the app's files — the snapshots and the watched paths — the first time;
+     * from a background thread.
+     */
+    fun load(context: Context) {
         if (shelf != null) return
         synchronized(this) {
             if (shelf != null) return
+            val kept = JsonFileStore(File(context.filesDir, WATCHED), PATHS) { emptyList() }
+            watched_.value = kept.load()
+            paths = kept
             val opened = ReactotronSnapshots(File(context.filesDir, SNAPSHOTS))
             snapshots_.value = opened.all()
             shelf = opened
         }
     }
+
+    /**
+     * Watches [path] in every connected app, and in each that connects; from a background thread.
+     */
+    fun watch(path: String) {
+        val clean = ReactotronWatch.path(path) ?: return
+        if (clean in watched_.value) return
+        rewatch(watched_.value + clean)
+    }
+
+    fun unwatch(path: String) = rewatch(watched_.value - path)
+
+    private fun rewatch(now: List<String>) {
+        watched_.value = now
+        paths?.save(now)
+        server?.watch(now)
+    }
+
+    override fun watched(): List<String> = watched_.value
 
     /** Asks every connected app for its whole state, which comes back as a snapshot. */
     fun backUp() {
@@ -202,6 +247,11 @@ object Reactotron : ReactotronSink {
             commands_.value = registry.all()
             return
         }
+        // Watched values are a panel that changes, not a line per change.
+        if (watch.heard(connection, command)) {
+            values_.value = watch.all()
+            return
+        }
         // A backed-up state is a snapshot, kept; one that can't be stays in the timeline.
         val state = ReactotronCommands.backedUp(command)
         if (state != null && keep(connection, state)) return
@@ -214,6 +264,8 @@ object Reactotron : ReactotronSink {
         clients_.update { it - connection }
         registry.gone(connection)
         commands_.value = registry.all()
+        watch.gone(connection)
+        values_.value = watch.all()
         // A reload taking its own place is no news.
         if (why != null) timeline.gone(System.currentTimeMillis(), connection, gone?.name, why)
         changes_.update { it + 1 }
@@ -234,6 +286,8 @@ object Reactotron : ReactotronSink {
     }
 
     private const val SNAPSHOTS = "reactotron-snapshots"
+    private const val WATCHED = "reactotron-watched.json"
+    private val PATHS = ListSerializer(String.serializer())
     private val CLOCK = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
     private const val TAKEN =

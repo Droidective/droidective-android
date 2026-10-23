@@ -62,8 +62,9 @@ class ReactotronService : Service() {
     }
 
     private suspend fun listen() {
-        // Before an app connects, so a state it backs up has somewhere to go.
-        withContext(Dispatchers.IO) { Reactotron.loadSnapshots(this@ReactotronService) }
+        // Before an app connects: it is asked for the watched paths at once, and a state it
+        // backs up needs somewhere to go.
+        withContext(Dispatchers.IO) { Reactotron.load(this@ReactotronService) }
         if (!Reactotron.listen()) {
             // The screen says why; a notification for a server that isn't would not.
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)

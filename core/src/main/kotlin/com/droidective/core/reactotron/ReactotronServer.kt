@@ -24,7 +24,6 @@ import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -42,6 +41,9 @@ interface ReactotronSink {
 
     /** [connection] is gone, [why] in words; null when its own app's reload took its place. */
     fun disconnected(connection: Int, why: String?)
+
+    /** The state paths each app is asked to send as they change, from the moment it connects. */
+    fun watched(): List<String> = emptyList()
 }
 
 /**
@@ -148,9 +150,20 @@ class ReactotronServer(
     }
 
     /**
+     * Asks every connected app to send what [paths] hold, now and as they change, in place of
+     * whatever it was asked before.
+     */
+    fun watch(paths: List<String>) {
+        connections.values
+            .filter { it.clientId != null }
+            .forEach { send(it.id, ReactotronWatch.SUBSCRIBE, ReactotronWatch.subscribe(paths)) }
+    }
+
+    /**
      * On `client.intro`: a client with no id is given one, any other connection with the same id is
      * an earlier copy of the app — a reload connects before the old socket dies — and goes, and the
-     * empty subscription list goes out, which is what tells the client it is connected.
+     * subscription list goes out, which is what tells the client it is connected: the watched
+     * paths, or none.
      */
     private fun introduced(connection: Connection, intro: ReactotronCommand) {
         var clientId = intro.payload["clientId"].text
@@ -162,8 +175,8 @@ class ReactotronServer(
             .filter { it !== connection && it.clientId == clientId }
             .forEach { it.replaced() }
         connection.clientId = clientId
-        val paths = JsonObject(mapOf("paths" to JsonArray(emptyList())))
-        connection.send(command(SUBSCRIBE, paths))
+        val paths = ReactotronWatch.subscribe(sink.watched())
+        connection.send(command(ReactotronWatch.SUBSCRIBE, paths))
         sink.connected(connection.id, clientId, intro)
     }
 
@@ -307,7 +320,6 @@ class ReactotronServer(
         private const val GOING_AWAY = 1001
         private const val INTRO = "client.intro"
         private const val SET_CLIENT_ID = "setClientId"
-        private const val SUBSCRIBE = "state.values.subscribe"
         private const val UNDECODABLE = "(undecodable)"
         private const val KEY = "Sec-WebSocket-Key"
         private const val VERSION = "Sec-WebSocket-Version"

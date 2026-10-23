@@ -135,6 +135,7 @@ private fun Timeline(
                 item { CommandsSection() }
                 item { StateSection() }
             }
+            item { WatchSection() }
             item { SnapshotsSection(onOpenSnapshot) }
             item {
                 Filters(kind, query, onKind = { kindName = it?.name }, onQuery = { query = it })

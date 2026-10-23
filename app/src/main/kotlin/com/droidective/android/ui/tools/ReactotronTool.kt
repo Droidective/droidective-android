@@ -271,7 +271,35 @@ private fun StateSection() {
             "Empty reads the whole store. The answer comes into the timeline as VALUE or KEYS; " +
                 "the app needs reactotron-redux or reactotron-mst to have a store to give."
         )
+        DispatchRow()
     }
+}
+
+/** An action dispatched in the apps' stores, as if the app had: a type, or a whole action. */
+@Composable
+private fun DispatchRow() {
+    var text by rememberSaveable { mutableStateOf("") }
+    val action = ReactotronCommands.action(text)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            label = { Text("Action, such as logout") },
+            isError = text.isNotBlank() && action == null,
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        Button(enabled = action != null, onClick = { action?.let(Reactotron::dispatch) }) {
+            Text("Dispatch")
+        }
+    }
+    ToolNote(
+        "A type alone, or a whole action as JSON, such as {\"type\":\"cart/add\",\"item\":\"tea\"}. " +
+            "It shows in the timeline as an ACTION once the app has dispatched it."
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)

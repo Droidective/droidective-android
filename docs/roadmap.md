@@ -7,6 +7,8 @@ another machine. Current release: **0.17.0**.
 
 - **Reactotron watches.** State paths watched in the app, their values kept up to date on the
   phone as the app's state changes, and asked of every app as it connects.
+- **Reactotron dispatch.** An action dispatched in the app's store from the phone: a type such
+  as `logout`, or a whole action as JSON.
 
 0.17.0 carried places and Reactotron commands as slots and actions (#138), and
 Reactotron snapshots, restored from the screen or a slot (#139, #140); see `RELEASE_NOTES.md`.
@@ -16,7 +18,7 @@ Reactotron snapshots, restored from the screen or a slot (#139, #140); see `RELE
 - **The proxy's next steps** — the certificate in the system store with root, schemas from
   a server's reflection — are in [network-traffic-proxy.md](network-traffic-proxy.md), in the
   order people reach for them.
-- **Reactotron's next steps** — dispatching an action, the REPL — are
+- **Reactotron's next step** — the REPL — is
   in [reactotron.md](reactotron.md).
 - **The Mac tools not yet on the phone**: none on the list. `app-info` stays the Apps tool's
   detail screen, which already is that.

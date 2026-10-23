@@ -1,5 +1,7 @@
 package com.droidective.core.reactotron
 
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -117,6 +119,31 @@ class ReactotronCommands {
 
         /** What puts [state] back in place of the app's own. */
         fun restore(state: JsonElement): JsonElement = JsonObject(mapOf("state" to state))
+
+        /** What has an app's store plugin dispatch an action, as if the app itself had. */
+        const val DISPATCH = "state.action.dispatch"
+
+        /**
+         * The action [text] names: a whole action, a JSON object with a `type`, or just a type,
+         * such as `logout` or `cart/clear`, which is all many actions are. Null when it is neither:
+         * empty, or JSON that isn't an object with a type.
+         */
+        fun action(text: String): JsonObject? {
+            val trimmed = text.trim()
+            if (trimmed.isEmpty()) return null
+            if (!trimmed.startsWith("{")) return JsonObject(mapOf("type" to JsonPrimitive(trimmed)))
+            val parsed =
+                try {
+                    Json.parseToJsonElement(trimmed) as? JsonObject
+                } catch (_: SerializationException) {
+                    null
+                }
+            val type = parsed?.get("type") as? JsonPrimitive
+            return parsed.takeIf { type != null && type.isString && type.content.isNotBlank() }
+        }
+
+        /** What dispatches [action] in the app. */
+        fun dispatch(action: JsonObject): JsonElement = JsonObject(mapOf("action" to action))
 
         /** What asks an app for the state at [path], its value or the keys under it. */
         fun stateRequest(path: String, keys: Boolean): Pair<String, JsonElement> =

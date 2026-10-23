@@ -227,6 +227,12 @@ object Reactotron : ReactotronSink {
         clients_.value.keys.forEach { server?.send(it, type, payload) }
     }
 
+    /** Dispatches [action] in every connected app, through its store plugin. */
+    fun dispatch(action: JsonObject) {
+        val payload = ReactotronCommands.dispatch(action)
+        clients_.value.keys.forEach { server?.send(it, ReactotronCommands.DISPATCH, payload) }
+    }
+
     fun clear() {
         timeline.clear()
         changes_.update { it + 1 }

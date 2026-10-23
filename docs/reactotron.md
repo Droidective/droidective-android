@@ -69,14 +69,18 @@ cleartext to localhost, which is all a `ws://` connection there needs.
   `state.values.change` is the whole picture; those messages update the Watch panel and stay out
   of the timeline. With its last path gone an app sends nothing at all (the client skips an
   empty change), so what is shown is filtered to the paths still watched.
+- **An action is a type alone or a whole object.** Typing braces and quotes on a phone is a
+  chore and many actions are only a type, so `logout` dispatches `{"type":"logout"}`; anything
+  starting with `{` must be a JSON object with a string `type`. It goes to every connected app,
+  as a state read does, and shows in the timeline as the ACTION the app reports back.
 - **A slot or an automation restores a snapshot by its id**, so renaming it changes nothing. A
   snapshot deleted, or dropped past the bounds, makes the slot say it is gone rather than guess
   at another.
 
 ## What is left
 
-- **The rest of talking back.** Commands, state reads, snapshots and watched paths are done;
-  dispatching an action (`state.action.dispatch`) and the REPL are not.
+- **The REPL.** Commands, state reads, snapshots, watched paths and dispatching an action are
+  done; `repl.ls` and `repl.execute` are not.
 - **Images.** An `image` command is listed, not shown.
 - **The MCP server** Droidective for Mac serves Reactotron's timeline through has no phone half.
 

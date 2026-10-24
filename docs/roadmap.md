@@ -1,22 +1,12 @@
 # Where this is and where it goes
 
 A status report for Droidective for Android, written so the work can be picked up on
-another machine. Current release: **0.20.0**.
+another machine. Current release: **0.21.0**.
 
-## Shipped since 0.20.0, waiting for a release
+## Shipped since 0.21.0, waiting for a release
 
-- **What an APK is made of, by size.** The APK Inspector lists every folder and file in an
-  APK, biggest first, with what each takes in the APK and holds unpacked, read from the zip's
-  own central directory.
-- **Each dex file's classes and method references.** The APK Inspector reads every dex
-  header: the classes and method references in each file and in all, and the dex format with
-  the first Android that reads it.
-- **The manifest as XML.** The APK Inspector turns the APK's compiled AndroidManifest.xml back
-  into XML, naming the numbers Android has names for (`singleTask`, `signature|privileged`) and
-  each reference from the app's own resources.
-- **16 KB page readiness.** The APK Inspector checks each 64-bit native library: its loadable
-  segments aligned to 16 KB, and, when stored uncompressed, its bytes on a 16 KB boundary in the
-  APK, saying why one isn't.
+Nothing yet. 0.21.0 carried the APK Inspector's files by size (#154), dex counts (#155), the
+manifest as XML (#156) and the 16 KB page check (#157); see `RELEASE_NOTES.md`.
 
 ## Next
 

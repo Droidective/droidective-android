@@ -15,6 +15,16 @@ a debug key. Its private key was never kept. SHA-256
 # A dex header
 
 `droidective-release-classes.dex.head` is the first 112 bytes, the header, of `classes.dex` in
-this app's release APK, built 2026-10-24 from main at 3a80654 (R8, minSdk 30). `dexdump -f` from
+a release build of this app made 2026-10-24 on top of 0.20.0 while #154 was written (R8,
+minSdk 30). `dexdump -f` from
 build-tools 37.0.0 reads it as version 039, file size 5062000, 21519 strings, 6575 types, 19118
 fields, 26387 methods and 5408 class definitions.
+
+# A compiled manifest
+
+`droidective-release-manifest.bin` is `AndroidManifest.xml` as aapt2 compiled it into this app's
+release APK, a build made 2026-10-24 on top of 0.20.0 whose manifest is 0.20.0's, and
+`droidective-release-manifest.xml` is the merged manifest AGP gave aapt2 for it
+(`app/build/intermediates/packaged_manifests/release/…`). The compiled one has a UTF-16 string
+pool, 76 references, and the numbers aapt2 makes of `launchMode`, `protectionLevel`,
+`windowSoftInputMode` and `foregroundServiceType`.

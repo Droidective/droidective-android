@@ -1,0 +1,752 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.droidective.android"
+    android:versionCode="22"
+    android:versionName="0.20.0" >
+
+    <uses-sdk
+        android:minSdkVersion="30"
+        android:targetSdkVersion="37" />
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Install App: Android's installer, which asks the person before each install. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Only for "Bluetooth discoverable", which asks Android to show its own dialog. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <!-- Package visibility (QUERY_ALL_PACKAGES) comes from the platform module's manifest. -->
+    <!--
+         Automations: "When the phone restarts", schedules on the minute (with Alarms & reminders
+         allowed), and opening apps from the background (with Display over other apps allowed).
+    -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- The automation service, which runs only while an automation watches the phone. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!--
+         Mock Location: asking for it is what lists Droidective in Developer options' "Select
+         mock location app"; what it allows is decided there, not by this line.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
+    <!-- Granted level: only `pm grant` from a shell can give these. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <uses-permission android:name="android.permission.DUMP" />
+    <!--
+         Crash Catcher reads crash reports from DropBox: Android 15 files them under
+         READ_DROPBOX_DATA, earlier versions under READ_LOGS. Granted alongside the two above.
+    -->
+    <uses-permission android:name="android.permission.READ_DROPBOX_DATA" />
+    <uses-permission
+        android:name="android.permission.READ_LOGS"
+        android:maxSdkVersion="34" /> <!-- App level: granted at install, or special access the user turns on in Settings. -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
+    <!--
+         AppCatalog lists every package, system ones included, and RootProbe and the Shizuku check
+         look for apps by name. The build ships outside Play; a Play flavor drops this and goes
+         back to <queries> (see CLAUDE.md).
+    -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!--
+         AdbPort browses mDNS for adbd. NsdManager won't start without INTERNET, and Android 17
+         asks before an app browses the local network.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" /> <!-- "An app is open" without Shell: usage access, which the person turns on in Settings. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+    <!--
+         Automations' Bluetooth triggers ask the audio profiles who's connected. Nearby devices
+         from Android 12; the plain Bluetooth permission before that.
+    -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <permission
+        android:name="com.droidective.android.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="com.droidective.android.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+
+    <application
+        android:name="com.droidective.android.DroidectiveApplication"
+        android:allowBackup="true"
+        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:extractNativeLibs="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Droidective" >
+        <activity
+            android:name="com.droidective.android.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!--
+                 An app package opened from Files, for Install App, which asks before installing.
+                 Content URIs only: the code refuses file:// (Incoming).
+            -->
+            <intent-filter android:label="@string/open_install" >
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:scheme="content" />
+                <data android:mimeType="application/vnd.android.package-archive" />
+                <data android:mimeType="application/xapk-package-archive" />
+                <data android:mimeType="application/vnd.apkm" />
+            </intent-filter>
+            <!-- Shared to Droidective: a package to install, or text with a link to try. -->
+            <intent-filter android:label="@string/share_install" >
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="application/vnd.android.package-archive" />
+                <data android:mimeType="application/xapk-package-archive" />
+                <data android:mimeType="application/vnd.apkm" />
+            </intent-filter>
+            <intent-filter android:label="@string/share_link" >
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <!-- The launcher starts this when a bar is added or reconfigured, so it's exported. -->
+        <activity
+            android:name="com.droidective.android.widget.BarConfigureActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:taskAffinity="" >
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.droidective.android.widget.OpenActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay" />
+        <activity
+            android:name="com.droidective.android.automation.RunAutomationActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay" />
+        <activity
+            android:name="com.droidective.android.folder.FolderActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Droidective.Panel" />
+        <activity
+            android:name="com.droidective.android.screen.ToggleScreenActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Droidective.Panel" />
+
+        <receiver
+            android:name="com.droidective.android.widget.ToggleBarReceiver"
+            android:exported="true"
+            android:label="@string/widget_bar_label" >
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/toggle_bar_info" />
+        </receiver>
+        <receiver
+            android:name="com.droidective.android.widget.ButtonWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_button_label" >
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/button_widget_info" />
+        </receiver>
+        <receiver
+            android:name="com.droidective.android.widget.ListWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_list_label" >
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/list_widget_info" />
+        </receiver>
+        <receiver
+            android:name="com.droidective.android.surface.NotificationTapReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="com.droidective.android.monkey.MonkeyStopReceiver"
+            android:exported="false" />
+
+        <!-- Restarts, updates and clock changes. Protected broadcasts only the system can send. -->
+        <receiver
+            android:name="com.droidective.android.automation.AutomationSystemReceiver"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+        <!--
+             Run from the Mac or adb. Only senders holding WRITE_SECURE_SETTINGS, and the receiver
+             also checks the shell sent it.
+        -->
+        <receiver
+            android:name="com.droidective.android.RunAutomation"
+            android:exported="true"
+            android:permission="android.permission.WRITE_SECURE_SETTINGS" />
+        <receiver
+            android:name="com.droidective.android.automation.AutomationAlarmReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="com.droidective.android.automation.StateSignalReceiver"
+            android:exported="false" />
+
+        <service
+            android:name="com.droidective.android.automation.AutomationService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" >
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Runs the automations the person set up: watches the triggers they chose (an app opening, charging, the screen, the battery, headphones, Wi-Fi, a setting changing) and acts when one fires; watches the apps they asked Crash Catcher to alert about; and, when they turn on Keep widgets live, keeps their home-screen widgets, tiles and notification bars answering taps at once and showing current states. Runs only while one of these is on." />
+        </service>
+        <service
+            android:name="com.droidective.android.performance.PerformanceOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" >
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Draws the Performance overlay the person turned on: a small window over other apps showing CPU load, the frames the app in front draws, memory and temperature, updated once a second while the screen is on. Runs only until they turn it off from the app or its notification." />
+        </service>
+        <service
+            android:name="com.droidective.android.screenrecord.ScreenRecordService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" >
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Records the screen while the person asked it to: runs Android&apos;s own screenrecord through the shell they set up, from Start until they press Stop or the time limit they chose, then saves the video to Movies. Runs only for that recording." />
+        </service>
+        <service
+            android:name="com.droidective.android.uiinspect.UiCaptureService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" >
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Captures the screen&apos;s view hierarchy when the person asks the UI Inspector to: counts down a few seconds so they can open the app to inspect, then runs uiautomator and takes a screenshot through the shell they set up. Runs only for those few seconds." />
+        </service>
+        <service
+            android:name="com.droidective.android.screenshot.ScreenshotService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" >
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Takes a screenshot when the person asks the Screenshot tool to: counts down a few seconds so they can open the screen to capture, then takes it through the shell they set up, for them to mark up. Runs only for those few seconds." />
+        </service>
+        <service
+            android:name="com.droidective.android.proxy.ProxyService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" >
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Runs the debugging proxy the person started in Network Traffic: listens on the phone&apos;s own loopback address, 127.0.0.1, so the person can see the HTTP and HTTPS requests their apps make and the answers that come back. Nothing off the device can reach it. Runs only until they press Stop in the app or its notification, and stopping puts the phone&apos;s proxy setting back the way it was." />
+        </service>
+        <service
+            android:name="com.droidective.android.reactotron.ReactotronService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" >
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Runs the Reactotron server the person started: listens on the phone&apos;s own loopback address, 127.0.0.1, port 9090, where the React Native apps they are developing send their logs, network requests and state while those apps run in debug. Nothing off the device can reach it. Runs only until they press Stop in the app or its notification." />
+        </service>
+        <service
+            android:name="com.droidective.android.location.MockLocationService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" >
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Gives apps the location the person chose in Mock Location, as the mock location app they picked in Developer options: replaces the phone&apos;s GPS, network and fused location with test providers at that place, sending a fresh fix each second, so they can test how their apps behave elsewhere. It reads no real location. Runs only until they press Stop in the app or its notification." />
+        </service>
+        <service
+            android:name="com.droidective.android.floating.FloatingControlsService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" >
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Draws the floating controls the person turned on: a small bubble over other apps that opens to buttons for a screenshot, a screen recording, a capture of the screen&apos;s views, the activity on screen and the debugging proxy, so they can capture the app they are working on without leaving it. Runs only until they turn it off from the bubble, the app or its notification." />
+        </service>
+        <!--
+             A Bluetooth device connecting or disconnecting. Protected broadcasts from the system;
+             the receiver only re-reads which devices are connected.
+        -->
+        <receiver
+            android:name="com.droidective.android.automation.BluetoothSignalReceiver"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="com.droidective.android.automation.AutomationButtonReceiver"
+            android:exported="false" />
+
+        <service
+            android:name="com.droidective.android.surface.TileSlot1"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_1"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TileSlot2"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_2"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TileSlot3"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_3"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TileSlot4"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_4"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TileSlot5"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_5"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TileSlot6"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_6"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TileSlot7"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_7"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TileSlot8"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_8"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TileSlot9"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_9"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TileSlot10"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_10"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TileSlot11"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_11"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TileSlot12"
+            android:exported="true"
+            android:icon="@drawable/sym_toggle_on"
+            android:label="@string/tile_slot_12"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.LayoutBoundsTile"
+            android:exported="true"
+            android:icon="@drawable/sym_border_outer"
+            android:label="@string/tile_layout_bounds"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.ShowTapsTile"
+            android:exported="true"
+            android:icon="@drawable/sym_touch_app"
+            android:label="@string/tile_show_taps"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.AnimationScaleTile"
+            android:exported="true"
+            android:icon="@drawable/sym_animation"
+            android:label="@string/tile_animation_scale"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.DemoModeTile"
+            android:exported="true"
+            android:icon="@drawable/sym_auto_awesome"
+            android:label="@string/tile_demo_mode"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.TrafficProxyTile"
+            android:exported="true"
+            android:icon="@drawable/sym_travel_explore"
+            android:label="@string/tile_traffic_proxy"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.RecordScreenTile"
+            android:exported="true"
+            android:icon="@drawable/sym_videocam"
+            android:label="@string/tile_record_screen"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.ScreenshotTile"
+            android:exported="true"
+            android:icon="@drawable/sym_screenshot"
+            android:label="@string/tile_screenshot"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.CleanScreenshotTile"
+            android:exported="true"
+            android:icon="@drawable/sym_screenshot_monitor"
+            android:label="@string/tile_clean_screenshot"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.PerformanceOverlayTile"
+            android:exported="true"
+            android:icon="@drawable/sym_monitor_heart"
+            android:label="@string/tile_performance_overlay"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.CaptureViewsTile"
+            android:exported="true"
+            android:icon="@drawable/sym_account_tree"
+            android:label="@string/tile_capture_views"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.MarkupScreenshotTile"
+            android:exported="true"
+            android:icon="@drawable/sym_edit"
+            android:label="@string/tile_markup_screenshot"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.FloatingControlsTile"
+            android:exported="true"
+            android:icon="@drawable/sym_picture_in_picture"
+            android:label="@string/tile_floating_controls"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.NetworkSpeedTile"
+            android:exported="true"
+            android:icon="@drawable/sym_speed"
+            android:label="@string/tile_network_speed"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.droidective.android.surface.WirelessDebuggingTile"
+            android:exported="true"
+            android:icon="@drawable/sym_adb"
+            android:label="@string/tile_wireless_debugging"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <!-- PackageInstaller's answer about a session; sent through an explicit PendingIntent. -->
+        <receiver
+            android:name="com.droidective.android.install.InstallResultReceiver"
+            android:exported="false" />
+
+        <service
+            android:name="com.droidective.android.surface.CurrentActivityTile"
+            android:exported="true"
+            android:icon="@drawable/sym_layers"
+            android:label="@string/tile_current_activity"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" >
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <!--
+             Shizuku hands its binder to the app through this provider. Only the system can
+             hold INTERACT_ACROSS_USERS_FULL, so no other app can reach it.
+        -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="com.droidective.android.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+        <!--
+          Any addition to or deletion of the components below should also have a corresponding
+          change to the GlanceComponents class, so that alternate subclasses of these components may
+          be specified by Glance users. Please also add a release note so that users of the
+          multiprocess library will know if they need to add another manifest entry.
+        -->
+        <activity
+            android:name="androidx.glance.appwidget.action.ActionTrampolineActivity"
+            android:enabled="true"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@android:style/Theme.NoDisplay" />
+        <activity
+            android:name="androidx.glance.appwidget.action.InvisibleActionTrampolineActivity"
+            android:enabled="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:taskAffinity="androidx.glance.appwidget.ListAdapterCallbackTrampoline"
+            android:theme="@style/Widget.Glance.AppWidget.CallbackTrampoline" />
+
+        <receiver
+            android:name="androidx.glance.appwidget.action.ActionCallbackBroadcastReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        <receiver
+            android:name="androidx.glance.appwidget.UnmanagedSessionReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        <receiver
+            android:name="androidx.glance.appwidget.MyPackageReplacedReceiver"
+            android:enabled="true"
+            android:exported="false" >
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name="androidx.glance.appwidget.GlanceRemoteViewsService"
+            android:exported="true"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="com.droidective.android.androidx-startup"
+            android:exported="false" >
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup" />
+            <meta-data
+                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+                android:value="androidx.startup" />
+            <meta-data
+                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+                android:value="androidx.startup" />
+            <meta-data
+                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+                android:value="androidx.startup" />
+        </provider>
+
+        <service
+            android:name="androidx.work.impl.background.systemjob.SystemJobService"
+            android:directBootAware="false"
+            android:enabled="@bool/enable_system_job_service_default"
+            android:exported="true"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:directBootAware="false"
+            android:enabled="@bool/enable_system_foreground_service_default"
+            android:exported="false" />
+
+        <receiver
+            android:name="androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver"
+            android:directBootAware="false"
+            android:enabled="true"
+            android:exported="false" />
+        <receiver
+            android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
+            android:directBootAware="false"
+            android:enabled="false"
+            android:exported="false" >
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="androidx.work.impl.diagnostics.DiagnosticsReceiver"
+            android:directBootAware="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.DUMP" >
+            <intent-filter>
+                <action android:name="androidx.work.diagnostics.REQUEST_DIAGNOSTICS" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name="androidx.core.widget.RemoteViewsCompatService"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <uses-library
+            android:name="androidx.window.extensions"
+            android:required="false" />
+        <uses-library
+            android:name="androidx.window.sidecar"
+            android:required="false" />
+
+        <service
+            android:name="androidx.room.MultiInstanceInvalidationService"
+            android:directBootAware="true"
+            android:exported="false" />
+
+        <receiver
+            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+            android:directBootAware="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.DUMP" >
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+            </intent-filter>
+        </receiver>
+
+        <meta-data
+            android:name="moe.shizuku.client.V3_SUPPORT"
+            android:value="true" />
+    </application>
+
+</manifest>

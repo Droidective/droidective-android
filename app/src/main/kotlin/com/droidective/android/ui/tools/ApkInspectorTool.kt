@@ -133,6 +133,7 @@ private fun Report(report: ApkReport) {
         }
     }
     ApkFilesSection(report.files)
+    ApkManifestSection(report)
     Permissions(report)
     Components(report.components)
     if (report.features.isNotEmpty()) {

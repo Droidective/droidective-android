@@ -6,6 +6,7 @@ import android.content.pm.ComponentInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.content.pm.PermissionInfo
+import android.content.res.Resources
 import android.os.Build
 import com.droidective.core.apps.ApkAnatomies
 import com.droidective.core.apps.ApkAnatomy
@@ -14,9 +15,12 @@ import com.droidective.core.apps.ApkFile
 import com.droidective.core.apps.ApkFlags
 import com.droidective.core.apps.ApkPermission
 import com.droidective.core.apps.ApkReport
+import com.droidective.core.apps.BinaryXml
 import com.droidective.core.apps.SigningCertificates
+import com.droidective.core.apps.ZipDirectory
 import java.io.File
 import java.io.IOException
+import java.io.RandomAccessFile
 import java.security.cert.CertificateException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -63,6 +67,55 @@ object ApkReports {
             app.sourceDir = file.path
             app.publicSourceDir = file.path
             report(pm, info, app, listOf(ApkFile(file.name, file.path, file.length())), false)
+        }
+
+    /**
+     * The base APK's AndroidManifest.xml as XML, its references named from the app's resources and
+     * Android's.
+     *
+     * @throws IOException when it can't be read or isn't compiled XML.
+     */
+    suspend fun manifest(context: Context, report: ApkReport): String =
+        withContext(Dispatchers.IO) {
+            val base = File(report.files.first().path)
+            val compiled =
+                RandomAccessFile(base, "r").use { apk ->
+                    val record =
+                        ZipDirectory.entries(apk).firstOrNull { it.name == MANIFEST }
+                            ?: throw IOException("It has no $MANIFEST.")
+                    if (record.size > MAX_MANIFEST_BYTES) {
+                        throw IOException("Its manifest is ${record.size} bytes, too big to show.")
+                    }
+                    ZipDirectory.head(apk, record, record.size.toInt())
+                }
+            val resources = resources(context.packageManager, report, base)
+            BinaryXml.decode(compiled) { id -> resourceName(resources, report.packageName, id) }
+        }
+
+    private fun resources(pm: PackageManager, report: ApkReport, base: File): Resources? =
+        try {
+            if (report.installed) {
+                pm.getResourcesForApplication(report.packageName)
+            } else {
+                pm.getPackageArchiveInfo(base.path, 0)?.applicationInfo?.let { app ->
+                    app.sourceDir = base.path
+                    app.publicSourceDir = base.path
+                    pm.getResourcesForApplication(app)
+                }
+            }
+        } catch (_: PackageManager.NameNotFoundException) {
+            null
+        }
+
+    /** `string/app_name` for the app's own, `android:style/Theme` for another package's. */
+    private fun resourceName(resources: Resources?, packageName: String, id: Int): String? =
+        try {
+            val from = resources ?: Resources.getSystem()
+            val name = "${from.getResourceTypeName(id)}/${from.getResourceEntryName(id)}"
+            val owner = from.getResourcePackageName(id)
+            if (owner == packageName) name else "$owner:$name"
+        } catch (_: Resources.NotFoundException) {
+            null
         }
 
     private fun report(
@@ -215,4 +268,6 @@ object ApkReports {
     }
 
     private const val METADATA_CHARS = 300
+    private const val MANIFEST = "AndroidManifest.xml"
+    private const val MAX_MANIFEST_BYTES = 8L * 1024 * 1024
 }

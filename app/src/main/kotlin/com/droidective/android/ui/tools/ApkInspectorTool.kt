@@ -130,6 +130,7 @@ private fun Report(report: ApkReport) {
             InfoRow("Dex files", "${anatomy.dexFiles}")
         }
     }
+    ApkFilesSection(report.files)
     Permissions(report)
     Components(report.components)
     if (report.features.isNotEmpty()) {
@@ -271,7 +272,7 @@ private fun Components(components: List<ApkComponent>) {
 
 /** The first few of [items], and the rest behind a button. */
 @Composable
-private fun <T> Shortened(items: List<T>, row: @Composable (T) -> Unit) {
+fun <T> Shortened(items: List<T>, row: @Composable (T) -> Unit) {
     var all by remember(items) { mutableStateOf(items.size <= SHORT) }
     (if (all) items else items.take(SHORT)).forEach { row(it) }
     if (!all) TextButton(onClick = { all = true }) { Text("Show all ${items.size}") }

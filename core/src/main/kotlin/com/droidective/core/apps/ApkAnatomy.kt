@@ -14,6 +14,7 @@ import java.security.cert.X509Certificate
  * what each of its dex files holds, and which signature schemes signed it.
  *
  * @property dex the dex files ART loads, in the order it loads them.
+ * @property nativeLibs its 64-bit native libraries, which are what 16 KB pages concern.
  * @property schemes the APK Signature Scheme versions found: 1 (JAR signing), 2, 3 and 31 (v3.1).
  */
 data class ApkAnatomy(
@@ -21,6 +22,7 @@ data class ApkAnatomy(
     val entries: Int,
     val dex: List<DexHeader>,
     val abis: List<String>,
+    val nativeLibs: List<NativeLib>,
     val schemes: List<Int>,
 )
 
@@ -46,12 +48,33 @@ object ApkAnatomies {
                             DexHeaders.parse(record.name, head)
                         },
                 abis = names.mapNotNull { LIB.find(it)?.groupValues?.get(1) }.distinct().sorted(),
+                nativeLibs =
+                    records
+                        // An empty one is a placeholder, such as WebView's: nothing loads it.
+                        .filter { it.size > 0 }
+                        .filter { LIB.find(it.name)?.groupValues?.get(1) in NativeLibs.ABIS }
+                        .map { nativeLib(apk, it) },
                 schemes =
                     (listOfNotNull(1.takeIf { v1 }) + signingBlockIds(apk).mapNotNull(SCHEMES::get))
                         .distinct()
                         .sorted(),
             )
         }
+
+    private fun nativeLib(apk: RandomAccessFile, record: ZipRecord): NativeLib {
+        var head = ZipDirectory.head(apk, record, NativeLibs.HEAD)
+        val end = NativeLibs.headerEnd(head)
+        // Program headers past the usual first bytes are rare; read as far as they go, within
+        // reason.
+        if (end != null && end > head.size && end <= MAX_ELF_HEADERS) {
+            head = ZipDirectory.head(apk, record, end.toInt())
+        }
+        return NativeLib(
+            path = record.name,
+            loadAlignment = NativeLibs.loadAlignment(head),
+            dataOffset = if (record.stored) ZipDirectory.dataOffset(apk, record) else null,
+        )
+    }
 
     /** classes.dex is the first, then classes2.dex, classes3.dex and on. */
     private fun dexIndex(name: String): Int =
@@ -89,6 +112,7 @@ object ApkAnatomies {
     private val SCHEMES = mapOf(0x7109871a to 2, 0xf05368c0.toInt() to 3, 0x1b93ad61 to 31)
     private const val FOOTER = 24L
     private const val PAIR_HEADER = 12
+    private const val MAX_ELF_HEADERS = 1L shl 20
 }
 
 /** One certificate an app is signed with, as people compare them: by SHA-256. */

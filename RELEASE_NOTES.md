@@ -3,6 +3,21 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.21.0
+
+The APK Inspector reads an APK the way Android Studio's APK Analyzer does.
+
+- **What takes the room.** Every folder and file in an APK, biggest first, with what each takes
+  in the APK and holds unpacked; tap a folder to open it. An app installed as splits picks which
+  of its APKs.
+- **Dex files.** The classes and method references in each dex file and in all of them, and the
+  dex format with the first Android that reads it.
+- **The manifest as XML.** The compiled AndroidManifest.xml turned back into XML to read or copy,
+  with numbers such as `singleTask` and `signature|privileged` named again, and each reference
+  named from the app's own resources.
+- **16 KB pages.** Whether each 64-bit native library is ready for phones with 16 KB memory
+  pages, in its segments and where it sits in the APK, and why when it isn't.
+
 ## 0.20.0
 
 Reactotron's REPL, and a copied cURL command that does what the app did.

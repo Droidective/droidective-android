@@ -28,3 +28,10 @@ release APK, a build made 2026-10-24 on top of 0.20.0 whose manifest is 0.20.0's
 (`app/build/intermediates/packaged_manifests/release/…`). The compiled one has a UTF-16 string
 pool, 76 references, and the numbers aapt2 makes of `launchMode`, `protectionLevel`,
 `windowSoftInputMode` and `foregroundServiceType`.
+
+# A native library's headers
+
+`libandroidx.graphics.path-arm64.so.head` is the first 1024 bytes of
+`lib/arm64-v8a/libandroidx.graphics.path.so` (androidx graphics-path 1.0.1, Apache-2.0) as this
+app's debug APK ships it: the ELF header and its nine program headers. `objdump -p` reads its
+three LOAD segments as aligned to 2**14, 16 KB.

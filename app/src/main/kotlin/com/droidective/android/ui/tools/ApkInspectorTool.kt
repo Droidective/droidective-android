@@ -35,6 +35,7 @@ import com.droidective.core.apps.ApkReport
 import com.droidective.core.apps.DexHeader
 import com.droidective.core.apps.DexHeaders
 import com.droidective.core.apps.MemInfo
+import com.droidective.core.apps.NativeLib
 import com.droidective.core.apps.SigningCertificate
 import com.droidective.platform.ApkReports
 import java.io.File
@@ -129,6 +130,7 @@ private fun Report(report: ApkReport) {
                     .ifEmpty { listOf("None, so it runs on any processor") }
                     .joinToString(", "),
             )
+            if (anatomy.nativeLibs.isNotEmpty()) PageSizes(anatomy.nativeLibs)
             Dex(anatomy.dex)
         }
     }
@@ -271,6 +273,36 @@ private fun Components(components: List<ApkComponent>) {
         }
         ToolNote("Open means any app on the phone can start or bind it. Tap one to copy its name.")
     }
+}
+
+/** Whether a phone with 16 KB memory pages can load the 64-bit libraries, and why not. */
+@Composable
+private fun PageSizes(libs: List<NativeLib>) {
+    val unready = libs.filterNot { it.ready }
+    InfoRow(
+        "16 KB pages",
+        if (unready.isEmpty()) "Ready, all ${libs.size} 64-bit libraries"
+        else "${unready.size} of ${libs.size} 64-bit libraries aren't ready",
+    )
+    if (unready.isEmpty()) return
+    Shortened(unready) { lib ->
+        Column(Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
+            Text(
+                lib.path,
+                fontFamily = FontFamily.Monospace,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                lib.problems.joinToString(" "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+    ToolNote(
+        "A phone with 16 KB memory pages runs these in a compatibility mode at best. Google Play " +
+            "asks apps targeting Android 15 or later to support 16 KB pages."
+    )
 }
 
 @Composable

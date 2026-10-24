@@ -189,7 +189,7 @@ object ApkReports {
 
     /**
      * Every file's native code and dex, with the base APK's signature schemes. A split's dex files
-     * are named with the split, since each split's first is classes.dex too.
+     * and libraries are named with the split, since each split's first dex is classes.dex too.
      */
     private fun anatomy(files: List<ApkFile>): ApkAnatomy? {
         val read = files.mapNotNull { file ->
@@ -209,6 +209,11 @@ object ApkReports {
                     else anatomy.dex.map { it.copy(name = "${file.name}/${it.name}") }
                 },
             abis = read.flatMap { it.second.abis }.distinct().sorted(),
+            nativeLibs =
+                read.flatMap { (file, anatomy) ->
+                    if (file == files.first()) anatomy.nativeLibs
+                    else anatomy.nativeLibs.map { it.copy(path = "${file.name}/${it.path}") }
+                },
         )
     }
 

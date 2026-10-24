@@ -38,6 +38,10 @@ class ApkReportTest {
                         DexHeader("classes2.dex", 39, 100, 5, 4, 3, 20, 2),
                     ),
                     listOf("arm64-v8a"),
+                    listOf(
+                        NativeLib("lib/arm64-v8a/libgood.so", 16_384, 32_768),
+                        NativeLib("lib/arm64-v8a/libold.so", 4_096, null),
+                    ),
                     listOf(2, 3, 31),
                 ),
             files = emptyList(),
@@ -63,6 +67,8 @@ class ApkReportTest {
             Flags: debuggable, backup allowed, profileable
             Signature schemes: v2, v3, v3.1
             Native code: arm64-v8a
+            16 KB pages: 1 library isn't ready
+              lib/arm64-v8a/libold.so: Its segments are aligned to 4 KB.
             Dex files: 2, 27 classes, 1220 method references
             Certificate: CN=Android Debug,O=Android,C=US (debug key)
               SHA-256 AA:BB

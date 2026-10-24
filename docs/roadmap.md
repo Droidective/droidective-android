@@ -14,11 +14,14 @@ another machine. Current release: **0.20.0**.
 - **The manifest as XML.** The APK Inspector turns the APK's compiled AndroidManifest.xml back
   into XML, naming the numbers Android has names for (`singleTask`, `signature|privileged`) and
   each reference from the app's own resources.
+- **16 KB page readiness.** The APK Inspector checks each 64-bit native library: its loadable
+  segments aligned to 16 KB, and, when stored uncompressed, its bytes on a 16 KB boundary in the
+  APK, saying why one isn't.
 
 ## Next
 
-- **The APK Inspector**, read-only and in the style of Android Studio's APK Analyzer: next, whether
-  native code is ready for 16 KB pages. Decompiling, rebuilding and signing on the phone
+- **The APK Inspector** now covers what Android Studio's APK Analyzer reads, short of
+  resources.arsc's tables and dex class trees. Decompiling, rebuilding and signing on the phone
   are not being worked on: starting them was stopped by a safety check.
 - **The proxy's last step** — the certificate in the system store with root — is not being
   worked on: starting it was stopped by a safety check. The plan is in

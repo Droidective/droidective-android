@@ -84,6 +84,20 @@ data class ApkReport(
         anatomy?.let {
             appendLine("Signature schemes: " + it.schemes.joinToString(", ") { s -> scheme(s) })
             appendLine("Native code: " + it.abis.ifEmpty { listOf("none") }.joinToString(", "))
+            if (it.nativeLibs.isNotEmpty()) {
+                val unready = it.nativeLibs.filterNot { lib -> lib.ready }
+                appendLine(
+                    "16 KB pages: " +
+                        when (unready.size) {
+                            0 -> "ready"
+                            1 -> "1 library isn't ready"
+                            else -> "${unready.size} libraries aren't ready"
+                        }
+                )
+                unready.forEach { lib ->
+                    appendLine("  ${lib.path}: " + lib.problems.joinToString(" "))
+                }
+            }
             appendLine(
                 "Dex files: ${it.dex.size}, ${it.dex.sumOf { d -> d.classes }} classes, " +
                     "${it.dex.sumOf { d -> d.methods }} method references"

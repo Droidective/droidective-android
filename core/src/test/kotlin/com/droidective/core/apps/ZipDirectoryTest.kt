@@ -173,6 +173,19 @@ class ZipDirectoryTest {
     }
 
     @Test
+    fun aLargeCompressedEntryInflatesWhole() {
+        val random = Random(5)
+        // Half noise, half repetition: well over one 64 KB chunk of compressed input.
+        val bytes = random.nextBytes(300_000) + ByteArray(300_000) { (it % 13).toByte() }
+        val zip = zip("large.zip", mapOf("AndroidManifest.xml" to (bytes to false)))
+        RandomAccessFile(zip, "r").use { file ->
+            val record = ZipDirectory.entries(file).single()
+            assertTrue(record.packed > 200_000)
+            assertTrue(bytes.contentEquals(ZipDirectory.head(file, record, bytes.size)))
+        }
+    }
+
+    @Test
     fun theDataStartsPastTheLocalExtraField() {
         val out = ByteArrayOutputStream()
         ZipOutputStream(out).use { zip ->

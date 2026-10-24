@@ -119,21 +119,50 @@ object ZipDirectory {
             throw IOException("${record.name} runs past the end of the file.")
         }
         if (record.stored) return read(file, start, wanted)
-        val packed = read(file, start, minOf(record.packed, MAX_INFLATE_INPUT).toInt())
         val inflater = Inflater(true)
         try {
-            inflater.setInput(packed)
-            val out = ByteArray(wanted)
-            var filled = 0
-            while (filled < wanted && !inflater.finished() && !inflater.needsInput()) {
-                filled += inflater.inflate(out, filled, wanted - filled)
-            }
-            return if (filled == wanted) out else out.copyOf(filled)
+            return inflate(file, start until start + record.packed, inflater, wanted)
         } catch (e: DataFormatException) {
             throw IOException("${record.name} won't inflate: ${e.message}")
         } finally {
             inflater.end()
         }
+    }
+
+    /** Inflates [wanted] bytes, reading the compressed [region] a chunk at a time as needed. */
+    private fun inflate(
+        file: RandomAccessFile,
+        region: LongRange,
+        inflater: Inflater,
+        wanted: Int,
+    ): ByteArray {
+        val out = ByteArray(wanted)
+        val chunk = ByteArray(INFLATE_CHUNK)
+        var filled = 0
+        var at = region.first
+        var padded = false
+        while (filled < wanted && !inflater.finished()) {
+            if (inflater.needsInput()) {
+                val count = minOf(INFLATE_CHUNK.toLong(), region.last + 1 - at).toInt()
+                when {
+                    count > 0 -> {
+                        file.seek(at)
+                        file.readFully(chunk, 0, count)
+                        inflater.setInput(chunk, 0, count)
+                        at += count
+                    }
+                    // A raw deflate stream can want one byte past its end before it finishes.
+                    !padded -> {
+                        inflater.setInput(ByteArray(1))
+                        padded = true
+                    }
+                    else -> break
+                }
+            }
+            if (inflater.needsDictionary()) throw DataFormatException("it needs a dictionary")
+            filled += inflater.inflate(out, filled, wanted - filled)
+        }
+        return if (filled == wanted) out else out.copyOf(filled)
     }
 
     private fun skip(buffer: ByteBuffer, count: Int) {
@@ -162,7 +191,7 @@ object ZipDirectory {
     private const val LOCAL_HEADER = 30
     private const val LOCAL_NAME_LENGTH = 26
     private const val LOCAL_EXTRA_LENGTH = 28
-    private const val MAX_INFLATE_INPUT = 1L shl 20
+    private const val INFLATE_CHUNK = 64 * 1024
     private const val SHORT_MASK = 0xFFFF
     private const val INT_MASK = 0xFFFFFFFFL
 }

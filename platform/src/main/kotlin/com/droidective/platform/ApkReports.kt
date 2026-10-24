@@ -134,21 +134,28 @@ object ApkReports {
             described to (!signing.hasMultipleSigners() && history > 1)
         } ?: (emptyList<com.droidective.core.apps.SigningCertificate>() to false)
 
-    /** Every file's native code and dex, with the base APK's signature schemes. */
+    /**
+     * Every file's native code and dex, with the base APK's signature schemes. A split's dex files
+     * are named with the split, since each split's first is classes.dex too.
+     */
     private fun anatomy(files: List<ApkFile>): ApkAnatomy? {
         val read = files.mapNotNull { file ->
             try {
-                ApkAnatomies.read(File(file.path))
+                file to ApkAnatomies.read(File(file.path))
             } catch (_: IOException) {
                 null
             }
         }
-        val base = read.firstOrNull() ?: return null
+        val base = read.firstOrNull()?.second ?: return null
         return base.copy(
-            bytes = read.sumOf { it.bytes },
-            entries = read.sumOf { it.entries },
-            dexFiles = read.sumOf { it.dexFiles },
-            abis = read.flatMap { it.abis }.distinct().sorted(),
+            bytes = read.sumOf { it.second.bytes },
+            entries = read.sumOf { it.second.entries },
+            dex =
+                read.flatMap { (file, anatomy) ->
+                    if (file == files.first()) anatomy.dex
+                    else anatomy.dex.map { it.copy(name = "${file.name}/${it.name}") }
+                },
+            abis = read.flatMap { it.second.abis }.distinct().sorted(),
         )
     }
 

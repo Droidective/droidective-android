@@ -11,3 +11,10 @@ API 30–31 and one for 32 and later, whose files end in `_2`.
 -genkeypair -dname "CN=Android Debug,O=Android,C=US" -validity 10950`, the way Android Studio makes
 a debug key. Its private key was never kept. SHA-256
 `DB:01:6D:44:C6:BF:73:1A:DB:43:17:B7:21:E3:82:19:EB:BB:66:A0:68:DB:36:15:C9:A2:16:65:72:94:A3:04`.
+
+# A dex header
+
+`droidective-release-classes.dex.head` is the first 112 bytes, the header, of `classes.dex` in
+this app's release APK, built 2026-10-24 from main at 3a80654 (R8, minSdk 30). `dexdump -f` from
+build-tools 37.0.0 reads it as version 039, file size 5062000, 21519 strings, 6575 types, 19118
+fields, 26387 methods and 5408 class definitions.

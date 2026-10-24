@@ -29,7 +29,17 @@ class ApkReportTest {
                     )
                 ),
             rotatedKey = false,
-            anatomy = ApkAnatomy(1000, 10, 2, listOf("arm64-v8a"), listOf(2, 3, 31)),
+            anatomy =
+                ApkAnatomy(
+                    1000,
+                    10,
+                    listOf(
+                        DexHeader("classes.dex", 39, 900, 50, 40, 30, 1_200, 25),
+                        DexHeader("classes2.dex", 39, 100, 5, 4, 3, 20, 2),
+                    ),
+                    listOf("arm64-v8a"),
+                    listOf(2, 3, 31),
+                ),
             files = emptyList(),
             permissions = listOf(ApkPermission("android.permission.CAMERA", "dangerous", true)),
             definedPermissions = emptyList(),
@@ -53,7 +63,7 @@ class ApkReportTest {
             Flags: debuggable, backup allowed, profileable
             Signature schemes: v2, v3, v3.1
             Native code: arm64-v8a
-            Dex files: 2
+            Dex files: 2, 27 classes, 1220 method references
             Certificate: CN=Android Debug,O=Android,C=US (debug key)
               SHA-256 AA:BB
             Permissions: 1

@@ -11,38 +11,51 @@ import java.security.cert.X509Certificate
 
 /**
  * What an APK file holds that PackageManager doesn't say: the native code it ships for each ABI,
- * how many dex files it has, and which signature schemes signed it.
+ * what each of its dex files holds, and which signature schemes signed it.
  *
+ * @property dex the dex files ART loads, in the order it loads them.
  * @property schemes the APK Signature Scheme versions found: 1 (JAR signing), 2, 3 and 31 (v3.1).
  */
 data class ApkAnatomy(
     val bytes: Long,
     val entries: Int,
-    val dexFiles: Int,
+    val dex: List<DexHeader>,
     val abis: List<String>,
     val schemes: List<Int>,
 )
 
 object ApkAnatomies {
     /** @throws java.io.IOException when [file] isn't a readable zip. */
-    fun read(file: File): ApkAnatomy {
-        val (names, blockSchemes) =
-            RandomAccessFile(file, "r").use { apk ->
-                ZipDirectory.entries(apk).map { it.name } to
-                    signingBlockIds(apk).mapNotNull(SCHEMES::get)
+    fun read(file: File): ApkAnatomy =
+        RandomAccessFile(file, "r").use { apk ->
+            val records = ZipDirectory.entries(apk)
+            val names = records.map { it.name }
+            val v1 = names.any { name ->
+                name.startsWith("META-INF/") &&
+                    SIGNATURE_FILES.any { name.endsWith(it, ignoreCase = true) }
             }
-        val v1 = names.any { name ->
-            name.startsWith("META-INF/") &&
-                SIGNATURE_FILES.any { name.endsWith(it, ignoreCase = true) }
+            ApkAnatomy(
+                bytes = file.length(),
+                entries = names.size,
+                dex =
+                    records
+                        .filter { DEX.matches(it.name) }
+                        .sortedBy { dexIndex(it.name) }
+                        .mapNotNull { record ->
+                            val head = ZipDirectory.head(apk, record, DexHeaders.SIZE)
+                            DexHeaders.parse(record.name, head)
+                        },
+                abis = names.mapNotNull { LIB.find(it)?.groupValues?.get(1) }.distinct().sorted(),
+                schemes =
+                    (listOfNotNull(1.takeIf { v1 }) + signingBlockIds(apk).mapNotNull(SCHEMES::get))
+                        .distinct()
+                        .sorted(),
+            )
         }
-        return ApkAnatomy(
-            bytes = file.length(),
-            entries = names.size,
-            dexFiles = names.count { DEX.matches(it) },
-            abis = names.mapNotNull { LIB.find(it)?.groupValues?.get(1) }.distinct().sorted(),
-            schemes = (listOfNotNull(1.takeIf { v1 }) + blockSchemes).distinct().sorted(),
-        )
-    }
+
+    /** classes.dex is the first, then classes2.dex, classes3.dex and on. */
+    private fun dexIndex(name: String): Int =
+        name.removePrefix("classes").removeSuffix(".dex").toIntOrNull() ?: 1
 
     /**
      * The ids in the APK Signing Block, which sits just before the zip's central directory, or none

@@ -5,6 +5,8 @@ import java.io.RandomAccessFile
 import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.zip.DataFormatException
+import java.util.zip.Inflater
 
 /**
  * One file in a zip, as its central directory records it.
@@ -93,6 +95,47 @@ object ZipDirectory {
         return ZipRecord(name, size, packed, method == STORED, offset)
     }
 
+    /** Where [record]'s bytes start: past its local header, whose extra field can differ. */
+    fun dataOffset(file: RandomAccessFile, record: ZipRecord): Long {
+        val header = ByteBuffer.wrap(read(file, record.headerOffset, LOCAL_HEADER))
+        header.order(ByteOrder.LITTLE_ENDIAN)
+        if (header.int != LOCAL_SIGNATURE) {
+            throw IOException("${record.name} has no local header where the directory says.")
+        }
+        val nameLength = header.getShort(LOCAL_NAME_LENGTH).toInt() and SHORT_MASK
+        val extraLength = header.getShort(LOCAL_EXTRA_LENGTH).toInt() and SHORT_MASK
+        return record.headerOffset + LOCAL_HEADER + nameLength + extraLength
+    }
+
+    /**
+     * Up to [count] bytes from the start of [record]'s contents, inflated when it's compressed.
+     *
+     * @throws IOException when they can't be read or inflated.
+     */
+    fun head(file: RandomAccessFile, record: ZipRecord, count: Int): ByteArray {
+        val wanted = minOf(count.toLong(), record.size).toInt()
+        val start = dataOffset(file, record)
+        if (start + record.packed > file.length()) {
+            throw IOException("${record.name} runs past the end of the file.")
+        }
+        if (record.stored) return read(file, start, wanted)
+        val packed = read(file, start, minOf(record.packed, MAX_INFLATE_INPUT).toInt())
+        val inflater = Inflater(true)
+        try {
+            inflater.setInput(packed)
+            val out = ByteArray(wanted)
+            var filled = 0
+            while (filled < wanted && !inflater.finished() && !inflater.needsInput()) {
+                filled += inflater.inflate(out, filled, wanted - filled)
+            }
+            return if (filled == wanted) out else out.copyOf(filled)
+        } catch (e: DataFormatException) {
+            throw IOException("${record.name} won't inflate: ${e.message}")
+        } finally {
+            inflater.end()
+        }
+    }
+
     private fun skip(buffer: ByteBuffer, count: Int) {
         buffer.position(buffer.position() + count)
     }
@@ -115,6 +158,11 @@ object ZipDirectory {
     private const val TIME_DATE_CRC = 8
     private const val DISK_AND_ATTRIBUTES = 8
     private const val STORED = 0
+    private const val LOCAL_SIGNATURE = 0x04034b50
+    private const val LOCAL_HEADER = 30
+    private const val LOCAL_NAME_LENGTH = 26
+    private const val LOCAL_EXTRA_LENGTH = 28
+    private const val MAX_INFLATE_INPUT = 1L shl 20
     private const val SHORT_MASK = 0xFFFF
     private const val INT_MASK = 0xFFFFFFFFL
 }

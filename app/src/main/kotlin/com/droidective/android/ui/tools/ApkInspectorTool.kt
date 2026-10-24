@@ -32,6 +32,8 @@ import com.droidective.android.ui.automations.AppChooser
 import com.droidective.android.ui.copy
 import com.droidective.core.apps.ApkComponent
 import com.droidective.core.apps.ApkReport
+import com.droidective.core.apps.DexHeader
+import com.droidective.core.apps.DexHeaders
 import com.droidective.core.apps.MemInfo
 import com.droidective.core.apps.SigningCertificate
 import com.droidective.platform.ApkReports
@@ -127,7 +129,7 @@ private fun Report(report: ApkReport) {
                     .ifEmpty { listOf("None, so it runs on any processor") }
                     .joinToString(", "),
             )
-            InfoRow("Dex files", "${anatomy.dexFiles}")
+            Dex(anatomy.dex)
         }
     }
     ApkFilesSection(report.files)
@@ -269,6 +271,40 @@ private fun Components(components: List<ApkComponent>) {
         ToolNote("Open means any app on the phone can start or bind it. Tap one to copy its name.")
     }
 }
+
+@Composable
+private fun Dex(dex: List<DexHeader>) {
+    if (dex.isEmpty()) {
+        InfoRow("Dex files", "None")
+        return
+    }
+    InfoRow(
+        "Dex files",
+        "${dex.size}: ${count(dex.sumOf { it.classes })} classes, " +
+            "${count(dex.sumOf { it.methods })} method references",
+    )
+    val version = dex.maxOf { it.version }
+    InfoRow(
+        "Dex format",
+        "%03d".format(version) +
+            (DexHeaders.firstAndroid(version)?.let { " (Android $it and later)" } ?: ""),
+    )
+    if (dex.size > 1) {
+        Shortened(dex) {
+            InfoRow(
+                it.name,
+                "${count(it.classes)} classes, ${count(it.methods)} methods",
+                mono = true,
+            )
+        }
+    }
+    ToolNote(
+        "Method references count every method a dex file defines or calls; one file holds at " +
+            "most ${count(DexHeaders.METHOD_LIMIT.toLong())}."
+    )
+}
+
+private fun count(n: Long) = "%,d".format(n)
 
 /** The first few of [items], and the rest behind a button. */
 @Composable

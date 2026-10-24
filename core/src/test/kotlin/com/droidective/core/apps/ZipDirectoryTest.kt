@@ -151,6 +151,63 @@ class ZipDirectoryTest {
         assertEquals("It's a zip64 file, which this doesn't read.", error.message)
     }
 
+    @Test
+    fun theHeadOfAnEntryStoredOrCompressed() {
+        val text = ByteArray(70_000) { (it % 251).toByte() }
+        val zip =
+            zip(
+                "head.zip",
+                mapOf(
+                    "stored" to (text to true),
+                    "deflated" to (text to false),
+                    "short" to ("abc".toByteArray() to false),
+                ),
+            )
+        RandomAccessFile(zip, "r").use { file ->
+            val (stored, deflated, short) = ZipDirectory.entries(file)
+            assertTrue(text.copyOf(112).contentEquals(ZipDirectory.head(file, stored, 112)))
+            assertTrue(text.copyOf(112).contentEquals(ZipDirectory.head(file, deflated, 112)))
+            assertTrue(text.contentEquals(ZipDirectory.head(file, deflated, 100_000)))
+            assertEquals("abc", ZipDirectory.head(file, short, 112).decodeToString())
+        }
+    }
+
+    @Test
+    fun theDataStartsPastTheLocalExtraField() {
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            val bytes = "the contents".toByteArray()
+            zip.putNextEntry(
+                ZipEntry("lib/x.so").apply {
+                    method = ZipEntry.STORED
+                    size = bytes.size.toLong()
+                    compressedSize = size
+                    crc = CRC32().apply { update(bytes) }.value
+                    // Padding of the kind zipalign adds, under an unused id.
+                    extra = byteArrayOf(0x35, 0xd9.toByte(), 96, 0) + ByteArray(96)
+                }
+            )
+            zip.write(bytes)
+            zip.closeEntry()
+        }
+        val file = File(dir, "extra.zip").apply { writeBytes(out.toByteArray()) }
+        RandomAccessFile(file, "r").use { apk ->
+            val record = ZipDirectory.entries(apk).single()
+            assertEquals(30L + "lib/x.so".length + 100, ZipDirectory.dataOffset(apk, record))
+            assertEquals("the contents", ZipDirectory.head(apk, record, 100).decodeToString())
+        }
+    }
+
+    @Test
+    fun anOffsetThatMissesItsLocalHeaderSaysSo() {
+        val zip = zip("miss.zip", mapOf("a" to ("x".toByteArray() to true)))
+        RandomAccessFile(zip, "r").use { file ->
+            val record = ZipDirectory.entries(file).single().copy(headerOffset = 1)
+            val error = assertFailsWith<IOException> { ZipDirectory.head(file, record, 10) }
+            assertEquals("a has no local header where the directory says.", error.message)
+        }
+    }
+
     private fun read(file: File) = RandomAccessFile(file, "r").use(ZipDirectory::entries)
 
     /** A zip of [files]: each name's bytes, and whether it's stored rather than deflated. */

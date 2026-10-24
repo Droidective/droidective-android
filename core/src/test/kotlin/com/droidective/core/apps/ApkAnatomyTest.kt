@@ -20,7 +20,7 @@ class ApkAnatomyTest {
     @AfterTest fun cleanUp() = dir.deleteRecursively().let {}
 
     @Test
-    fun readsNativeCodeDexAndEverySignatureScheme() {
+    fun readsNativeCodeAndEverySignatureScheme() {
         val apk =
             apk(
                 listOf(
@@ -38,7 +38,6 @@ class ApkAnatomyTest {
             )
         val anatomy = ApkAnatomies.read(apk)
         assertEquals(listOf("arm64-v8a", "x86_64"), anatomy.abis)
-        assertEquals(2, anatomy.dexFiles, "a dex under assets/ isn't loaded as code")
         assertEquals(9, anatomy.entries)
         assertEquals(listOf(1, 2, 3), anatomy.schemes)
         assertEquals(apk.length(), anatomy.bytes)

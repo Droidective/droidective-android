@@ -84,7 +84,10 @@ data class ApkReport(
         anatomy?.let {
             appendLine("Signature schemes: " + it.schemes.joinToString(", ") { s -> scheme(s) })
             appendLine("Native code: " + it.abis.ifEmpty { listOf("none") }.joinToString(", "))
-            appendLine("Dex files: ${it.dexFiles}")
+            appendLine(
+                "Dex files: ${it.dex.size}, ${it.dex.sumOf { d -> d.classes }} classes, " +
+                    "${it.dex.sumOf { d -> d.methods }} method references"
+            )
         }
         certificates.forEach { cert ->
             appendLine("Certificate: ${cert.subject}" + if (cert.isDebug) " (debug key)" else "")

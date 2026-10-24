@@ -8,12 +8,14 @@ another machine. Current release: **0.20.0**.
 - **What an APK is made of, by size.** The APK Inspector lists every folder and file in an
   APK, biggest first, with what each takes in the APK and holds unpacked, read from the zip's
   own central directory.
+- **Each dex file's classes and method references.** The APK Inspector reads every dex
+  header: the classes and method references in each file and in all, and the dex format with
+  the first Android that reads it.
 
 ## Next
 
-- **The APK Inspector**, read-only and in the style of Android Studio's APK Analyzer: next, each
-  dex file's classes and method references against the 64K limit, the manifest as XML, and
-  whether native code is ready for 16 KB pages. Decompiling, rebuilding and signing on the phone
+- **The APK Inspector**, read-only and in the style of Android Studio's APK Analyzer: next, the
+  manifest as XML, and whether native code is ready for 16 KB pages. Decompiling, rebuilding and signing on the phone
   are not being worked on: starting them was stopped by a safety check.
 - **The proxy's last step** — the certificate in the system store with root — is not being
   worked on: starting it was stopped by a safety check. The plan is in

@@ -7,6 +7,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +38,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,12 +51,15 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -63,6 +70,7 @@ import com.droidective.android.proxy.Hold
 import com.droidective.android.proxy.Holds
 import com.droidective.android.proxy.TrafficExport
 import com.droidective.android.proxy.TrafficProxy
+import com.droidective.android.ui.AdaptiveColumns
 import com.droidective.android.ui.Symbols
 import com.droidective.core.net.proxy.Breakpoint
 import com.droidective.core.net.proxy.Flow
@@ -118,28 +126,67 @@ fun NetworkTrafficTool(tool: ToolContext) {
     }
     // The list catches up four times a second; a flow just made, a repeat, is in the store first.
     val opened = open?.let { id -> flows.firstOrNull { it.id == id } ?: TrafficProxy.flows.get(id) }
-    if (opened != null) {
-        val actions =
-            FlowActions(
-                onOpen = { open = it },
-                onMock = { editing = Editing.OfMock(it, isNew = true) },
-                onBreak = { editing = Editing.OfBreakpoint(it, isNew = true) },
-                onRemap = { editing = Editing.OfRemap(it, isNew = true) },
-            )
-        Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
-            Box(Modifier.padding(padding)) {
-                FlowDetail(opened, tool, onBack = { open = null }, actions)
+    val actions =
+        FlowActions(
+            onOpen = { open = it },
+            onMock = { editing = Editing.OfMock(it, isNew = true) },
+            onBreak = { editing = Editing.OfBreakpoint(it, isNew = true) },
+            onRemap = { editing = Editing.OfRemap(it, isNew = true) },
+        )
+    // Where two panes fit, the request opens beside the list instead of in its place.
+    AdaptiveColumns(Modifier.fillMaxSize(), minWidth = PANE_MIN) { columns ->
+        val twoPanes = columns > 1
+        if (!twoPanes && opened != null) {
+            Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
+                Box(Modifier.padding(padding)) {
+                    FlowDetail(opened, tool, onBack = { open = null }, actions)
+                }
+            }
+        } else {
+            kept.SaveableStateProvider(LIST) {
+                TrafficMain(
+                    tool,
+                    flows,
+                    TrafficOpens(
+                        open,
+                        onOpen = { open = it },
+                        onHold = { holding = it },
+                        onEdit = { editing = it },
+                    ),
+                    detail =
+                        if (twoPanes) {
+                            {
+                                if (opened == null) PickRequest()
+                                else key(opened.id) { FlowDetail(opened, tool, null, actions) }
+                            }
+                        } else {
+                            null
+                        },
+                )
             }
         }
-        return
     }
-    kept.SaveableStateProvider(LIST) {
-        TrafficMain(
-            tool,
-            flows,
-            onOpen = { open = it },
-            onHold = { holding = it },
-            onEdit = { editing = it },
+}
+
+/** The pane beside the list with nothing open in it, saying what opens there. */
+@Composable
+private fun PickRequest() {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            painterResource(Symbols.byName.getValue("lan").outlined),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(40.dp),
+        )
+        Text(
+            "Pick a request to see its response here.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
         )
     }
 }
@@ -160,9 +207,8 @@ private enum class TrafficTab(val title: String) {
 private fun TrafficMain(
     tool: ToolContext,
     flows: List<Flow>,
-    onOpen: (Long) -> Unit,
-    onHold: (Hold) -> Unit,
-    onEdit: (Editing) -> Unit,
+    opens: TrafficOpens,
+    detail: (@Composable () -> Unit)?,
 ) {
     var tabName by rememberSaveable { mutableStateOf(TrafficTab.Requests.name) }
     var proxy by rememberSaveable { mutableStateOf(false) }
@@ -183,40 +229,44 @@ private fun TrafficMain(
                 Spacer(Modifier.weight(1f))
                 TrafficStatusChip(onClick = { proxy = true })
             }
-            PrimaryTabRow(selectedTabIndex = tab.ordinal) {
-                TrafficTab.entries.forEach { each ->
-                    Tab(
-                        selected = tab == each,
-                        onClick = { tabName = each.name },
-                        text = { Text(each.title, maxLines = 1) },
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            tabs.SaveableStateProvider(tab.name) {
-                when (tab) {
-                    TrafficTab.Requests ->
-                        RequestsTab(
-                            tool,
+            val tabbed: @Composable () -> Unit = {
+                Column {
+                    PrimaryTabRow(selectedTabIndex = tab.ordinal) {
+                        TrafficTab.entries.forEach { each ->
+                            Tab(
+                                selected = tab == each,
+                                onClick = { tabName = each.name },
+                                text = { Text(each.title, maxLines = 1) },
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    tabs.SaveableStateProvider(tab.name) {
+                        TabContent(
+                            tab,
                             flows,
+                            opens,
                             Requesting(
-                                onOpen,
-                                onHold,
+                                opens.open,
+                                opens.onOpen,
+                                opens.onHold,
                                 onTrust = { uid -> trusting = Trusting(uid) },
                                 onCertificate = { tabName = TrafficTab.Certificate.name },
                             ),
                             trust,
+                            say,
+                            tool,
                         )
-                    TrafficTab.Rules -> RulesTab(flows)
-                    TrafficTab.Mocks ->
-                        MocksTab(
-                            onEditMock = { mock, isNew -> onEdit(Editing.OfMock(mock, isNew)) },
-                            onEditBreakpoint = { point, isNew ->
-                                onEdit(Editing.OfBreakpoint(point, isNew))
-                            },
-                            onEditRemap = { remap, isNew -> onEdit(Editing.OfRemap(remap, isNew)) },
-                        )
-                    TrafficTab.Certificate -> CertificateTab(trust, say)
+                    }
+                }
+            }
+            if (detail == null) {
+                tabbed()
+            } else {
+                Row(Modifier.fillMaxSize()) {
+                    Box(Modifier.weight(1f).fillMaxHeight()) { tabbed() }
+                    VerticalDivider()
+                    Box(Modifier.weight(DETAIL_WEIGHT).fillMaxHeight()) { detail() }
                 }
             }
         }
@@ -225,8 +275,43 @@ private fun TrafficMain(
     trusting?.let { TrustSheet(it.uid, say, onDismiss = { trusting = null }) }
 }
 
+/** The tab showing: the requests, the rules, the mocks or the certificate. */
+@Composable
+private fun TabContent(
+    tab: TrafficTab,
+    flows: List<Flow>,
+    opens: TrafficOpens,
+    requesting: Requesting,
+    trust: CertificateTrust?,
+    say: (String) -> Unit,
+    tool: ToolContext,
+) {
+    when (tab) {
+        TrafficTab.Requests -> RequestsTab(tool, flows, requesting, trust)
+        TrafficTab.Rules -> RulesTab(flows)
+        TrafficTab.Mocks ->
+            MocksTab(
+                onEditMock = { mock, isNew -> opens.onEdit(Editing.OfMock(mock, isNew)) },
+                onEditBreakpoint = { point, isNew ->
+                    opens.onEdit(Editing.OfBreakpoint(point, isNew))
+                },
+                onEditRemap = { remap, isNew -> opens.onEdit(Editing.OfRemap(remap, isNew)) },
+            )
+        TrafficTab.Certificate -> CertificateTab(trust, say)
+    }
+}
+
+/** What the screen can open: the request open now, another, a held exchange, an editor. */
+private class TrafficOpens(
+    val open: Long?,
+    val onOpen: (Long) -> Unit,
+    val onHold: (Hold) -> Unit,
+    val onEdit: (Editing) -> Unit,
+)
+
 /** What the Requests tab can open: a request, a held exchange, a fix, the certificate. */
 private class Requesting(
+    val open: Long?,
     val onOpen: (Long) -> Unit,
     val onHold: (Hold) -> Unit,
     val onTrust: (Int?) -> Unit,
@@ -287,7 +372,9 @@ private fun RequestsTab(
                 }
             }
             items(visible, key = { it.id }) { flow ->
-                FlowRow(flow, labels, rules) { opens.onOpen(flow.id) }
+                FlowRow(flow, labels, rules, selected = flow.id == opens.open) {
+                    opens.onOpen(flow.id)
+                }
             }
         }
     }
@@ -393,14 +480,26 @@ private fun SearchRow(
 }
 
 @Composable
-private fun FlowRow(flow: Flow, labels: AppLabels, rules: TrafficRules, onClick: () -> Unit) {
+private fun FlowRow(
+    flow: Flow,
+    labels: AppLabels,
+    rules: TrafficRules,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
     val outcome = FlowLabels.outcome(flow)
     val operation =
         remember(flow.id, flow.requestBody) {
             FlowLabels.graphQlOperation(flow) ?: FlowLabels.grpcMethod(flow)
         }
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.width(STATUS_WIDTH.dp).padding(top = 2.dp)) { StatusPill(flow) }
@@ -520,6 +619,11 @@ internal val DEBUG_OVERRIDES =
 
 private const val PACE_MILLIS = 250L
 private const val LIST = "list"
+
+/** Two panes once each gets this much: the tabs and list, and the request beside them. */
+private val PANE_MIN = 400.dp
+
+private const val DETAIL_WEIGHT = 1.2f
 private const val MAX_APP_CHIPS = 6
 private const val STATUS_WIDTH = 64
 

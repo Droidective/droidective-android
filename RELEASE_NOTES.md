@@ -3,6 +3,13 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.24.1
+
+- **Reactotron's search reads inside what each entry carried.** It used to match only the line
+  each row shows. Now it also finds text in a response's or a request's body and headers, an
+  action, a state answer or a log's whole message, so a word that only appears in a response
+  body finds that call. It searches a moment after you stop typing, without slowing the screen.
+
 ## 0.24.0
 
 Reactotron is easier to find your way around: the timeline is the screen, and everything else is

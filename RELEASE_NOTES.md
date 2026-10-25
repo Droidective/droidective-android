@@ -3,6 +3,16 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.24.2
+
+- **Find inside a Reactotron entry.** Open an entry and tap the search button beside Copy: every
+  match in its URL, headers, body, message, stack or payload is highlighted, with "1 of 7" beside
+  the word, and the arrows jump from one to the next. An API call's Request and Response say how
+  many matches each holds. Snapshots have the same find.
+- **The timeline's search is back to the rows.** It matches what each row shows (app, status,
+  message, URL), as it did before 0.24.1, so it finds the row you're after instead of every entry
+  that mentions a word somewhere inside.
+
 ## 0.24.1
 
 - **Reactotron's search reads inside what each entry carried.** It used to match only the line

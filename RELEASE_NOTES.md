@@ -3,6 +3,23 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.23.0
+
+Widgets are simpler to make and change, and the app uses the room a tablet has.
+
+- **The Widgets tab.** One New button says what each thing is: a home-screen widget that starts
+  as a bar, a button or a list, a notification bar, or a folder. Your widgets are cards with a
+  live preview, and Delete asks first. Quick Settings shows only the tiles in use and Add a tile;
+  picking what a new tile does goes straight on to Android's prompt to add it.
+- **The editor.** The preview comes first, with Grid or List right under it. Items are tiles:
+  tap one to change its look, move it or remove it. The style has a panel of its own, with the
+  colour sets, size and labels first and the rest under More options. Notification bars and
+  folders show only the two colours they use.
+- **Saved deep links in widgets.** Links saved in Deep Links are listed when you add to a widget,
+  folder, notification bar or tile, and a link typed there is saved to Deep Links too.
+- **Tablets.** Toggles, Tools, Automations and Setup lay out in columns, the widget editor shows
+  its style beside the preview, and Add opens as a panel. Phones look as before.
+
 ## 0.22.0
 
 - **Crash reports.** When Droidective crashes or freezes, its stack trace now goes to the

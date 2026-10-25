@@ -1,6 +1,7 @@
 package com.droidective.android.ui.tools
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -10,11 +11,13 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -32,9 +35,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -48,14 +53,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.reactotron.Reactotron
+import com.droidective.android.ui.AdaptiveColumns
 import com.droidective.android.ui.Symbols
 import com.droidective.core.reactotron.ReactotronEvent
 import com.droidective.core.reactotron.ReactotronKind
 import com.droidective.core.reactotron.ReactotronLabels
+import com.droidective.core.reactotron.ReactotronSnapshot
 import com.droidective.core.reactotron.ReactotronTimeline
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
@@ -70,12 +78,20 @@ private enum class ReactotronTab(val title: String) {
     Console("Console"),
 }
 
+/** What's open, one entry or one snapshot at a time, and how to open another. */
+private class ReactotronOpen(
+    val entry: Long?,
+    val snapshot: String?,
+    val onEntry: (Long) -> Unit,
+    val onSnapshot: (String) -> Unit,
+)
+
 /**
  * Reactotron on the phone: what the connected apps say — logs, API calls, state — newest first,
  * with their state, snapshots and commands a tab away. The server is one chip in the header; until
- * anything is connected or kept, one card says how to connect. The list catches up a few times a
- * second rather than on every command, so a chatty app can't make it lay out a hundred times a
- * second.
+ * anything is connected or kept, one card says how to connect. Where two panes fit, what's opened
+ * shows beside the list instead of in its place. The list catches up a few times a second rather
+ * than on every command, so a chatty app can't make it lay out a hundred times a second.
  */
 @Composable
 fun ReactotronTool(tool: ToolContext) {
@@ -97,45 +113,93 @@ fun ReactotronTool(tool: ToolContext) {
     var openSnapshot by rememberSaveable { mutableStateOf<String?>(null) }
     val snapshots by Reactotron.snapshots.collectAsStateWithLifecycle()
     val kept = rememberSaveableStateHolder()
-    val opened = open?.let { id -> entries.firstOrNull { it.id == id } }
-    if (opened != null) {
-        Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
-            Box(Modifier.padding(padding)) { EntryDetail(opened, tool, onBack = { open = null }) }
-        }
-        return
-    }
+    // Gone from the timeline or deleted, it closes.
+    val entry = open?.let { id -> entries.firstOrNull { it.id == id } }
     val snapshot = openSnapshot?.let { id -> snapshots.firstOrNull { it.id == id } }
-    if (snapshot != null) {
-        Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
-            Box(Modifier.padding(padding)) {
-                val close = { openSnapshot = null }
-                SnapshotDetail(snapshot, tool, onBack = close, onDeleted = close)
-            }
-        }
-        return
+    val opened =
+        ReactotronOpen(
+            open,
+            openSnapshot,
+            onEntry = {
+                open = it
+                openSnapshot = null
+            },
+            onSnapshot = {
+                openSnapshot = it
+                open = null
+            },
+        )
+    val closeSnapshot = { openSnapshot = null }
+    val beside: @Composable (ReactotronTab) -> Unit = { tab ->
+        OpenPane(tab, entry, snapshot, tool, onDeleted = closeSnapshot)
     }
-    kept.SaveableStateProvider(MAIN) {
-        Main(tool, entries, loaded, onOpen = { open = it }, onOpenSnapshot = { openSnapshot = it })
+    AdaptiveColumns(Modifier.fillMaxSize(), minWidth = PANE_MIN) { columns ->
+        val twoPanes = columns > 1
+        when {
+            !twoPanes && entry != null ->
+                DetailScaffold(tool) { EntryDetail(entry, tool, onBack = { open = null }) }
+            !twoPanes && snapshot != null ->
+                DetailScaffold(tool) {
+                    SnapshotDetail(
+                        snapshot,
+                        tool,
+                        onBack = closeSnapshot,
+                        onDeleted = closeSnapshot,
+                    )
+                }
+            else ->
+                kept.SaveableStateProvider(MAIN) {
+                    Main(tool, entries, loaded, opened, detail = beside.takeIf { twoPanes })
+                }
+        }
     }
 }
 
-/** The header, then the card that says how to connect, or the tabs once there's anything. */
+/** The pane beside the list: what's open there, or, with nothing open, what opens there. */
+@Composable
+private fun OpenPane(
+    tab: ReactotronTab,
+    entry: ReactotronTimeline.Entry?,
+    snapshot: ReactotronSnapshot?,
+    tool: ToolContext,
+    onDeleted: () -> Unit,
+) {
+    when {
+        entry != null -> key(entry.id) { EntryDetail(entry, tool, onBack = null) }
+        snapshot != null ->
+            key(snapshot.id) { SnapshotDetail(snapshot, tool, onBack = null, onDeleted) }
+        else -> Pick(tab)
+    }
+}
+
+/** A detail on its own, in place of the list: a phone's way. */
+@Composable
+private fun DetailScaffold(tool: ToolContext, content: @Composable () -> Unit) {
+    Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
+        Box(Modifier.padding(padding)) { content() }
+    }
+}
+
+/**
+ * The header, then the card that says how to connect, or the tabs once there's anything. With
+ * [detail], the tabs take the left pane and [detail] the right, given the tab showing.
+ */
 @Composable
 private fun Main(
     tool: ToolContext,
     entries: List<ReactotronTimeline.Entry>,
     loaded: Boolean,
-    onOpen: (Long) -> Unit,
-    onOpenSnapshot: (String) -> Unit,
+    opened: ReactotronOpen,
+    detail: (@Composable (ReactotronTab) -> Unit)?,
 ) {
     val clients by Reactotron.clients.collectAsStateWithLifecycle()
     val snapshots by Reactotron.snapshots.collectAsStateWithLifecycle()
     val watched by Reactotron.watched.collectAsStateWithLifecycle()
     var tabName by rememberSaveable { mutableStateOf(ReactotronTab.Timeline.name) }
     var server by rememberSaveable { mutableStateOf(false) }
-    val tabs = rememberSaveableStateHolder()
     val tab = ReactotronTab.valueOf(tabName)
     val nothing = clients.isEmpty() && entries.isEmpty() && snapshots.isEmpty() && watched.isEmpty()
+    val tabs: @Composable () -> Unit = { Tabs(tab, entries, opened, onTab = { tabName = it.name }) }
     BackHandler(onBack = tool.onBack)
     Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -150,38 +214,95 @@ private fun Main(
             when {
                 !loaded -> Unit
                 nothing ->
-                    Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
-                        ReactotronConnectCard()
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        ReactotronConnectCard(Modifier.widthIn(max = CARD_MAX))
                     }
-                else -> {
-                    PrimaryTabRow(selectedTabIndex = tab.ordinal) {
-                        ReactotronTab.entries.forEach { each ->
-                            Tab(
-                                selected = tab == each,
-                                onClick = { tabName = each.name },
-                                text = { Text(each.title, maxLines = 1) },
-                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                detail == null -> tabs()
+                else ->
+                    Row(Modifier.fillMaxSize()) {
+                        Column(Modifier.weight(1f).fillMaxHeight()) { tabs() }
+                        VerticalDivider()
+                        Box(Modifier.weight(DETAIL_WEIGHT).fillMaxHeight()) { detail(tab) }
                     }
-                    tabs.SaveableStateProvider(tab.name) {
-                        when (tab) {
-                            ReactotronTab.Timeline -> TimelineTab(entries, onOpen)
-                            ReactotronTab.State -> StateTab(entries, onOpen)
-                            ReactotronTab.Snapshots -> SnapshotsTab(onOpenSnapshot)
-                            ReactotronTab.Console -> ConsoleTab(entries, onOpen)
-                        }
-                    }
-                }
             }
         }
     }
     if (server) ReactotronServerSheet(onDismiss = { server = false })
 }
 
+/** The tab row, and the tab showing, each keeping its fields and scroll while another shows. */
+@Composable
+private fun Tabs(
+    tab: ReactotronTab,
+    entries: List<ReactotronTimeline.Entry>,
+    opened: ReactotronOpen,
+    onTab: (ReactotronTab) -> Unit,
+) {
+    val kept = rememberSaveableStateHolder()
+    PrimaryTabRow(selectedTabIndex = tab.ordinal) {
+        ReactotronTab.entries.forEach { each ->
+            Tab(
+                selected = tab == each,
+                onClick = { onTab(each) },
+                text = { Text(each.title, maxLines = 1) },
+                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+    kept.SaveableStateProvider(tab.name) {
+        when (tab) {
+            ReactotronTab.Timeline -> TimelineTab(entries, opened.entry, opened.onEntry)
+            ReactotronTab.State -> StateTab(entries, opened.onEntry)
+            ReactotronTab.Snapshots -> SnapshotsTab(opened.snapshot, opened.onSnapshot)
+            ReactotronTab.Console -> ConsoleTab(entries, opened.onEntry)
+        }
+    }
+}
+
+/** The right pane with nothing open in it, saying what opens there. */
+@Composable
+private fun Pick(tab: ReactotronTab) {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            painterResource(
+                Symbols.byName
+                    .getValue(if (tab == ReactotronTab.Snapshots) "history" else "data_object")
+                    .outlined
+            ),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(40.dp),
+        )
+        Text(
+            when (tab) {
+                ReactotronTab.Timeline -> "Pick an entry to see it whole here."
+                ReactotronTab.Snapshots -> "Pick a snapshot to see what it holds."
+                ReactotronTab.State,
+                ReactotronTab.Console -> "Tap an answer to see it whole here."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
 /** The timeline: search and kinds above, the count and Clear, then the entries, newest first. */
 @Composable
-private fun TimelineTab(entries: List<ReactotronTimeline.Entry>, onOpen: (Long) -> Unit) {
+private fun TimelineTab(
+    entries: List<ReactotronTimeline.Entry>,
+    selected: Long?,
+    onOpen: (Long) -> Unit,
+) {
     var query by rememberSaveable { mutableStateOf("") }
     var kindName by rememberSaveable { mutableStateOf<String?>(null) }
     val kind = kindName?.let(ReactotronKind::valueOf)
@@ -210,7 +331,9 @@ private fun TimelineTab(entries: List<ReactotronTimeline.Entry>, onOpen: (Long) 
                     clearable = entries.isNotEmpty(),
                 )
             }
-            items(visible, key = { it.id }) { entry -> EntryRow(entry, many) { onOpen(entry.id) } }
+            items(visible, key = { it.id }) { entry ->
+                EntryRow(entry, many, selected = entry.id == selected) { onOpen(entry.id) }
+            }
         }
     }
 }
@@ -287,10 +410,18 @@ private fun Filters(
 }
 
 @Composable
-private fun EntryRow(entry: ReactotronTimeline.Entry, showApp: Boolean, onClick: () -> Unit) {
+private fun EntryRow(
+    entry: ReactotronTimeline.Entry,
+    showApp: Boolean,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
     val event = entry.event
     Row(
         Modifier.fillMaxWidth()
+            .background(
+                if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -357,14 +488,14 @@ private fun StateTab(entries: List<ReactotronTimeline.Entry>, onOpen: (Long) -> 
 }
 
 @Composable
-private fun SnapshotsTab(onOpen: (String) -> Unit) {
+private fun SnapshotsTab(selected: String?, onOpen: (String) -> Unit) {
     val clients by Reactotron.clients.collectAsStateWithLifecycle()
     val snapshots by Reactotron.snapshots.collectAsStateWithLifecycle()
     TabColumn {
         if (clients.isEmpty() && snapshots.isEmpty()) {
             TabNote("Connect an app to take a snapshot of its state, kept here to put back.")
         }
-        SnapshotsSection(selected = null, onOpen)
+        SnapshotsSection(selected, onOpen)
     }
 }
 
@@ -409,6 +540,12 @@ private fun TabNote(text: String) {
 }
 
 private const val MAIN = "main"
+
+/** Two panes once each gets this much: the tabs and list, and what's open beside them. */
+private val PANE_MIN = 400.dp
+
+private const val DETAIL_WEIGHT = 1.2f
+private val CARD_MAX = 560.dp
 private const val COUNT = "count"
 private const val PACE_MILLIS = 250L
 private const val TAG_WIDTH = 92

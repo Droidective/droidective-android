@@ -30,10 +30,10 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `app/ui/tools/ReactotronTool.kt` | The screen: the header, the tabs (Timeline, State, Snapshots, Console), the timeline |
 | `app/ui/tools/ReactotronServerUi.kt` | The status chip, the server sheet, and the card that says how to connect |
 | `app/ui/tools/ReactotronEntryUi.kt` | An entry whole: overview, request or response, stack, payload; the frame every detail shares |
-| `app/ui/tools/ReactotronStateUi.kt` | Reading the apps' state, and dispatching an action |
-| `app/ui/tools/ReactotronWatchUi.kt` | Watch: the paths, and their values as they change |
+| `app/ui/tools/ReactotronStateUi.kt` | Reading the apps' state and dispatching an action, with what comes back shown in place |
+| `app/ui/tools/ReactotronWatchUi.kt` | Watch: each path with what it holds now, as it changes |
 | `app/ui/tools/ReactotronSnapshotsUi.kt` | Snapshots: taking one, and one whole, to restore, rename or delete |
-| `app/ui/tools/ReactotronConsoleUi.kt` | The commands the apps registered, to run |
+| `app/ui/tools/ReactotronConsoleUi.kt` | The commands the apps registered, by app, to run |
 | `app/ui/tools/ReactotronReplUi.kt` | The REPL: what the app shares, and code run in it |
 | `app/automation/ToolActions.kt` | A command run from a widget slot or an automation |
 
@@ -85,6 +85,12 @@ cleartext to localhost, which is all a `ws://` connection there needs.
   lines in the timeline; `repl.execute` sends the code, which the client runs with those values
   as `this`, and what it comes to is a REPL line in the timeline. The client doesn't catch what
   the code throws, so a throw brings nothing back, and the screen says so.
+- **An answer shows where it was asked for, and in the timeline too.** A state read, a dispatch
+  and a REPL run each list what came back after the button was pressed: the newest few entries of
+  that kind received since then (a dispatch, the ACTION of the type sent), each opening the entry
+  whole. With nothing after four seconds, the screen says what the app is missing. Watched values
+  sit under the path that asked for them (`ReactotronWatch.readings`), a `.*` path with a value
+  per key.
 - **A slot or an automation restores a snapshot by its id**, so renaming it changes nothing. A
   snapshot deleted, or dropped past the bounds, makes the slot say it is gone rather than guess
   at another.

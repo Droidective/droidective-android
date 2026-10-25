@@ -21,17 +21,21 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.reactotron.Reactotron
+import com.droidective.core.reactotron.ReactotronEvent
+import com.droidective.core.reactotron.ReactotronTimeline
 
 /**
  * Reactotron's REPL: the values an app shares with `Reactotron.repl(name, value)`, and code run in
- * the app with them as `this`. What it comes to arrives in the timeline, as a state read's does.
+ * the app with them as `this`. What it comes to shows here, and in the timeline as a state read's
+ * does.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ReplSection() {
+internal fun ReplSection(entries: List<ReactotronTimeline.Entry>, onOpen: (Long) -> Unit) {
     val shared by Reactotron.replNames.collectAsStateWithLifecycle()
     val clients by Reactotron.clients.collectAsStateWithLifecycle()
     var code by rememberSaveable { mutableStateOf("") }
+    var ran by rememberSaveable { mutableStateOf<Long?>(null) }
     val names = shared.filterKeys { it in clients }.values.flatten().distinct()
     ToolSection("REPL") {
         OutlinedButton(onClick = Reactotron::listRepl) { Text("List what the app shares") }
@@ -51,15 +55,23 @@ internal fun ReplSection() {
             modifier = Modifier.fillMaxWidth(),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(enabled = code.isNotBlank(), onClick = { Reactotron.runRepl(code) }) {
+            Button(
+                enabled = code.isNotBlank(),
+                onClick = {
+                    ran = System.currentTimeMillis()
+                    Reactotron.runRepl(code)
+                },
+            ) {
                 Text("Run in the app")
             }
             if (code.isNotEmpty()) OutlinedButton(onClick = { code = "" }) { Text("Clear") }
         }
         ToolNote(
             "It runs in the app, which needs Reactotron.repl(name, value) for anything to share. " +
-                "What it comes to shows in the timeline as REPL; code that throws brings nothing " +
-                "back."
+                "What it comes to shows here and in the timeline as REPL."
         )
+        Answers(entries, ran, THREW, onOpen) { it is ReactotronEvent.ReplResult }
     }
 }
+
+private const val THREW = "Nothing came back: code that throws brings nothing back."

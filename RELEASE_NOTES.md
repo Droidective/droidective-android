@@ -3,6 +3,34 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.25.0
+
+Network Traffic is easier to read, a new Network widget shows the IP address and Wi-Fi name, and
+rooted phones stop showing the superuser toast over and over.
+
+- **Network Traffic says why a call wasn't read.** A call your app made that Droidective didn't
+  read used to be a grey "Passed" or red "Failed" row with nothing in it. Now each such row says
+  why: the app isn't one of the apps being read, a host rule passes it through, or the app doesn't
+  trust Droidective's certificate. A card over the list names the debug builds affected, each with
+  a one-tap fix. "Show me how" gives the config file and the manifest line to copy so your debug
+  build trusts the certificate, then reads it again.
+- **The response comes first.** A request opens on its status, then the response body, with the
+  headers folded under it. Find in the header searches the URL, the headers and the bodies. Copy
+  as cURL, mocks, breakpoints and remaps are in the menu.
+- **A simpler screen.** One chip in the header says whether it's recording and opens the proxy
+  controls. Requests, Rules, Mocks and Certificate are tabs, and an empty list explains how to
+  start. On a tablet, the request you open shows beside the list.
+- **Network widget.** A new home-screen widget with the Wi-Fi name, this phone's IP address and
+  the public IP. Choose what it shows and which address a tap copies. It updates when the phone
+  joins a network. The Wi-Fi name needs Shell (Shizuku or root), and the public IP is looked up
+  from api64.ipify.org.
+- **Network slots.** Any bar, list, notification bar, folder or Quick Settings tile can show the
+  IP address, the public IP or the Wi-Fi name as text, and copy it on a tap.
+- **Root asks once.** With root on, every command Droidective ran started its own `su`, and Magisk
+  or KernelSU showed their "granted superuser" toast each time, even with the app in the
+  background. Now each app process uses one `su` session, and doesn't start it until something
+  needs root.
+
 ## 0.24.2
 
 - **Find inside a Reactotron entry.** Open an entry and tap the search button beside Copy: every

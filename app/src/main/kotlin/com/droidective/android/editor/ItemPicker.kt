@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -44,6 +45,8 @@ import androidx.core.graphics.drawable.toBitmap
 import com.droidective.android.droidective
 import com.droidective.android.ui.LevelChip
 import com.droidective.android.ui.Symbols
+import com.droidective.core.commands.DeepLink
+import com.droidective.core.commands.DeepLinkRepository
 import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
 import com.droidective.core.layout.LayoutKind
@@ -238,7 +241,12 @@ private fun AppList(query: String, onPick: (Item) -> Unit) {
 private fun CustomList(kind: LayoutKind, query: String, onPick: (Item) -> Unit) {
     val context = LocalContext.current
     val layouts = context.droidective.layouts
+    val deepLinks = context.droidective.deepLinks
     var askDeepLink by remember { mutableStateOf(false) }
+    val savedLinks by
+        produceState(emptyList<DeepLink>()) {
+            value = withContext(Dispatchers.IO) { deepLinks.all() }
+        }
     val providers by
         produceState(emptyList<Launchable>()) {
             value = launchables(context, Intent(Intent.ACTION_CREATE_SHORTCUT))
@@ -271,8 +279,21 @@ private fun CustomList(kind: LayoutKind, query: String, onPick: (Item) -> Unit) 
                 }
             }
         }
-        item { Header("Droidective") }
-        item { PickRow("Deep link", "link") { askDeepLink = true } }
+        item { Header("Deep links") }
+        items(DeepLinkRepository.matching(savedLinks, query), key = { "link-${it.id}" }) { link ->
+            ListItem(
+                headlineContent = { Text(link.label) },
+                supportingContent = {
+                    Text(link.uri, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                },
+                leadingContent = {
+                    Icon(painterResource(Symbols.byName.getValue("link").outlined), null)
+                },
+                modifier =
+                    Modifier.clickable { onPick(Item.DeepLink(key(), link.label, link.uri)) },
+            )
+        }
+        item { PickRow("New deep link", "add") { askDeepLink = true } }
         item { Header("Settings screens") }
         items(
             settingsScreens.filter { it.first.contains(query, ignoreCase = true) },
@@ -307,6 +328,8 @@ private fun CustomList(kind: LayoutKind, query: String, onPick: (Item) -> Unit) 
     if (askDeepLink) {
         DeepLinkDialog(onDismiss = { askDeepLink = false }) { label, uri ->
             askDeepLink = false
+            // Into the Deep Links tool's list too, so the link is one tap away anywhere else.
+            deepLinks.save(DeepLink(UUID.randomUUID().toString(), label, uri))
             onPick(Item.DeepLink(key(), label, uri))
         }
     }
@@ -337,7 +360,7 @@ private fun DeepLinkDialog(onDismiss: () -> Unit, onSave: (String, String) -> Un
     var uri by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Deep link") },
+        title = { Text("New deep link") },
         text = {
             Column {
                 OutlinedTextField(
@@ -356,7 +379,7 @@ private fun DeepLinkDialog(onDismiss: () -> Unit, onSave: (String, String) -> Un
         },
         confirmButton = {
             TextButton(
-                enabled = label.isNotBlank() && "://" in uri,
+                enabled = label.isNotBlank() && DeepLinkRepository.isLink(uri),
                 onClick = { onSave(label.trim(), uri.trim()) },
             ) {
                 Text("Add")

@@ -32,7 +32,7 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `app/ui/tools/ReactotronEntryUi.kt` | An entry whole: overview, request or response, stack, payload; the frame every detail shares |
 | `app/ui/tools/ReactotronStateUi.kt` | Reading the apps' state and dispatching an action, with what comes back shown in place |
 | `app/ui/tools/ReactotronWatchUi.kt` | Watch: each path with what it holds now, as it changes |
-| `app/ui/tools/ReactotronSnapshotsUi.kt` | Snapshots: taking one, and one whole, to restore, rename or delete |
+| `app/ui/tools/ReactotronSnapshotsUi.kt` | Snapshots: taking one, the ones kept, and one whole to restore, rename or delete (Delete asks first) |
 | `app/ui/tools/ReactotronConsoleUi.kt` | The commands the apps registered, by app, to run |
 | `app/ui/tools/ReactotronReplUi.kt` | The REPL: what the app shares, and code run in it |
 | `app/automation/ToolActions.kt` | A command run from a widget slot or an automation |

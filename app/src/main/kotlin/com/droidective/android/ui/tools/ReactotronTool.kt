@@ -106,8 +106,12 @@ fun ReactotronTool(tool: ToolContext) {
     }
     val snapshot = openSnapshot?.let { id -> snapshots.firstOrNull { it.id == id } }
     if (snapshot != null) {
-        val back = ToolContext(tool.snackbar, onBack = { openSnapshot = null }, tool.onOpenSetup)
-        SnapshotDetail(snapshot, back)
+        Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
+            Box(Modifier.padding(padding)) {
+                val close = { openSnapshot = null }
+                SnapshotDetail(snapshot, tool, onBack = close, onDeleted = close)
+            }
+        }
         return
     }
     kept.SaveableStateProvider(MAIN) {
@@ -360,7 +364,7 @@ private fun SnapshotsTab(onOpen: (String) -> Unit) {
         if (clients.isEmpty() && snapshots.isEmpty()) {
             TabNote("Connect an app to take a snapshot of its state, kept here to put back.")
         }
-        SnapshotsSection(onOpen)
+        SnapshotsSection(selected = null, onOpen)
     }
 }
 

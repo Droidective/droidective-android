@@ -64,6 +64,55 @@ class ReactotronWatchTest {
     }
 
     @Test
+    fun eachWatchedPathGetsWhatTheConnectedAppsSayItHolds() {
+        val values =
+            mapOf(
+                1 to
+                    listOf(
+                        "cart.items" to JsonPrimitive("tea"),
+                        "user.name" to JsonPrimitive("Ada"),
+                        "user.plan" to JsonPrimitive("pro"),
+                    ),
+                2 to listOf("cart.items" to JsonPrimitive("cake")),
+                3 to listOf("cart.items" to JsonPrimitive("gone")),
+            )
+        val readings =
+            ReactotronWatch.readings(
+                listOf("user.*", "cart.items", "user.name", "basket"),
+                values,
+                connected = setOf(1, 2),
+            )
+        assertEquals(
+            listOf(
+                "user.*" to
+                    listOf(
+                        ReactotronWatch.Reading(1, "user.name", JsonPrimitive("Ada")),
+                        ReactotronWatch.Reading(1, "user.plan", JsonPrimitive("pro")),
+                    ),
+                "cart.items" to
+                    listOf(
+                        ReactotronWatch.Reading(1, "cart.items", JsonPrimitive("tea")),
+                        ReactotronWatch.Reading(2, "cart.items", JsonPrimitive("cake")),
+                    ),
+                "user.name" to
+                    listOf(ReactotronWatch.Reading(1, "user.name", JsonPrimitive("Ada"))),
+                "basket" to emptyList(),
+            ),
+            readings,
+        )
+    }
+
+    @Test
+    fun noPathsOrNoAppsMeanNoReadings() {
+        val values = mapOf(1 to listOf("cart" to JsonPrimitive(1)))
+        assertEquals(emptyList(), ReactotronWatch.readings(emptyList(), values, setOf(1)))
+        assertEquals(
+            listOf("cart" to emptyList()),
+            ReactotronWatch.readings(listOf("cart"), values, connected = emptySet()),
+        )
+    }
+
+    @Test
     fun anythingElseIsNotAboutWatchedPaths() {
         val values =
             ReactotronCommand.parse(

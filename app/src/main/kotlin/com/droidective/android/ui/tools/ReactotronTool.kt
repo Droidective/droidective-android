@@ -163,9 +163,9 @@ private fun Main(
                     tabs.SaveableStateProvider(tab.name) {
                         when (tab) {
                             ReactotronTab.Timeline -> TimelineTab(entries, onOpen)
-                            ReactotronTab.State -> StateTab()
+                            ReactotronTab.State -> StateTab(entries, onOpen)
                             ReactotronTab.Snapshots -> SnapshotsTab(onOpenSnapshot)
-                            ReactotronTab.Console -> ConsoleTab()
+                            ReactotronTab.Console -> ConsoleTab(entries, onOpen)
                         }
                     }
                 }
@@ -339,11 +339,15 @@ private fun tagColor(event: ReactotronEvent): Color =
 
 /** Reading and changing the apps' state, and the paths watched in it. */
 @Composable
-private fun StateTab() {
+private fun StateTab(entries: List<ReactotronTimeline.Entry>, onOpen: (Long) -> Unit) {
     val clients by Reactotron.clients.collectAsStateWithLifecycle()
     TabColumn {
-        if (clients.isEmpty()) TabNote("Connect an app to read its state or dispatch an action.")
-        else StateSection()
+        if (clients.isEmpty()) {
+            TabNote("Connect an app to read its state or dispatch an action.")
+        } else {
+            ReadSection(entries, onOpen)
+            DispatchSection(entries, onOpen)
+        }
         WatchSection()
     }
 }
@@ -362,14 +366,14 @@ private fun SnapshotsTab(onOpen: (String) -> Unit) {
 
 /** What runs in the apps: the commands they registered, and code in their REPL. */
 @Composable
-private fun ConsoleTab() {
+private fun ConsoleTab(entries: List<ReactotronTimeline.Entry>, onOpen: (Long) -> Unit) {
     val clients by Reactotron.clients.collectAsStateWithLifecycle()
     TabColumn {
         if (clients.isEmpty()) {
             TabNote("Connect an app to run its commands or code in it.")
         } else {
             CommandsSection()
-            ReplSection()
+            ReplSection(entries, onOpen)
         }
     }
 }

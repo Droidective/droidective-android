@@ -99,6 +99,7 @@ expand_less
 view_list
 view_column
 smart_button
+chevron_right
 # Widget actions: what an action slot draws (Cells.actionIcon).
 block
 cleaning_services

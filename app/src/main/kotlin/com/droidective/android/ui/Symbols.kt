@@ -57,6 +57,8 @@ object Symbols {
                 Symbol(R.drawable.sym_cast_connected, R.drawable.sym_cast_connected_fill),
             "chat" to Symbol(R.drawable.sym_chat, R.drawable.sym_chat_fill),
             "check_circle" to Symbol(R.drawable.sym_check_circle, R.drawable.sym_check_circle_fill),
+            "chevron_right" to
+                Symbol(R.drawable.sym_chevron_right, R.drawable.sym_chevron_right_fill),
             "cleaning_services" to
                 Symbol(R.drawable.sym_cleaning_services, R.drawable.sym_cleaning_services_fill),
             "close" to Symbol(R.drawable.sym_close, R.drawable.sym_close_fill),

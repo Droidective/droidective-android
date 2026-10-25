@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -14,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,8 +37,9 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * State paths watched in the apps: what each holds, kept up to date as the app's state changes, and
- * asked of every app that connects. Shown while an app is connected or any path is watched.
+ * State paths watched in the apps, each with what it holds now, kept up to date as the app's state
+ * changes and asked of every app that connects. Shown while an app is connected or any path is
+ * watched.
  */
 @Composable
 internal fun WatchSection() {
@@ -46,6 +49,11 @@ internal fun WatchSection() {
     val clients by Reactotron.clients.collectAsStateWithLifecycle()
     var path by rememberSaveable { mutableStateOf("") }
     if (watched.isEmpty() && clients.isEmpty()) return
+    val readings =
+        remember(watched, values, clients) {
+            ReactotronWatch.readings(watched, values, clients.keys)
+        }
+    val many = clients.values.map { it.name }.distinct().size > 1
     ToolSection("Watch") {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -75,48 +83,67 @@ internal fun WatchSection() {
                     ".* to watch each key under it. The app needs reactotron-redux or " +
                     "reactotron-mst."
             )
+        } else if (clients.isEmpty()) {
+            ToolNote("Their values show while an app is connected.")
         }
-        watched.forEach { watching ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(watching, fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
-                IconButton(
-                    onClick = { app.scope.launch(Dispatchers.IO) { Reactotron.unwatch(watching) } }
-                ) {
-                    Icon(
-                        painterResource(Symbols.byName.getValue("close").outlined),
-                        "Stop watching $watching",
-                    )
-                }
+        readings.forEach { (watching, read) ->
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+            WatchedPath(
+                watching,
+                read,
+                waiting = clients.isNotEmpty() && read.isEmpty(),
+                appOf = { connection -> clients[connection]?.name?.takeIf { many } },
+                onRemove = { app.scope.launch(Dispatchers.IO) { Reactotron.unwatch(watching) } },
+            )
+        }
+    }
+}
+
+/** One watched path, its remove button, and what each connected app says it holds. */
+@Composable
+private fun WatchedPath(
+    path: String,
+    readings: List<ReactotronWatch.Reading>,
+    waiting: Boolean,
+    appOf: (Int) -> String?,
+    onRemove: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                path,
+                fontFamily = FontFamily.Monospace,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f).padding(start = 4.dp),
+            )
+            IconButton(onClick = onRemove) {
+                Icon(
+                    painterResource(Symbols.byName.getValue("close").outlined),
+                    "Stop watching $path",
+                )
             }
         }
-        val said =
-            values
-                .filterKeys { it in clients }
-                .mapValues { (_, changes) ->
-                    changes.filter { (at, _) -> ReactotronWatch.answers(at, watched) }
-                }
-                .filterValues { it.isNotEmpty() }
-        if (watched.isNotEmpty() && clients.isNotEmpty() && said.isEmpty()) {
-            ToolNote("Nothing back yet: the app sends them once its store is set up.")
-        }
-        val many = said.size > 1
-        said.forEach { (connection, changes) ->
-            if (many) {
-                Text(clients.getValue(connection).name, style = MaterialTheme.typography.labelLarge)
-            }
-            changes.forEach { (at, value) -> WatchedValue(at, value) }
+        if (waiting) ToolNote("Nothing back yet: the app sends it once its store is set up.")
+        readings.forEach { reading ->
+            // A starred path's readings are its keys, each named; the path itself needs no name.
+            val label =
+                listOfNotNull(reading.path.takeIf { it != path }, appOf(reading.connection))
+                    .joinToString(" · ")
+            WatchedValue(label, reading.value)
         }
     }
 }
 
 @Composable
-private fun WatchedValue(path: String, value: JsonElement) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Text(
-            path,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+private fun WatchedValue(label: String, value: JsonElement) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
+        if (label.isNotEmpty()) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Text(
             shown(value),
             fontFamily = FontFamily.Monospace,

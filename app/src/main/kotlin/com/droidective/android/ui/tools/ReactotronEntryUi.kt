@@ -106,7 +106,7 @@ internal fun EntryDetail(
             if (payload != null) {
                 IconButton(
                     onClick = {
-                        context.copy("Reactotron payload", pretty(payload))
+                        context.copy("Reactotron payload", prettyPayload(payload))
                         say("Copied the payload")
                     }
                 ) {
@@ -244,7 +244,7 @@ private fun Headers(headers: JsonElement?) {
 @Composable
 internal fun ReactotronPayload(title: String, value: JsonElement?) {
     if (value == null || value == JsonNull) return
-    val shown = remember(value) { pretty(value) }
+    val shown = remember(value) { prettyPayload(value) }
     ToolSection(title) {
         SelectionContainer {
             Text(
@@ -258,7 +258,7 @@ internal fun ReactotronPayload(title: String, value: JsonElement?) {
     }
 }
 
-private fun pretty(value: JsonElement): String {
+internal fun prettyPayload(value: JsonElement): String {
     // An API body arrives as a string more often than not; one that is JSON reads as JSON.
     val text = (value as? JsonPrimitive)?.takeIf { it.isString }?.content
     val parsed = text?.let {

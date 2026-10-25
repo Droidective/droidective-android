@@ -12,6 +12,9 @@ import kotlinx.serialization.json.JsonPrimitive
  * as one value for each key under it.
  */
 class ReactotronWatch {
+    /** A value [connection] said, at [path], under the watched path it answers. */
+    data class Reading(val connection: Int, val path: String, val value: JsonElement)
+
     private val values = LinkedHashMap<Int, List<Pair<String, JsonElement>>>()
 
     /** Takes in [command] when it says what watched paths hold; whether it did. */
@@ -51,6 +54,26 @@ class ReactotronWatch {
         fun answers(path: String, watched: List<String>): Boolean = watched.any { each ->
             val parent = each.removeSuffix(STAR)
             each == path || (each.endsWith(STAR) && (path == parent || path.startsWith("$parent.")))
+        }
+
+        /**
+         * Each of [watched], in order, with what the [connected] apps last said it holds in
+         * [values]: the path itself, or a reading for each key under an `x.*`. A value that answers
+         * two watched paths is under both; a path nothing answers has no readings.
+         */
+        fun readings(
+            watched: List<String>,
+            values: Map<Int, List<Pair<String, JsonElement>>>,
+            connected: Set<Int>,
+        ): List<Pair<String, List<Reading>>> = watched.map { each ->
+            each to
+                values
+                    .filterKeys { it in connected }
+                    .flatMap { (connection, said) ->
+                        said
+                            .filter { (path, _) -> answers(path, listOf(each)) }
+                            .map { (path, value) -> Reading(connection, path, value) }
+                    }
         }
 
         private const val STAR = ".*"

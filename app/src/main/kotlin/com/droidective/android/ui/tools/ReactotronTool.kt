@@ -514,7 +514,7 @@ private fun ConsoleTab(entries: List<ReactotronTimeline.Entry>, onOpen: (Long) -
 }
 
 @Composable
-private fun TabColumn(content: @Composable ColumnScope.() -> Unit) {
+internal fun TabColumn(content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -524,7 +524,7 @@ private fun TabColumn(content: @Composable ColumnScope.() -> Unit) {
 
 /** A tab with nothing to show until an app connects, saying so. */
 @Composable
-private fun TabNote(text: String) {
+internal fun TabNote(text: String) {
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,

@@ -53,65 +53,61 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Which apps and hosts are read and which are left alone, kept across runs. */
+/** The Rules tab: which apps and hosts are read and which are left alone, kept across runs. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun RulesSection(
-    flows: List<Flow>,
-    onEditMock: (Mock, Boolean) -> Unit,
-    onEditBreakpoint: (Breakpoint, Boolean) -> Unit,
-    onEditRemap: (Remap, Boolean) -> Unit,
-) {
+internal fun RulesTab(flows: List<Flow>) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) { TrafficProxy.loadRules(context) } }
     val rules by TrafficProxy.rules.collectAsStateWithLifecycle()
     val access by context.droidective.access.access.collectAsStateWithLifecycle()
     val labels = remember { AppLabels(context) }
-    var expanded by rememberSaveable { mutableStateOf(false) }
     var choosing by remember { mutableStateOf(false) }
     val change = { new: TrafficRules -> scope.saveRules(context, new) }
-    ToolSection("Rules") {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(summary(rules, labels), modifier = Modifier.weight(1f).padding(start = 4.dp))
-            TextButton(onClick = { expanded = !expanded }) {
-                Text(if (expanded) "Hide" else "Edit")
+    TabColumn {
+        Text(
+            summary(rules, labels),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
+        ToolSection("Apps to read") {
+            if (rules.apps.isEmpty()) {
+                ToolNote("Every app. Choose one to leave every other app alone.")
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                rules.apps.forEach { packageName ->
+                    Removable(labels.of(packageName)) { change(rules.withoutApp(packageName)) }
+                }
+                AssistChip(onClick = { choosing = true }, label = { Text("Choose an app") })
+            }
+            if (rules.apps.isNotEmpty() && !access.allows(AccessLevel.Shell)) {
+                ToolNote(
+                    "Telling apps apart needs Shell. Without it no connection's app is known, so " +
+                        "nothing is read."
+                )
             }
         }
-        if (!expanded) return@ToolSection
-        Label("Apps to read")
-        if (rules.apps.isEmpty()) ToolNote("Every app. Choose one to leave every other app alone.")
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            rules.apps.forEach { packageName ->
-                Removable(labels.of(packageName)) { change(rules.withoutApp(packageName)) }
-            }
-            AssistChip(onClick = { choosing = true }, label = { Text("Choose an app") })
-        }
-        if (rules.apps.isNotEmpty() && !access.allows(AccessLevel.Shell)) {
-            ToolNote(
-                "Telling apps apart needs Shell. Without it no connection's app is known, so " +
-                    "nothing is read."
+        ToolSection("Hosts") {
+            Patterns(
+                title = "Pass these hosts through",
+                note = "Never read, for any app. For hosts an app pins, and anything private.",
+                patterns = rules.passThrough,
+                onAdd = { change(rules.passingThrough(it)) },
+                onRemove = { change(rules.notPassingThrough(it)) },
+            )
+            Patterns(
+                title = "Read only these hosts",
+                note = "Empty reads every host. *.example.com is its subdomains, * is every host.",
+                patterns = rules.readOnly,
+                onAdd = { change(rules.readingOnly(it)) },
+                onRemove = { change(rules.notReadingOnly(it)) },
             )
         }
-        Patterns(
-            title = "Pass these hosts through",
-            note = "Never read, for any app. For hosts an app pins, and anything private.",
-            patterns = rules.passThrough,
-            onAdd = { change(rules.passingThrough(it)) },
-            onRemove = { change(rules.notPassingThrough(it)) },
-        )
-        Patterns(
-            title = "Read only these hosts",
-            note = "Empty reads every host. *.example.com is its subdomains, * is every host.",
-            patterns = rules.readOnly,
-            onAdd = { change(rules.readingOnly(it)) },
-            onRemove = { change(rules.notReadingOnly(it)) },
-        )
-        StepAsideRow(rules.stepAside) { change(rules.copy(stepAside = it)) }
-        Refused(flows, labels)
-        Mocks(onEditMock)
-        Remaps(onEditRemap)
-        Breakpoints(onEditBreakpoint)
+        ToolSection("Apps that refuse the certificate") {
+            StepAsideRow(rules.stepAside) { change(rules.copy(stepAside = it)) }
+            Refused(flows, labels)
+        }
     }
     if (choosing) {
         AppChooser(
@@ -122,6 +118,20 @@ internal fun RulesSection(
                 choosing = false
             },
         )
+    }
+}
+
+/** The Mocks tab: answers given here, requests sent to another server, and breakpoints. */
+@Composable
+internal fun MocksTab(
+    onEditMock: (Mock, Boolean) -> Unit,
+    onEditBreakpoint: (Breakpoint, Boolean) -> Unit,
+    onEditRemap: (Remap, Boolean) -> Unit,
+) {
+    TabColumn {
+        ToolSection("Mocked answers") { Mocks(onEditMock) }
+        ToolSection("Sent to another server") { Remaps(onEditRemap) }
+        ToolSection("Breakpoints") { Breakpoints(onEditBreakpoint) }
     }
 }
 
@@ -261,7 +271,6 @@ private fun Mocks(onEdit: (Mock, Boolean) -> Unit) {
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) { TrafficProxy.loadMocks(context) } }
     val mocks by TrafficProxy.mocks.collectAsStateWithLifecycle()
-    Label("Mocked answers")
     ToolNote(
         if (mocks.isEmpty()) "None yet. Mock a response from a request in the list, or start one."
         else "Matching requests are answered here and never reach the server."
@@ -289,7 +298,6 @@ private fun Breakpoints(onEdit: (Breakpoint, Boolean) -> Unit) {
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) { Holds.load(context) } }
     val points by Holds.breakpoints.collectAsStateWithLifecycle()
-    Label("Breakpoints")
     ToolNote(
         if (points.isEmpty()) "None yet. Hold requests like one in the list, or start one."
         else "Matching requests, or their answers, wait for you to let them go or change them."
@@ -317,7 +325,6 @@ private fun Remaps(onEdit: (Remap, Boolean) -> Unit) {
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) { TrafficProxy.loadRemaps(context) } }
     val remaps by TrafficProxy.remaps.collectAsStateWithLifecycle()
-    Label("Sent to another server")
     ToolNote(
         if (remaps.isEmpty())
             "None yet. Send a request's server elsewhere from the list, or start one."

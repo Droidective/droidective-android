@@ -82,8 +82,10 @@ The Android side is in `app`:
 | `proxy/ProxyService.kt` | The `specialUse` foreground service, and `ProxyNotices` |
 | `proxy/TrafficExport.kt` | Saving flows as HAR to Downloads, and the share sheet |
 | `proxy/ProtoFolder.kt` | The `protos` folder: descriptor sets pushed there, read as one schema |
-| `ui/tools/NetworkTrafficTool.kt` | The screen: proxy, certificate, rules, the list |
-| `ui/tools/NetworkTrafficRules.kt` | The rules editor |
+| `ui/tools/NetworkTrafficTool.kt` | The screen: the header and its proxy chip, the tabs (Requests, Rules, Mocks, Certificate), the list |
+| `ui/tools/NetworkTrafficProxyUi.kt` | The proxy chip and sheet: start and stop, pointing the phone, network speed; and the card that says how to start |
+| `ui/tools/NetworkTrafficCertificate.kt` | The Certificate tab, installing it, and the steps that make your app trust it |
+| `ui/tools/NetworkTrafficRules.kt` | The Rules tab, and the Mocks tab's lists of mocks, remaps and breakpoints |
 | `ui/tools/NetworkTrafficDetail.kt` | One flow: overview, headers, body, cURL, rule shortcuts |
 | `ui/tools/NetworkTrafficUnread.kt` | Why calls weren't read: the banner, a flow's reason and fix, and the sheet that makes your app trust the certificate |
 | `ui/tools/NetworkTrafficCompose.kt` | Edit and send: a captured request changed and sent again |

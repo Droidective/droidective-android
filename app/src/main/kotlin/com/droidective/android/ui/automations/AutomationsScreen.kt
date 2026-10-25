@@ -48,6 +48,8 @@ import com.droidective.android.automation.Automations
 import com.droidective.android.automation.RunAutomationActivity
 import com.droidective.android.automation.RunRequest
 import com.droidective.android.droidective
+import com.droidective.android.ui.AdaptiveColumns
+import com.droidective.android.ui.AdaptiveRows
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.copy
 import com.droidective.android.ui.tools.ToolContext
@@ -161,22 +163,28 @@ private fun AutomationList(tool: ToolContext, onOpen: (String?) -> Unit) {
             }
         }
         if (automations.isEmpty()) Examples { example -> save(example) }
-        automations.forEach { automation ->
-            AutomationCard(
-                automation,
-                last = history.firstOrNull { it.automationId == automation.id },
-                onEnabled = { on ->
-                    if (on) reviewing = automation else save(automation.copy(enabled = false))
-                },
-                onRun = {
-                    Automations.runNow(context, automation.id, Automations.CAUSE_MANUAL)
-                    scope.launch {
-                        tool.say("Running “${automation.name}”. History has how it went.")
-                    }
-                },
-                onEdit = { onOpen(automation.id) },
-                onExport = { transfer.export(listOf(automation)) },
-            )
+        AdaptiveColumns { columns ->
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                AdaptiveRows(automations, columns) { automation, modifier ->
+                    AutomationCard(
+                        automation,
+                        last = history.firstOrNull { it.automationId == automation.id },
+                        onEnabled = { on ->
+                            if (on) reviewing = automation
+                            else save(automation.copy(enabled = false))
+                        },
+                        onRun = {
+                            Automations.runNow(context, automation.id, Automations.CAUSE_MANUAL)
+                            scope.launch {
+                                tool.say("Running “${automation.name}”. History has how it went.")
+                            }
+                        },
+                        onEdit = { onOpen(automation.id) },
+                        onExport = { transfer.export(listOf(automation)) },
+                        modifier = modifier,
+                    )
+                }
+            }
         }
     }
     reviewing?.let { automation ->
@@ -199,6 +207,7 @@ private fun AutomationCard(
     onRun: () -> Unit,
     onEdit: () -> Unit,
     onExport: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val problem = remember(automation) { AutomationRules.problems(automation).firstOrNull() }
@@ -206,7 +215,7 @@ private fun AutomationCard(
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

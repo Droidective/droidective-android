@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -40,8 +39,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.droidective
 import com.droidective.android.shelf.Shelf
 import com.droidective.android.shelf.ToolShortcuts
+import com.droidective.android.ui.AdaptiveColumns
 import com.droidective.android.ui.LevelChip
 import com.droidective.android.ui.Symbols
+import com.droidective.android.ui.adaptiveItems
+import com.droidective.android.ui.rowContainerColor
 import com.droidective.core.features.FeatureDef
 import com.droidective.core.features.Features
 import kotlinx.coroutines.Dispatchers
@@ -139,32 +141,40 @@ private fun ToolList(onOpen: (String) -> Unit, snackbar: SnackbarHostState) {
                 }
             },
         )
-    val row: @Composable (FeatureDef) -> Unit = { feature ->
-        ToolRow(feature, missing = !access.allows(feature.level), actions) { onOpen(feature.id) }
+    val row: @Composable (FeatureDef, Modifier) -> Unit = { feature, modifier ->
+        ToolRow(feature, missing = !access.allows(feature.level), actions, modifier) {
+            onOpen(feature.id)
+        }
     }
-    LazyColumn(Modifier.fillMaxSize().windowInsetsPadding(ScaffoldDefaults.contentWindowInsets)) {
-        item {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = { Text("Search tools") },
-                leadingIcon = {
-                    Icon(painterResource(Symbols.byName.getValue("search").outlined), null)
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-            )
-        }
-        if (query.isBlank()) {
-            shelfSection("pinned", "Pinned", shelf.pinned, row)
-            shelfSection("recent", "Recent", shelf.recentNotPinned(RECENT_SHOWN), row)
-        }
-        visible
-            .groupBy { it.category }
-            .forEach { (category, features) ->
-                item(key = "header-${category.name}") { Header(category.title) }
-                items(features, key = { it.id }) { feature -> row(feature) }
+    AdaptiveColumns(
+        Modifier.fillMaxSize().windowInsetsPadding(ScaffoldDefaults.contentWindowInsets)
+    ) { columns ->
+        LazyColumn(Modifier.fillMaxSize()) {
+            item {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text("Search tools") },
+                    leadingIcon = {
+                        Icon(painterResource(Symbols.byName.getValue("search").outlined), null)
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                )
             }
+            if (query.isBlank()) {
+                shelfSection("pinned", "Pinned", shelf.pinned, columns, row)
+                shelfSection("recent", "Recent", shelf.recentNotPinned(RECENT_SHOWN), columns, row)
+            }
+            visible
+                .groupBy { it.category }
+                .forEach { (category, features) ->
+                    item(key = "header-${category.name}") { Header(category.title) }
+                    adaptiveItems(features, columns, key = { it.id }) { feature, modifier ->
+                        row(feature, modifier)
+                    }
+                }
+        }
     }
 }
 
@@ -173,12 +183,15 @@ private fun LazyListScope.shelfSection(
     key: String,
     title: String,
     ids: List<String>,
-    row: @Composable (FeatureDef) -> Unit,
+    columns: Int,
+    row: @Composable (FeatureDef, Modifier) -> Unit,
 ) {
     val features = ids.mapNotNull(Features::byId)
     if (features.isEmpty()) return
     item(key = "header-$key") { Header(title) }
-    items(features, key = { "$key-${it.id}" }) { feature -> row(feature) }
+    adaptiveItems(features, columns, key = { "$key-${it.id}" }) { feature, modifier ->
+        row(feature, modifier)
+    }
 }
 
 @Composable
@@ -204,11 +217,12 @@ private fun ToolRow(
     feature: FeatureDef,
     missing: Boolean,
     actions: ToolActions,
+    modifier: Modifier,
     onClick: () -> Unit,
 ) {
     val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
-    Box {
+    Box(modifier) {
         ListItem(
             headlineContent = { Text(feature.title) },
             supportingContent = { Text(feature.subtitle) },
@@ -220,9 +234,10 @@ private fun ToolRow(
                 )
             },
             trailingContent = { LevelChip(feature.level, missing) },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+            colors = ListItemDefaults.colors(containerColor = rowContainerColor()),
             modifier =
-                Modifier.padding(horizontal = 4.dp)
+                Modifier.fillMaxSize()
+                    .padding(horizontal = 4.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .combinedClickable(onClick = onClick, onLongClick = { menu = true }),
         )

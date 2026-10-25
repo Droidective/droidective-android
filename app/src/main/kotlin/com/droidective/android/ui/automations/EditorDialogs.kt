@@ -308,6 +308,7 @@ private fun actionFor(item: Item): Action? =
         is Item.Action -> item.action
         is Item.Toggle,
         is Item.Folder,
+        is Item.Network,
         is Item.Tool -> null
     }
 

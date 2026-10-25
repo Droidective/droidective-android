@@ -11,6 +11,10 @@ import com.droidective.core.automations.Trigger
 import com.droidective.core.automations.level
 import com.droidective.core.commands.CustomCommand
 import com.droidective.core.location.Coordinates
+import com.droidective.core.network.NetworkCards
+import com.droidective.core.network.NetworkFact
+import com.droidective.core.network.NetworkNow
+import com.droidective.core.network.Transport
 import com.droidective.core.store.JsonFileStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -123,6 +127,45 @@ class SlotItemsTest {
         assertTrue("\"type\": \"automation\"" in json, json)
         assertTrue("\"type\": \"action\"" in json && "\"type\": \"set-toggle\"" in json, json)
         assertTrue("\"type\": \"tool\"" in json, json)
+        assertEquals(layout, JsonFileStore.json.decodeFromString(Layout.serializer(), json))
+    }
+
+    @Test
+    fun aNetworkSlotShowsWhatItIsForAndCopiesIt() {
+        val now = NetworkNow(Transport.Wifi, "Home 5G", "192.168.1.23", "203.0.113.7")
+        fun network(fact: NetworkFact, known: NetworkNow? = now) =
+            Cells.plan(
+                Item.Network("n", fact),
+                state = null,
+                noShell,
+                folderName = { null },
+                network = { known?.let { now -> NetworkCards.fact(now, it) } },
+            )
+        val ip = network(NetworkFact.LocalIp)
+        assertEquals("192.168.1.23", ip?.label)
+        assertEquals("IP address", ip?.state, "with state text on, it says what it is")
+        assertEquals(Tap.Copy("192.168.1.23"), ip?.tap)
+        assertEquals(CellIcon.Symbol("lan"), ip?.icon)
+        assertTrue(ip?.readout == true, "its text shows even where labels are off")
+        assertEquals(Tap.Copy("203.0.113.7"), network(NetworkFact.PublicIp)?.tap)
+        assertEquals("Home 5G", network(NetworkFact.Name)?.label)
+        // Not known yet: it says what it would show and opens the IP tool, which says why.
+        val unknown = network(NetworkFact.PublicIp, known = null)
+        assertEquals("Public IP", unknown?.label)
+        assertEquals(Tap.Open(Target.Tool("get-ip")), unknown?.tap)
+    }
+
+    @Test
+    fun aNetworkSlotKeepsAStableFileFormat() {
+        val layout =
+            Layout(
+                "home",
+                LayoutKind.Bar,
+                "Home",
+                items = listOf(Item.Network("n", NetworkFact.LocalIp)),
+            )
+        val json = JsonFileStore.json.encodeToString(Layout.serializer(), layout)
+        assertTrue("\"type\": \"network\"" in json && "\"shows\": \"local-ip\"" in json, json)
         assertEquals(layout, JsonFileStore.json.decodeFromString(Layout.serializer(), json))
     }
 

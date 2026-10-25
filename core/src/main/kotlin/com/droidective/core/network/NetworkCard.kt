@@ -27,6 +27,14 @@ data class NetworkNow(
     val publicIp: String? = null,
 )
 
+/** One fact about the network that a slot shows as its label, and a tap on it copies. */
+@Serializable
+enum class NetworkFact(val title: String, val symbol: String) {
+    @SerialName("local-ip") LocalIp("IP address", "lan"),
+    @SerialName("public-ip") PublicIp("Public IP", "public"),
+    @SerialName("name") Name("Wi-Fi name", "wifi"),
+}
+
 /** Which address a tap on the widget copies. */
 @Serializable
 enum class Copies(val title: String) {
@@ -83,6 +91,16 @@ object NetworkCards {
         when (card.copies) {
             Copies.Local -> now.localIp
             Copies.Public -> now.publicIp
+        }
+
+    /**
+     * What a slot showing [fact] says now: the address or the name, or null when it isn't known.
+     */
+    fun fact(now: NetworkNow, fact: NetworkFact): String? =
+        when (fact) {
+            NetworkFact.LocalIp -> now.localIp
+            NetworkFact.PublicIp -> now.publicIp
+            NetworkFact.Name -> title(now)
         }
 
     private const val NONE = "—"

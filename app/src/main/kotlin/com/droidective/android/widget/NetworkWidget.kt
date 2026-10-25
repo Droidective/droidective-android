@@ -9,8 +9,6 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.os.Build
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,8 +46,12 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.droidective.android.droidective
+import com.droidective.android.surface.Copies
+import com.droidective.android.surface.Surfaces
+import com.droidective.android.surface.TileSlots
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.copy
+import com.droidective.core.layout.Item
 import com.droidective.core.network.NetworkCard
 import com.droidective.core.network.NetworkCards
 import com.droidective.core.network.NetworkNow
@@ -170,7 +172,7 @@ internal fun symbolOf(transport: Transport): String =
         Transport.None -> "wifi_off"
     }
 
-/** Copies the address a network widget showed, then redraws them all with what's true now. */
+/** Copies the address a widget or a slot showed, then redraws them with what's true now. */
 class CopyAddressAction : ActionCallback {
     override suspend fun onAction(
         context: Context,
@@ -178,14 +180,9 @@ class CopyAddressAction : ActionCallback {
         parameters: ActionParameters,
     ) {
         val address = parameters[addressKey].orEmpty()
-        if (address.isNotEmpty()) {
-            context.copy("IP address", address)
-            // Android 13 and later confirm a copy on their own.
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                Toast.makeText(context, "Copied $address", Toast.LENGTH_SHORT).show()
-            }
-        }
+        if (address.isNotEmpty()) Copies.copy(context, address)
         NetworkWidgets.refresh(context)
+        Surfaces.refresh(context)
     }
 
     companion object {
@@ -220,6 +217,8 @@ class NetworkChangedReceiver : BroadcastReceiver() {
         context.droidective.scope.launch {
             try {
                 NetworkWidgets.refresh(context)
+                // Network slots on bars, notification bars and tiles say the new address too.
+                Surfaces.refresh(context)
             } finally {
                 pending.finish()
             }
@@ -269,10 +268,15 @@ object NetworkWidgets {
 
     /**
      * Asks Android to say whenever the phone joins a network, even with the app stopped, so a
-     * widget follows the phone from Wi-Fi to mobile data and back. Asking again replaces it.
+     * network widget or slot follows the phone from Wi-Fi to mobile data and back. Asking again
+     * replaces it.
      */
     fun watch(context: Context) {
-        if (placedIds(context).isEmpty()) return
+        val slots =
+            context.droidective.layouts.all().any { layout ->
+                layout.items.any { it is Item.Network }
+            } || TileSlots.all(context).values.any { it is Item.Network }
+        if (placedIds(context).isEmpty() && !slots) return
         val request =
             NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)

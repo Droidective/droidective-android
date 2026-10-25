@@ -140,7 +140,7 @@ private fun GridCell(cell: Cell, style: Style, colors: WidgetColors, modifier: G
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(cell, style, colors)
-        if (style.labels) {
+        if (style.labels || cell.readout) {
             Spacer(GlanceModifier.height(2.dp))
             Text(
                 cell.label,

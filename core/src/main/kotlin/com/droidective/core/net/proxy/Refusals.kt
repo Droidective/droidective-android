@@ -39,6 +39,12 @@ class Refusals(private val limit: Int = DEFAULT_LIMIT) {
     /** Every refusal held, oldest first. */
     @Synchronized fun all(): List<Refusal> = held.toList()
 
+    /** Forgets every host the app with [uid] refused, so its next connections are read again. */
+    @Synchronized
+    fun forgetApp(uid: Int?) {
+        held.removeAll { it.uid == uid }
+    }
+
     @Synchronized
     fun forget(refusal: Refusal) {
         held.remove(refusal)

@@ -34,6 +34,7 @@ tests run with `java.net.preferIPv6Addresses=true`, as Android does (see the dec
 | `core/net/proxy/ProxyServer.kt` | The server: forward, open a `CONNECT`, or pass it through |
 | `core/net/proxy/ProxyRules.kt` | Which apps and hosts are read, and `Passing`: why one wasn't |
 | `core/net/proxy/Refusals.kt` | The (app, host) pairs that refused the certificate, passed through after |
+| `core/net/proxy/Unread.kt` | Why a flow wasn't read, what a row says about it, and the unread grouped by app for the list's banner |
 | `core/net/proxy/TrafficRules.kt` | The rules as kept: apps by package, host patterns, the step-aside switch |
 | `core/net/proxy/Dial.kt` | Connecting to a host's first address that answers |
 | `core/net/proxy/TlsFailure.kt` | A TLS failure in words: the alert, not BoringSSL's internals |
@@ -84,6 +85,7 @@ The Android side is in `app`:
 | `ui/tools/NetworkTrafficTool.kt` | The screen: proxy, certificate, rules, the list |
 | `ui/tools/NetworkTrafficRules.kt` | The rules editor |
 | `ui/tools/NetworkTrafficDetail.kt` | One flow: overview, headers, body, cURL, rule shortcuts |
+| `ui/tools/NetworkTrafficUnread.kt` | Why calls weren't read: the banner, a flow's reason and fix, and the sheet that makes your app trust the certificate |
 | `ui/tools/NetworkTrafficCompose.kt` | Edit and send: a captured request changed and sent again |
 | `ui/tools/NetworkTrafficMocks.kt` | The mock editor and its rows |
 | `ui/tools/NetworkTrafficHolds.kt` | What is held, its editor, and the breakpoint editor |
@@ -131,7 +133,9 @@ Roughly in the order people reach for them after the list itself:
 ## What stops this working, and what to tell people
 
 **Android 7 and later do not trust a user-installed certificate by default.** The screen
-says so, and offers the fix for your own app:
+says so where it matters: a call an app refused says why in its row and its detail, a debuggable
+app's refusals and unread calls are listed at the top of the list, each with its fix, and "Show
+me how" gives the file and the manifest line to copy. The fix for your own app:
 
 - **Your own debug build** — a network security config, which the certificate card copies:
   ```xml

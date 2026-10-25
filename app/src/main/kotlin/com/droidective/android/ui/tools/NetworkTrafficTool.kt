@@ -3,6 +3,8 @@ package com.droidective.android.ui.tools
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -64,7 +66,6 @@ import com.droidective.android.proxy.ProxyRun
 import com.droidective.android.proxy.TrafficExport
 import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.ui.Symbols
-import com.droidective.android.ui.copy
 import com.droidective.core.AccessLevel
 import com.droidective.core.net.proxy.Breakpoint
 import com.droidective.core.net.proxy.Flow
@@ -75,6 +76,8 @@ import com.droidective.core.net.proxy.FlowSummary
 import com.droidective.core.net.proxy.Mock
 import com.droidective.core.net.proxy.Remap
 import com.droidective.core.net.proxy.Throttle
+import com.droidective.core.net.proxy.TrafficRules
+import com.droidective.core.net.proxy.Unread
 import java.io.IOException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -157,6 +160,9 @@ private fun TrafficList(
     val visible = remember(flows, filter) { flows.filter(filter::matches).asReversed() }
     val labels = remember { AppLabels(context) }
     val scrolled = rememberLazyListState()
+    val rules by TrafficProxy.rules.collectAsStateWithLifecycle()
+    // The app a "Fix" was for, to read again once it trusts the certificate.
+    var trusting by remember { mutableStateOf<Trusting?>(null) }
 
     BackHandler(onBack = tool.onBack)
     Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
@@ -167,6 +173,11 @@ private fun TrafficList(
         ) {
             item { TitleRow(tool, flows.isNotEmpty(), visible) }
             if (held.isNotEmpty()) item { HeldCard(held, onHold) }
+            item {
+                UnreadBanner(flows, labels) { app ->
+                    trusting = Trusting(flows.lastOrNull { it.app == app }?.uid)
+                }
+            }
             item { ProxySection(tool) }
             item { CertificateSection(tool) }
             item {
@@ -186,10 +197,16 @@ private fun TrafficList(
                     else "${visible.size} of ${flows.size} · ${held()}"
                 )
             }
-            items(visible, key = { it.id }) { flow -> FlowRow(flow, labels) { onOpen(flow.id) } }
+            items(visible, key = { it.id }) { flow ->
+                FlowRow(flow, labels, rules) { onOpen(flow.id) }
+            }
         }
     }
+    trusting?.let { TrustSheet(it.uid, rememberSay(tool), onDismiss = { trusting = null }) }
 }
+
+/** The app a certificate fix is for, by uid when it's known. */
+private class Trusting(val uid: Int?)
 
 @Composable
 private fun TitleRow(tool: ToolContext, any: Boolean, visible: List<Flow>) {
@@ -383,6 +400,7 @@ private fun ManualPointing(tool: ToolContext) {
 private fun CertificateSection(tool: ToolContext) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val say = rememberSay(tool)
     // Kept with the list, so coming back to it lays the card out at its height straight away.
     var trust by rememberSaveable { mutableStateOf<CertificateTrust?>(null) }
     var resumes by remember { mutableIntStateOf(0) }
@@ -393,8 +411,7 @@ private fun CertificateSection(tool: ToolContext) {
     }
     LaunchedEffect(resumes) { trust = TrafficProxy.trust(context) }
     var expanded by rememberSaveable { mutableStateOf(false) }
-    // What there is to expand changes with the answer, from the steps to the debug-build config,
-    // so a card left open for one closes when the other takes its place.
+    var yourApp by rememberSaveable { mutableStateOf(false) }
     var settled by rememberSaveable { mutableStateOf<CertificateTrust?>(null) }
     LaunchedEffect(trust) {
         val now = trust ?: return@LaunchedEffect
@@ -416,88 +433,23 @@ private fun CertificateSection(tool: ToolContext) {
                 },
                 modifier = Modifier.weight(1f).padding(start = 4.dp),
             )
-            if (trust == CertificateTrust.None || trust == CertificateTrust.User) {
-                TextButton(onClick = { expanded = !expanded }) {
-                    Text(
-                        when {
-                            expanded -> "Hide"
-                            trust == CertificateTrust.None -> "Set up"
-                            else -> "Your app"
-                        }
-                    )
-                }
+            when (trust) {
+                CertificateTrust.None ->
+                    TextButton(onClick = { expanded = !expanded }) {
+                        Text(if (expanded) "Hide" else "Set up")
+                    }
+                CertificateTrust.User ->
+                    TextButton(onClick = { yourApp = true }) { Text("Your app") }
+                else -> Unit
             }
         }
         when {
             trust == CertificateTrust.System ->
                 ToolNote("Every app that doesn't pin its certificates can be read.")
-            !expanded -> Unit
-            trust == CertificateTrust.None -> InstallSteps(tool, scope, context)
-            trust == CertificateTrust.User -> UserTrust()
+            trust == CertificateTrust.None && expanded -> InstallButtons(context, scope, say)
         }
     }
-}
-
-@Composable
-private fun InstallSteps(
-    tool: ToolContext,
-    scope: kotlinx.coroutines.CoroutineScope,
-    context: Context,
-) {
-    ToolNote(
-        "Reading HTTPS needs the phone to trust Droidective's certificate. Android doesn't let an " +
-            "app install one, so it takes two steps:"
-    )
-    ToolNote("1. Save the certificate to Downloads.")
-    OutlinedButton(
-        onClick = {
-            scope.launch {
-                val saved =
-                    try {
-                        TrafficProxy.saveCertificate(context)
-                    } catch (e: IOException) {
-                        tool.say("It couldn't be saved: ${e.message}")
-                        return@launch
-                    }
-                tool.say(
-                    if (saved != null) "Saved to Downloads as droidective-proxy-ca.crt"
-                    else "Android didn't make room for it in Downloads."
-                )
-            }
-        }
-    ) {
-        Text("Save certificate")
-    }
-    ToolNote(
-        "2. In Settings, search for \"CA certificate\", choose Install anyway, and pick " +
-            "droidective-proxy-ca.crt. Android asks for a screen lock first if there isn't one."
-    )
-    OutlinedButton(onClick = { context.openSettings(Settings.ACTION_SECURITY_SETTINGS) }) {
-        Text("Open security settings")
-    }
-}
-
-/** A user certificate: trusted by apps that say so, which is what a debug build is for. */
-@Composable
-private fun UserTrust() {
-    val context = LocalContext.current
-    ToolNote(
-        "Since Android 7, an app trusts a user certificate only if it says so. To read your own " +
-            "app, add this to its debug build's network security config:"
-    )
-    Text(
-        DEBUG_OVERRIDES,
-        fontFamily = FontFamily.Monospace,
-        style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.horizontalScroll(rememberScrollState()).padding(4.dp),
-    )
-    OutlinedButton(onClick = { context.copy("Network security config", DEBUG_OVERRIDES) }) {
-        Text("Copy")
-    }
-    ToolNote(
-        "An app that pins its certificates refuses this one either way. That's the app working " +
-            "as it should."
-    )
+    if (yourApp) TrustSheet(uid = null, say, onDismiss = { yourApp = false })
 }
 
 @Composable
@@ -541,7 +493,7 @@ private fun SearchRow(
 }
 
 @Composable
-private fun FlowRow(flow: Flow, labels: AppLabels, onClick: () -> Unit) {
+private fun FlowRow(flow: Flow, labels: AppLabels, rules: TrafficRules, onClick: () -> Unit) {
     val outcome = FlowLabels.outcome(flow)
     val operation =
         remember(flow.id, flow.requestBody) {
@@ -573,7 +525,7 @@ private fun FlowRow(flow: Flow, labels: AppLabels, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                rowDetails(flow, operation, labels),
+                rowDetails(flow, operation, labels, rules),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall,
@@ -585,16 +537,27 @@ private fun FlowRow(flow: Flow, labels: AppLabels, onClick: () -> Unit) {
     }
 }
 
-/** The app, the host when the first line named an operation instead, and how long and how big. */
-private fun rowDetails(flow: Flow, operation: String?, labels: AppLabels): String {
+/**
+ * The app, the host when the first line named an operation instead, and how long and how big; for a
+ * call that wasn't read, why, in a few words.
+ */
+private fun rowDetails(
+    flow: Flow,
+    operation: String?,
+    labels: AppLabels,
+    rules: TrafficRules,
+): String {
     val parts = mutableListOf<String>()
     flow.app?.let { parts += labels.of(it) }
     if (operation != null) parts += flow.authority
+    Unread.of(flow, rules)?.let {
+        parts += Unread.label(it)
+        return parts.joinToString(" · ")
+    }
     flow.failure?.let {
         parts += it
         return parts.joinToString(" · ")
     }
-    FlowLabels.passed(flow)?.let { parts += it }
     FlowLabels.grpc(flow)?.takeUnless { it.ok }?.let { parts += it.name }
     if (flow.mocked != null) parts += "mocked"
     if (flow.edited) parts += "changed" else if (flow.paused != null) parts += "held"
@@ -631,12 +594,27 @@ internal fun Context.openSettings(action: String) {
     }
 }
 
-/** Package names to labels, asked of the system once each: a list redraws them on every scroll. */
+/**
+ * Package names to labels, and whether each is a debuggable build, asked of the system once each: a
+ * list redraws them on every scroll.
+ */
 internal class AppLabels(private val context: Context) {
     private val known = HashMap<String, String>()
+    private val debuggable = HashMap<String, Boolean>()
 
     fun of(packageName: String): String =
         known.getOrPut(packageName) { CrashAlerts.label(context, packageName) }
+
+    /** Whether it's an app being developed: a debug build, which can trust the certificate. */
+    fun debuggable(packageName: String): Boolean =
+        debuggable.getOrPut(packageName) {
+            try {
+                val info = context.packageManager.getApplicationInfo(packageName, 0)
+                info.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+            } catch (_: PackageManager.NameNotFoundException) {
+                false
+            }
+        }
 }
 
 internal val DEBUG_OVERRIDES =

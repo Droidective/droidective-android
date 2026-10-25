@@ -13,6 +13,7 @@ import com.droidective.core.shell.ResultFrame
 import com.droidective.core.shell.Shell
 import com.droidective.core.shell.ShellCommand
 import com.droidective.core.shell.ShellResult
+import com.droidective.core.shell.ShellSession
 import com.droidective.core.shell.ShellUnavailableException
 import com.droidective.platform.BuildConfig
 import com.droidective.platform.IShellService
@@ -45,14 +46,24 @@ class AppShell : Shell {
         LineStream.process(streamArgv(command.line)).flowOn(Dispatchers.IO)
 }
 
-/** Runs commands through `su -c`, for rooted phones. Magisk and KernelSU remember the grant. */
-class RootShell : Shell {
+/**
+ * Runs commands as root, all through one `su` session that starts with the first command: Magisk
+ * and KernelSU ask, and show their toast, once per `su`, and a session per command showed one every
+ * few seconds while the proxy or an automation ran in the background. A long-running [stream] still
+ * starts its own.
+ *
+ * @param onLost called when `su` stops answering, refused or gone, so access can be asked again.
+ */
+class RootShell(private val onLost: () -> Unit = {}) : Shell {
+    private val session = ShellSession(listOf("su"), COMMAND_TIMEOUT_MILLIS)
+
     override suspend fun run(command: ShellCommand): ShellResult =
         withContext(Dispatchers.IO) {
             try {
-                ProcessExec.run(listOf("su", "-c", command.line), COMMAND_TIMEOUT_MILLIS)
-            } catch (e: java.io.IOException) {
-                throw ShellUnavailableException("su isn’t available: ${e.message}", e)
+                session.run(command)
+            } catch (e: ShellUnavailableException) {
+                onLost()
+                throw e
             }
         }
 
@@ -66,17 +77,20 @@ class RootShell : Shell {
             }
             .flowOn(Dispatchers.IO)
 
-    companion object {
-        /** Whether su grants uid 0. On a rooted phone the first call shows the root prompt. */
-        suspend fun isGranted(): Boolean =
+    /**
+     * Whether su grants uid 0, asked in this shell's session so the answer and the commands after
+     * it share one grant. On a rooted phone the first ask shows the root prompt.
+     */
+    suspend fun isGranted(): Boolean =
+        withContext(Dispatchers.IO) {
             try {
-                RootShell().run(ShellCommand.of("id", "-u")).let {
+                session.run(ShellCommand.of("id", "-u")).let {
                     it.succeeded && it.stdout.trim() == "0"
                 }
             } catch (_: ShellUnavailableException) {
                 false
             }
-    }
+        }
 }
 
 /**

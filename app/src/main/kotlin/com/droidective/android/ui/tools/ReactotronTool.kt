@@ -2,34 +2,40 @@ package com.droidective.android.ui.tools
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -46,28 +52,33 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.reactotron.Reactotron
 import com.droidective.android.ui.Symbols
-import com.droidective.android.ui.copy
-import com.droidective.core.reactotron.ReactotronCommands
 import com.droidective.core.reactotron.ReactotronEvent
 import com.droidective.core.reactotron.ReactotronKind
 import com.droidective.core.reactotron.ReactotronLabels
 import com.droidective.core.reactotron.ReactotronTimeline
 import java.time.Instant
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.coroutines.withContext
+
+/** Where the tool's parts live, as its tabs name them. */
+private enum class ReactotronTab(val title: String) {
+    Timeline("Timeline"),
+    State("State"),
+    Snapshots("Snapshots"),
+    Console("Console"),
+}
 
 /**
- * Reactotron on the phone: start it, see which apps are connected, and read what they said — logs,
- * API calls, state — newest first. The list catches up a few times a second rather than on every
- * command, so a chatty app can't make it lay out a hundred times a second.
+ * Reactotron on the phone: what the connected apps say — logs, API calls, state — newest first,
+ * with their state, snapshots and commands a tab away. The server is one chip in the header; until
+ * anything is connected or kept, one card says how to connect. The list catches up a few times a
+ * second rather than on every command, so a chatty app can't make it lay out a hundred times a
+ * second.
  */
 @Composable
 fun ReactotronTool(tool: ToolContext) {
+    val context = LocalContext.current
     var entries by remember { mutableStateOf(Reactotron.timeline.snapshot()) }
     LaunchedEffect(Unit) {
         Reactotron.changes.collect {
@@ -75,6 +86,12 @@ fun ReactotronTool(tool: ToolContext) {
             delay(PACE_MILLIS)
         }
     }
+    // Snapshots and watched paths come from the app's files; until then, nothing is known kept.
+    val loaded by
+        produceState(false) {
+            withContext(Dispatchers.IO) { Reactotron.load(context) }
+            value = true
+        }
     var open by rememberSaveable { mutableStateOf<Long?>(null) }
     var openSnapshot by rememberSaveable { mutableStateOf<String?>(null) }
     val snapshots by Reactotron.snapshots.collectAsStateWithLifecycle()
@@ -90,18 +107,74 @@ fun ReactotronTool(tool: ToolContext) {
         SnapshotDetail(snapshot, back)
         return
     }
-    kept.SaveableStateProvider(LIST) {
-        Timeline(tool, entries, onOpen = { open = it }, onOpenSnapshot = { openSnapshot = it })
+    kept.SaveableStateProvider(MAIN) {
+        Main(tool, entries, loaded, onOpen = { open = it }, onOpenSnapshot = { openSnapshot = it })
     }
 }
 
+/** The header, then the card that says how to connect, or the tabs once there's anything. */
 @Composable
-private fun Timeline(
+private fun Main(
     tool: ToolContext,
     entries: List<ReactotronTimeline.Entry>,
+    loaded: Boolean,
     onOpen: (Long) -> Unit,
     onOpenSnapshot: (String) -> Unit,
 ) {
+    val clients by Reactotron.clients.collectAsStateWithLifecycle()
+    val snapshots by Reactotron.snapshots.collectAsStateWithLifecycle()
+    val watched by Reactotron.watched.collectAsStateWithLifecycle()
+    var tabName by rememberSaveable { mutableStateOf(ReactotronTab.Timeline.name) }
+    var server by rememberSaveable { mutableStateOf(false) }
+    val tabs = rememberSaveableStateHolder()
+    val tab = ReactotronTab.valueOf(tabName)
+    val nothing = clients.isEmpty() && entries.isEmpty() && snapshots.isEmpty() && watched.isEmpty()
+    BackHandler(onBack = tool.onBack)
+    Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            Row(
+                Modifier.fillMaxWidth().padding(end = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ToolTitle("Reactotron", tool)
+                Spacer(Modifier.weight(1f))
+                ReactotronStatusChip(onClick = { server = true })
+            }
+            when {
+                !loaded -> Unit
+                nothing ->
+                    Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
+                        ReactotronConnectCard()
+                    }
+                else -> {
+                    PrimaryTabRow(selectedTabIndex = tab.ordinal) {
+                        ReactotronTab.entries.forEach { each ->
+                            Tab(
+                                selected = tab == each,
+                                onClick = { tabName = each.name },
+                                text = { Text(each.title, maxLines = 1) },
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    tabs.SaveableStateProvider(tab.name) {
+                        when (tab) {
+                            ReactotronTab.Timeline -> TimelineTab(entries, onOpen)
+                            ReactotronTab.State -> StateTab()
+                            ReactotronTab.Snapshots -> SnapshotsTab(onOpenSnapshot)
+                            ReactotronTab.Console -> ConsoleTab()
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (server) ReactotronServerSheet(onDismiss = { server = false })
+}
+
+/** The timeline: search and kinds above, the count and Clear, then the entries, newest first. */
+@Composable
+private fun TimelineTab(entries: List<ReactotronTimeline.Entry>, onOpen: (Long) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var kindName by rememberSaveable { mutableStateOf<String?>(null) }
     val kind = kindName?.let(ReactotronKind::valueOf)
@@ -110,200 +183,58 @@ private fun Timeline(
             entries.filter { ReactotronLabels.matches(it, kind, query) }.asReversed()
         }
     val clients by Reactotron.clients.collectAsStateWithLifecycle()
-    BackHandler(onBack = tool.onBack)
-    Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
-        LazyColumn(
-            Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    ToolTitle("Reactotron", tool)
-                    Box(Modifier.weight(1f))
-                    if (entries.isNotEmpty()) {
-                        IconButton(onClick = Reactotron::clear) {
-                            Icon(
-                                painterResource(Symbols.byName.getValue("delete_sweep").outlined),
-                                "Clear",
-                            )
-                        }
-                    }
-                }
-            }
-            item { ServerSection() }
-            if (clients.isNotEmpty()) {
-                item { CommandsSection() }
-                item { StateSection() }
-                item { ReplSection() }
-            }
-            item { WatchSection() }
-            item { SnapshotsSection(onOpenSnapshot) }
-            item {
-                Filters(kind, query, onKind = { kindName = it?.name }, onQuery = { query = it })
-            }
-            item {
-                ToolNote(
-                    when {
-                        entries.isEmpty() && clients.isEmpty() -> "Nothing yet."
-                        entries.isEmpty() -> "Connected. What the app says shows here."
-                        else -> "${visible.size} of ${entries.size}"
-                    }
+    // Labelled by app once more than one has spoken, connected now or not.
+    val many = remember(entries) { entries.mapNotNullTo(HashSet()) { it.app }.size > 1 }
+    if (entries.isEmpty() && clients.isEmpty()) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
+            ReactotronConnectCard()
+        }
+        return
+    }
+    Column(Modifier.fillMaxSize()) {
+        Filters(kind, query, onKind = { kindName = it?.name }, onQuery = { query = it })
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
+            // First in the list, so a list read from the top keeps showing the newest: a list
+            // holds its first visible item in place as items arrive above it.
+            item(key = COUNT) {
+                Count(
+                    if (entries.isEmpty()) "Connected. What the app says shows here."
+                    else "${visible.size} of ${entries.size}",
+                    clearable = entries.isNotEmpty(),
                 )
             }
-            val many = clients.values.map { it.name }.distinct().size > 1
             items(visible, key = { it.id }) { entry -> EntryRow(entry, many) { onOpen(entry.id) } }
         }
     }
 }
 
-/** Start and stop, the apps connected now, and how to point one here. */
+/** How many entries show of how many there are, and Clear. */
 @Composable
-private fun ServerSection() {
-    val context = LocalContext.current
-    val state by Reactotron.state.collectAsStateWithLifecycle()
-    val clients by Reactotron.clients.collectAsStateWithLifecycle()
-    ToolSection("Server") {
-        when (val now = state) {
-            is Reactotron.State.Listening -> {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Listening on 127.0.0.1:${now.port}", Modifier.weight(1f))
-                    OutlinedButton(onClick = { Reactotron.stop(context) }) { Text("Stop") }
-                }
-                if (clients.isEmpty()) {
-                    ToolNote("No app yet. Open yours, or reload it, and it connects.")
-                } else {
-                    clients.values.forEach { client ->
-                        InfoRow(
-                            "Connected",
-                            listOfNotNull(client.name, client.platform).joinToString(" · "),
-                        )
-                    }
-                }
-            }
-            is Reactotron.State.Failed -> {
-                ToolNote(now.why)
-                if (now.taken) {
-                    InfoRow("Free it", REVERSE_REMOVE, copyable = true, mono = true)
-                }
-                Button(onClick = { Reactotron.start(context) }) { Text("Try again") }
-            }
-            Reactotron.State.Off -> {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Off", Modifier.weight(1f))
-                    Button(onClick = { Reactotron.start(context) }) { Text("Start") }
-                }
-            }
-        }
-        ToolNote(
-            "A React Native app's Reactotron connects to localhost:9090. With no adb reverse " +
-                "from a computer, that is this phone, so the debug build you are running reports " +
-                "here: no host to set, no cable."
-        )
-    }
-}
-
-/**
- * The commands the connected apps registered with `Reactotron.onCustomCommand`, as buttons: each
- * runs in its app, with whatever it asks for typed in first.
- */
-@Composable
-private fun CommandsSection() {
-    val commands by Reactotron.commands.collectAsStateWithLifecycle()
-    ToolSection("Commands") {
-        if (commands.isEmpty()) {
-            ToolNote(
-                "None registered. An app adds its own with Reactotron.onCustomCommand(...), and " +
-                    "they show here to run."
-            )
-        }
-        commands.forEach { command -> key(command.connection, command.id) { CommandRow(command) } }
-    }
-}
-
-@Composable
-private fun CommandRow(command: ReactotronCommands.Command) {
-    val values = remember { mutableStateMapOf<String, String>() }
-    var ran by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(command.label, style = MaterialTheme.typography.titleSmall)
-        command.description?.takeIf { it.isNotBlank() }?.let { ToolNote(it) }
-        command.args.forEach { arg ->
-            OutlinedTextField(
-                value = values[arg].orEmpty(),
-                onValueChange = { values[arg] = it },
-                label = { Text(arg) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(
-                onClick = {
-                    Reactotron.run(command, values.toMap())
-                    ran = true
-                }
-            ) {
-                Text("Run")
-            }
-            if (ran) Text("  Sent to the app", style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-/** Asks the apps for their state, at a path or whole; the answer comes into the timeline. */
-@Composable
-private fun StateSection() {
-    var path by rememberSaveable { mutableStateOf("") }
-    ToolSection("State") {
-        OutlinedTextField(
-            value = path,
-            onValueChange = { path = it },
-            label = { Text("Path, such as user.profile") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { Reactotron.askState(path, keys = false) }) { Text("Read value") }
-            OutlinedButton(onClick = { Reactotron.askState(path, keys = true) }) {
-                Text("List keys")
-            }
-        }
-        ToolNote(
-            "Empty reads the whole store. The answer comes into the timeline as VALUE or KEYS; " +
-                "the app needs reactotron-redux or reactotron-mst to have a store to give."
-        )
-        DispatchRow()
-    }
-}
-
-/** An action dispatched in the apps' stores, as if the app had: a type, or a whole action. */
-@Composable
-private fun DispatchRow() {
-    var text by rememberSaveable { mutableStateOf("") }
-    val action = ReactotronCommands.action(text)
+private fun Count(text: String, clearable: Boolean) {
     Row(
+        Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            label = { Text("Action, such as logout") },
-            isError = text.isNotBlank() && action == null,
-            singleLine = true,
-            modifier = Modifier.weight(1f),
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f).padding(vertical = 14.dp),
         )
-        Button(enabled = action != null, onClick = { action?.let(Reactotron::dispatch) }) {
-            Text("Dispatch")
+        if (clearable) {
+            TextButton(onClick = Reactotron::clear) {
+                Icon(
+                    painterResource(Symbols.byName.getValue("delete_sweep").outlined),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Clear")
+            }
         }
     }
-    ToolNote(
-        "A type alone, or a whole action as JSON, such as {\"type\":\"cart/add\",\"item\":\"tea\"}. " +
-            "It shows in the timeline as an ACTION once the app has dispatched it."
-    )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Filters(
     kind: ReactotronKind?,
@@ -311,15 +242,31 @@ private fun Filters(
     onKind: (ReactotronKind?) -> Unit,
     onQuery: (String) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         OutlinedTextField(
             value = query,
             onValueChange = onQuery,
-            label = { Text("Search") },
+            placeholder = { Text("Search") },
+            leadingIcon = {
+                Icon(painterResource(Symbols.byName.getValue("search").outlined), null)
+            },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQuery("") }) {
+                        Icon(
+                            painterResource(Symbols.byName.getValue("close").outlined),
+                            "Clear the search",
+                        )
+                    }
+                }
+            },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             FilterChip(selected = kind == null, onClick = { onKind(null) }, label = { Text("All") })
             ReactotronKind.entries.forEach { each ->
                 FilterChip(
@@ -336,7 +283,9 @@ private fun Filters(
 private fun EntryRow(entry: ReactotronTimeline.Entry, showApp: Boolean, onClick: () -> Unit) {
     val event = entry.event
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp),
+        Modifier.fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Column(Modifier.width(TAG_WIDTH.dp)) {
@@ -385,124 +334,70 @@ private fun tagColor(event: ReactotronEvent): Color =
         else -> MaterialTheme.colorScheme.primary
     }
 
-/** One entry, whole: what it was, and everything it carried. */
+/** Reading and changing the apps' state, and the paths watched in it. */
 @Composable
-private fun EntryDetail(entry: ReactotronTimeline.Entry, tool: ToolContext) {
-    val context = LocalContext.current
-    val say = rememberSay(tool)
-    val event = entry.event
-    ToolScaffold(
-        ReactotronLabels.tag(event).lowercase().replaceFirstChar { it.uppercase() },
-        tool,
+private fun StateTab() {
+    val clients by Reactotron.clients.collectAsStateWithLifecycle()
+    TabColumn {
+        if (clients.isEmpty()) TabNote("Connect an app to read its state or dispatch an action.")
+        else StateSection()
+        WatchSection()
+    }
+}
+
+@Composable
+private fun SnapshotsTab(onOpen: (String) -> Unit) {
+    val clients by Reactotron.clients.collectAsStateWithLifecycle()
+    val snapshots by Reactotron.snapshots.collectAsStateWithLifecycle()
+    TabColumn {
+        if (clients.isEmpty() && snapshots.isEmpty()) {
+            TabNote("Connect an app to take a snapshot of its state, kept here to put back.")
+        }
+        SnapshotsSection(onOpen)
+    }
+}
+
+/** What runs in the apps: the commands they registered, and code in their REPL. */
+@Composable
+private fun ConsoleTab() {
+    val clients by Reactotron.clients.collectAsStateWithLifecycle()
+    TabColumn {
+        if (clients.isEmpty()) {
+            TabNote("Connect an app to run its commands or code in it.")
+        } else {
+            CommandsSection()
+            ReplSection()
+        }
+    }
+}
+
+@Composable
+private fun TabColumn(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = content,
+    )
+}
+
+/** A tab with nothing to show until an app connects, saying so. */
+@Composable
+private fun TabNote(text: String) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(ReactotronLabels.summary(event), style = MaterialTheme.typography.bodyMedium)
-        ToolSection("Overview") {
-            entry.app?.let { InfoRow("App", it) }
-            InfoRow("Received", TIME.format(Instant.ofEpochMilli(entry.at)))
-            InfoRow("Type", entry.command.type, mono = true)
-            if (entry.size > 0) InfoRow("Size", "${entry.size} bytes")
-            if (entry.command.important) InfoRow("Important", "Yes")
-        }
-        when (event) {
-            is ReactotronEvent.ApiResponse -> ApiDetail(event)
-            is ReactotronEvent.StateAnswer ->
-                ReactotronPayload(if (event.keys) "Keys" else "Value", event.value ?: JsonNull)
-            is ReactotronEvent.Log -> LogDetail(event, entry)
-            else -> ReactotronPayload("Payload", entry.command.payload)
-        }
-        val whole = entry.command.payload?.let(::pretty)
-        if (whole != null) {
-            OutlinedButton(
-                onClick = {
-                    context.copy("Reactotron payload", whole)
-                    say("Copied the payload")
-                }
-            ) {
-                Text("Copy payload")
-            }
-        }
-    }
-}
-
-@Composable
-private fun ApiDetail(event: ReactotronEvent.ApiResponse) {
-    ToolSection("Request") {
-        InfoRow("URL", "${event.method} ${event.url}", copyable = true, mono = true)
-        InfoRow("Took", ReactotronLabels.millis(event.durationMillis))
-        Headers(event.request.child("headers"))
-    }
-    ReactotronPayload("Request body", event.request.child("data"))
-    ToolSection("Response") {
-        InfoRow(
-            "Status",
-            if (event.status == 0) "No answer: a network error" else "${event.status}",
-        )
-        Headers(event.response.child("headers"))
-    }
-    ReactotronPayload("Response body", event.response.child("body"))
-}
-
-@Composable
-private fun LogDetail(event: ReactotronEvent.Log, entry: ReactotronTimeline.Entry) {
-    ReactotronPayload("Message", entry.command.payload.child("message"))
-    if (event.stack.isNotEmpty()) {
-        ToolSection("Stack") {
-            event.stack.forEach { frame ->
-                val at = listOfNotNull(frame.line, frame.column).joinToString(":")
-                InfoRow(
-                    frame.functionName.ifEmpty { "(anonymous)" },
-                    "${frame.fileName} $at",
-                    mono = true,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun Headers(headers: JsonElement?) {
-    val fields = (headers as? JsonObject).orEmpty()
-    if (fields.isEmpty()) ToolNote("No headers.")
-    fields.forEach { (name, value) ->
-        InfoRow(name, (value as? JsonPrimitive)?.content ?: value.toString(), mono = true)
-    }
-}
-
-/** A part of the payload, laid out as JSON — text that is itself JSON, as a body often is, too. */
-@Composable
-internal fun ReactotronPayload(title: String, value: JsonElement?) {
-    if (value == null || value == JsonNull) return
-    val shown = remember(value) { pretty(value) }
-    ToolSection(title) {
         Text(
-            shown.take(MAX_SHOWN),
-            fontFamily = FontFamily.Monospace,
-            style = MaterialTheme.typography.bodySmall,
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(20.dp),
         )
-        if (shown.length > MAX_SHOWN)
-            ToolNote("Showing the first ${MAX_SHOWN / 1_000}k characters.")
     }
 }
 
-private fun pretty(value: JsonElement): String {
-    // An API body arrives as a string more often than not; one that is JSON reads as JSON.
-    val text = (value as? JsonPrimitive)?.takeIf { it.isString }?.content
-    val parsed = text?.let {
-        try {
-            Json.parseToJsonElement(it)
-        } catch (_: SerializationException) {
-            null
-        }
-    }
-    if (text != null && (parsed == null || parsed is JsonPrimitive)) return text
-    return PRETTY.encodeToString(JsonElement.serializer(), parsed ?: value)
-}
-
-private fun JsonElement?.child(name: String): JsonElement? = (this as? JsonObject)?.get(name)
-
-private val PRETTY = Json { prettyPrint = true }
-private const val LIST = "list"
+private const val MAIN = "main"
+private const val COUNT = "count"
 private const val PACE_MILLIS = 250L
 private const val TAG_WIDTH = 92
-private const val MAX_SHOWN = 100_000
-private const val REVERSE_REMOVE = "adb reverse --remove tcp:9090"

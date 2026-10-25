@@ -27,10 +27,14 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `core/reactotron/ReactotronWatch.kt` | Watched paths: what each app last said they hold, and which answer which |
 | `app/reactotron/Reactotron.kt` | The one server, its state, the apps connected, the timeline |
 | `app/reactotron/ReactotronService.kt` | The foreground service that keeps it listening |
-| `app/ui/tools/ReactotronTool.kt` | The screen: start and stop, the timeline, an entry whole |
-| `app/ui/tools/ReactotronReplUi.kt` | The REPL: what the app shares, and code run in it |
-| `app/ui/tools/ReactotronSnapshotsUi.kt` | Snapshots: taking one, and one whole, to restore, rename or delete |
+| `app/ui/tools/ReactotronTool.kt` | The screen: the header, the tabs (Timeline, State, Snapshots, Console), the timeline |
+| `app/ui/tools/ReactotronServerUi.kt` | The status chip, the server sheet, and the card that says how to connect |
+| `app/ui/tools/ReactotronEntryUi.kt` | An entry whole: overview, request and response, stack, payload |
+| `app/ui/tools/ReactotronStateUi.kt` | Reading the apps' state, and dispatching an action |
 | `app/ui/tools/ReactotronWatchUi.kt` | Watch: the paths, and their values as they change |
+| `app/ui/tools/ReactotronSnapshotsUi.kt` | Snapshots: taking one, and one whole, to restore, rename or delete |
+| `app/ui/tools/ReactotronConsoleUi.kt` | The commands the apps registered, to run |
+| `app/ui/tools/ReactotronReplUi.kt` | The REPL: what the app shares, and code run in it |
 | `app/automation/ToolActions.kt` | A command run from a widget slot or an automation |
 
 ## Decisions worth not relitigating

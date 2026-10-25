@@ -151,6 +151,25 @@ class ReactotronCommandsTest {
     }
 
     @Test
+    fun theWholeStoreAnsweredAsKeysIsAValue() {
+        // As reactotron-redux 3.2.1 answers state.values.request with no path:
+        // stateKeysResponse(null, wholeState).
+        val whole =
+            assertIs<ReactotronEvent.StateAnswer>(
+                ReactotronEvent.of(
+                    command(
+                        """{"type":"state.keys.response","payload":{"path":null,""" +
+                            """"keys":{"user":{"name":"Ada"},"step":1},"valid":true}}"""
+                    )
+                )
+            )
+        assertFalse(whole.keys)
+        assertEquals("VALUE", ReactotronLabels.tag(whole))
+        assertEquals("the whole store", ReactotronLabels.summary(whole))
+        assertIs<JsonObject>(whole.value)
+    }
+
+    @Test
     fun aReplSaysWhatItSharesAndWhatCodeCameTo() {
         // As reactotron-core-client 2.9.7 sends them: Object.keys(myRepls), then eval's result.
         assertEquals(

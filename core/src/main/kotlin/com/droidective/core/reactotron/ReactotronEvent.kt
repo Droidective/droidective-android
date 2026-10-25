@@ -104,8 +104,7 @@ sealed interface ReactotronEvent {
                     )
                 "state.values.response" ->
                     StateAnswer(payload["path"].text.orEmpty(), payload["value"], keys = false)
-                "state.keys.response" ->
-                    StateAnswer(payload["path"].text.orEmpty(), payload["keys"], keys = true)
+                "state.keys.response" -> keysAnswer(payload)
                 "state.values.change" ->
                     StateChange(
                         payload["changes"].list.map {
@@ -135,6 +134,15 @@ sealed interface ReactotronEvent {
                     else -> Log.Level.Debug
                 }
             return Log(level, message(payload["message"]), stack(payload["stack"]))
+        }
+
+        /**
+         * Keys are a list of names. reactotron-redux answers a request for the whole store's value
+         * with a keys answer whose "keys" are that whole store, an object; that is a value.
+         */
+        private fun keysAnswer(payload: JsonElement?): StateAnswer {
+            val keys = payload["keys"]
+            return StateAnswer(payload["path"].text.orEmpty(), keys, keys = keys !is JsonObject)
         }
 
         private fun api(payload: JsonElement?): ApiResponse {

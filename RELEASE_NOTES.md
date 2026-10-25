@@ -3,6 +3,30 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.24.0
+
+Reactotron is easier to find your way around: the timeline is the screen, and everything else is
+a tab away instead of stacked above it. Nothing it did before is gone.
+
+- **One chip for the server.** The header says Off, Waiting, the connected app's name or how many
+  apps are connected. Tap it for Start and Stop, the address, each connected app and how to
+  connect one. Until an app is connected or anything is kept, the screen is one card with the
+  three steps and the Start button.
+- **Tabs.** Timeline, State, Snapshots and Console, each keeping its fields and scroll. The
+  timeline keeps search and the kind filters above the list, and new entries stay in view while
+  you read from the top.
+- **Answers where you ask.** A state read, a dispatched action and a REPL run show what came back
+  right under the button, as well as in the timeline, and say what the app is missing when
+  nothing does. Each watched path shows its values under it.
+- **Entries.** An API call shows its URL and status first, then its request or its response,
+  each with headers and body. A log shows its message and stack. Copy payload is in the header,
+  and the payload text can be selected.
+- **Console.** The app's commands are grouped by app, with Run on the row, beside the REPL.
+- **Snapshots.** Restore comes first; Rename and Delete are in the menu, and Delete asks first.
+- **Reading the whole store.** Read value with an empty path shows the store as a value. It was
+  labelled KEYS, because reactotron-redux answers that request as keys.
+- **Tablets.** The entry or snapshot you open shows beside the list instead of in its place.
+
 ## 0.23.0
 
 Widgets are simpler to make and change, and the app uses the room a tablet has.

@@ -22,12 +22,14 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `core/reactotron/ReactotronEvent.kt` | Each command read for what it says, as Droidective for Mac reads it |
 | `core/reactotron/ReactotronTimeline.kt` | What the apps said, bounded by count and by bytes |
 | `core/reactotron/ReactotronLabels.kt` | A row's tag and summary, the filter's kinds, the search |
+| `core/reactotron/ReactotronFind.kt` | Find inside one entry: where a word is in the text it shows |
 | `core/reactotron/ReactotronCommands.kt` | The custom commands apps register, running one, asking for state, backing it up and restoring it |
 | `core/reactotron/ReactotronSnapshots.kt` | The states kept to put back: an index, a file each, bounded |
 | `core/reactotron/ReactotronWatch.kt` | Watched paths: what each app last said they hold, and which answer which |
 | `app/reactotron/Reactotron.kt` | The one server, its state, the apps connected, the timeline |
 | `app/reactotron/ReactotronService.kt` | The foreground service that keeps it listening |
 | `app/ui/tools/ReactotronTool.kt` | The screen: the header, the tabs (Timeline, State, Snapshots, Console), the timeline; on a tablet, what's open beside the list |
+| `app/ui/tools/ReactotronFindUi.kt` | Find inside an entry or a snapshot: the find bar, highlights, next and previous |
 | `app/ui/tools/ReactotronServerUi.kt` | The status chip, the server sheet, and the card that says how to connect |
 | `app/ui/tools/ReactotronEntryUi.kt` | An entry whole: overview, request or response, stack, payload; the frame every detail shares |
 | `app/ui/tools/ReactotronStateUi.kt` | Reading the apps' state and dispatching an action, with what comes back shown in place |
@@ -95,6 +97,10 @@ cleartext to localhost, which is all a `ws://` connection there needs.
   type, the tag and the summary line, so it finds the one row looked for. Searching every body,
   header and payload turned up every entry that mentioned a word; looking inside an entry is
   the entry's own find.
+- **An entry's find looks through what it shows**: the URL, headers, bodies, a log's message and
+  stack, a payload, a snapshot's state. Each text reports its matches under an id that sorts in
+  reading order (`0 url`, `1 headers 003 b`, `2 body`), so next and previous go down the page. A
+  call's other side isn't on screen, so its switch says how many it holds (`Request · 3`).
 - **A slot or an automation restores a snapshot by its id**, so renaming it changes nothing. A
   snapshot deleted, or dropped past the bounds, makes the slot say it is gone rather than guess
   at another.

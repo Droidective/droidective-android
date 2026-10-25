@@ -3,6 +3,27 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.26.0
+
+Notification bars can be styled, and the Network widget shows the Wi-Fi name more often, follows
+its settings straight away and looks like your other widgets.
+
+- **Style a notification bar.** Its Style panel now has the icon size, labels and each item's
+  state under the icons, Grid or List, and a rounded background of its own in any colour and
+  opacity. Collapsed, the notification is one row of icons at the chosen size. Expand it to see
+  the labels and states, or a row per item with List. A bar you already have looks the same until
+  you change it.
+- **The Wi-Fi name, more often.** With the Granted level, the Network widget now reads the Wi-Fi
+  name as the app itself, before asking Shell. If it still can't, its settings say why under
+  Network name.
+- **Settings take effect at once.** Switching Public IP off (or anything else) changes the widget
+  straight away, and leaving with Back keeps the change.
+- **The public IP while Network Traffic records.** The lookup no longer goes through Droidective's
+  own proxy, which made it fail with "Not found". A lookup that fails says "Couldn't look it up",
+  and the settings give the reason.
+- **The Network widget matches your bars.** It now draws in Droidective's dark look by default.
+  Under Look, pick "Same as" one of your home-screen bars, or one of the bars' colour sets.
+
 ## 0.25.0
 
 Network Traffic is easier to read, a new Network widget shows the IP address and Wi-Fi name, and

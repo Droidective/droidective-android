@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -98,7 +99,9 @@ fun ReactotronTool(tool: ToolContext) {
     val kept = rememberSaveableStateHolder()
     val opened = open?.let { id -> entries.firstOrNull { it.id == id } }
     if (opened != null) {
-        EntryDetail(opened, ToolContext(tool.snackbar, onBack = { open = null }, tool.onOpenSetup))
+        Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
+            Box(Modifier.padding(padding)) { EntryDetail(opened, tool, onBack = { open = null }) }
+        }
         return
     }
     val snapshot = openSnapshot?.let { id -> snapshots.firstOrNull { it.id == id } }

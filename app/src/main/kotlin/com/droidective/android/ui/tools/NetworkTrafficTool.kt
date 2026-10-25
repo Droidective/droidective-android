@@ -10,36 +10,34 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -55,18 +53,14 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.crashes.CrashAlerts
-import com.droidective.android.droidective
 import com.droidective.android.proxy.CertificateTrust
 import com.droidective.android.proxy.Hold
 import com.droidective.android.proxy.Holds
-import com.droidective.android.proxy.ProxyRun
 import com.droidective.android.proxy.TrafficExport
 import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.ui.Symbols
-import com.droidective.core.AccessLevel
 import com.droidective.core.net.proxy.Breakpoint
 import com.droidective.core.net.proxy.Flow
 import com.droidective.core.net.proxy.FlowFilter
@@ -75,7 +69,6 @@ import com.droidective.core.net.proxy.FlowOutcome
 import com.droidective.core.net.proxy.FlowSummary
 import com.droidective.core.net.proxy.Mock
 import com.droidective.core.net.proxy.Remap
-import com.droidective.core.net.proxy.Throttle
 import com.droidective.core.net.proxy.TrafficRules
 import com.droidective.core.net.proxy.Unread
 import java.io.IOException
@@ -134,7 +127,7 @@ fun NetworkTrafficTool(tool: ToolContext) {
         return
     }
     kept.SaveableStateProvider(LIST) {
-        TrafficList(
+        TrafficMain(
             tool,
             flows,
             onOpen = { open = it },
@@ -144,89 +137,179 @@ fun NetworkTrafficTool(tool: ToolContext) {
     }
 }
 
-/** The proxy, its certificate and rules, the search, and the flows it finds. */
+/** Where the tool's parts live, as its tabs name them. */
+private enum class TrafficTab(val title: String) {
+    Requests("Requests"),
+    Rules("Rules"),
+    Mocks("Mocks"),
+    Certificate("Certificate"),
+}
+
+/**
+ * The header with the proxy's chip, then the tabs: what the apps sent, which are read, what's
+ * mocked, and the certificate.
+ */
 @Composable
-private fun TrafficList(
+private fun TrafficMain(
     tool: ToolContext,
     flows: List<Flow>,
     onOpen: (Long) -> Unit,
     onHold: (Hold) -> Unit,
     onEdit: (Editing) -> Unit,
 ) {
-    val context = LocalContext.current
-    val held by Holds.held.collectAsStateWithLifecycle()
-    var query by rememberSaveable { mutableStateOf("") }
-    val filter = remember(query) { FlowFilter.parse(query) }
-    val visible = remember(flows, filter) { flows.filter(filter::matches).asReversed() }
-    val labels = remember { AppLabels(context) }
-    val scrolled = rememberLazyListState()
-    val rules by TrafficProxy.rules.collectAsStateWithLifecycle()
-    // The app a "Fix" was for, to read again once it trusts the certificate.
+    var tabName by rememberSaveable { mutableStateOf(TrafficTab.Requests.name) }
+    var proxy by rememberSaveable { mutableStateOf(false) }
+    // The app a fix was for, to read again once it trusts the certificate; null uid for any app.
     var trusting by remember { mutableStateOf<Trusting?>(null) }
-
+    val tab = TrafficTab.valueOf(tabName)
+    val tabs = rememberSaveableStateHolder()
+    val trust = rememberTrust()
+    val say = rememberSay(tool)
     BackHandler(onBack = tool.onBack)
     Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
-        LazyColumn(
-            Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
-            state = scrolled,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            item { TitleRow(tool, flows.isNotEmpty(), visible) }
-            if (held.isNotEmpty()) item { HeldCard(held, onHold) }
-            item {
-                UnreadBanner(flows, labels) { app ->
-                    trusting = Trusting(flows.lastOrNull { it.app == app }?.uid)
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            Row(
+                Modifier.fillMaxWidth().padding(end = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ToolTitle("Network Traffic", tool)
+                Spacer(Modifier.weight(1f))
+                TrafficStatusChip(onClick = { proxy = true })
+            }
+            PrimaryTabRow(selectedTabIndex = tab.ordinal) {
+                TrafficTab.entries.forEach { each ->
+                    Tab(
+                        selected = tab == each,
+                        onClick = { tabName = each.name },
+                        text = { Text(each.title, maxLines = 1) },
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
-            item { ProxySection(tool) }
-            item { CertificateSection(tool) }
-            item {
-                RulesSection(
-                    flows,
-                    onEditMock = { mock, isNew -> onEdit(Editing.OfMock(mock, isNew)) },
-                    onEditBreakpoint = { point, isNew ->
-                        onEdit(Editing.OfBreakpoint(point, isNew))
-                    },
-                    onEditRemap = { remap, isNew -> onEdit(Editing.OfRemap(remap, isNew)) },
-                )
-            }
-            item { SearchRow(query, flows, labels) { query = it } }
-            item {
-                ToolNote(
-                    if (flows.isEmpty()) "Nothing yet. Requests show here as apps make them."
-                    else "${visible.size} of ${flows.size} · ${held()}"
-                )
-            }
-            items(visible, key = { it.id }) { flow ->
-                FlowRow(flow, labels, rules) { onOpen(flow.id) }
+            tabs.SaveableStateProvider(tab.name) {
+                when (tab) {
+                    TrafficTab.Requests ->
+                        RequestsTab(
+                            tool,
+                            flows,
+                            Requesting(
+                                onOpen,
+                                onHold,
+                                onTrust = { uid -> trusting = Trusting(uid) },
+                                onCertificate = { tabName = TrafficTab.Certificate.name },
+                            ),
+                            trust,
+                        )
+                    TrafficTab.Rules -> RulesTab(flows)
+                    TrafficTab.Mocks ->
+                        MocksTab(
+                            onEditMock = { mock, isNew -> onEdit(Editing.OfMock(mock, isNew)) },
+                            onEditBreakpoint = { point, isNew ->
+                                onEdit(Editing.OfBreakpoint(point, isNew))
+                            },
+                            onEditRemap = { remap, isNew -> onEdit(Editing.OfRemap(remap, isNew)) },
+                        )
+                    TrafficTab.Certificate -> CertificateTab(trust, say)
+                }
             }
         }
     }
-    trusting?.let { TrustSheet(it.uid, rememberSay(tool), onDismiss = { trusting = null }) }
+    if (proxy) ProxySheet(tool, onDismiss = { proxy = false })
+    trusting?.let { TrustSheet(it.uid, say, onDismiss = { trusting = null }) }
 }
+
+/** What the Requests tab can open: a request, a held exchange, a fix, the certificate. */
+private class Requesting(
+    val onOpen: (Long) -> Unit,
+    val onHold: (Hold) -> Unit,
+    val onTrust: (Int?) -> Unit,
+    val onCertificate: () -> Unit,
+)
 
 /** The app a certificate fix is for, by uid when it's known. */
 private class Trusting(val uid: Int?)
 
+/**
+ * The Requests tab: what's held, what wasn't read, then the search and the requests, newest first;
+ * with nothing yet, how to start.
+ */
 @Composable
-private fun TitleRow(tool: ToolContext, any: Boolean, visible: List<Flow>) {
+private fun RequestsTab(
+    tool: ToolContext,
+    flows: List<Flow>,
+    opens: Requesting,
+    trust: CertificateTrust?,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val held by Holds.held.collectAsStateWithLifecycle()
+    val rules by TrafficProxy.rules.collectAsStateWithLifecycle()
+    var query by rememberSaveable { mutableStateOf("") }
+    val filter = remember(query) { FlowFilter.parse(query) }
+    val visible = remember(flows, filter) { flows.filter(filter::matches).asReversed() }
+    val labels = remember { AppLabels(context) }
+    Column(Modifier.fillMaxSize()) {
+        if (flows.isNotEmpty()) SearchRow(query, flows, labels) { query = it }
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (held.isNotEmpty()) item(key = "held") { HeldCard(held, opens.onHold) }
+            item(key = "unread") {
+                UnreadBanner(flows, labels) { app ->
+                    opens.onTrust(flows.lastOrNull { it.app == app }?.uid)
+                }
+            }
+            if (flows.isEmpty()) {
+                item(key = "watch") {
+                    WatchCard(trust, opens.onCertificate, onTrust = { opens.onTrust(null) })
+                }
+            } else {
+                // First in the list, so a list read from the top keeps showing the newest.
+                item(key = "count") {
+                    Count(
+                        "${visible.size} of ${flows.size} · ${held()}",
+                        onShare =
+                            if (visible.any { !it.opening }) {
+                                { scope.launch { exportHar(context, tool, visible.reversed()) } }
+                            } else {
+                                null
+                            },
+                    )
+                }
+            }
+            items(visible, key = { it.id }) { flow ->
+                FlowRow(flow, labels, rules) { opens.onOpen(flow.id) }
+            }
+        }
+    }
+}
+
+/** How many requests show of how many, how much is kept, and Share as HAR and Clear. */
+@Composable
+private fun Count(text: String, onShare: (() -> Unit)?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        ToolTitle("Network Traffic", tool)
-        Box(Modifier.weight(1f))
-        if (visible.any { !it.opening }) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f).padding(start = 4.dp),
+        )
+        if (onShare != null) {
             // What the search shows, oldest first, the way HAR readers lay a page out.
-            IconButton(
-                onClick = { scope.launch { exportHar(context, tool, visible.reversed()) } }
-            ) {
+            IconButton(onClick = onShare) {
                 Icon(painterResource(Symbols.byName.getValue("share").outlined), "Share as HAR")
             }
         }
-        if (any) {
-            IconButton(onClick = TrafficProxy::clear) {
-                Icon(painterResource(Symbols.byName.getValue("delete_sweep").outlined), "Clear")
-            }
+        TextButton(onClick = TrafficProxy::clear) {
+            Icon(
+                painterResource(Symbols.byName.getValue("delete_sweep").outlined),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("Clear")
         }
     }
 }
@@ -246,212 +329,6 @@ private suspend fun exportHar(context: Context, tool: ToolContext, flows: List<F
     context.startActivity(TrafficExport.share(saved))
 }
 
-/** Start and stop, and whether the phone is sending its traffic here. */
-@Composable
-private fun ProxySection(tool: ToolContext) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val run by TrafficProxy.state.collectAsStateWithLifecycle()
-    val pointing by TrafficProxy.pointing.collectAsStateWithLifecycle()
-    val access by context.droidective.access.access.collectAsStateWithLifecycle()
-    val canPoint = access.allows(AccessLevel.Granted)
-    LifecycleResumeEffect(Unit) {
-        TrafficProxy.refreshPointing(context)
-        onPauseOrDispose {}
-    }
-    ToolSection("Proxy") {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                when (val now = run) {
-                    ProxyRun.Off -> "Off"
-                    ProxyRun.Starting -> "Starting…"
-                    is ProxyRun.Listening -> "Listening on ${TrafficProxy.ADDRESS}"
-                    is ProxyRun.Failed -> now.message
-                },
-                color =
-                    if (run is ProxyRun.Failed) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f).padding(start = 4.dp),
-            )
-            if (run is ProxyRun.Listening) {
-                OutlinedButton(onClick = { TrafficProxy.stop(context) }) { Text("Stop") }
-            } else {
-                Button(
-                    onClick = { TrafficProxy.start(context, point = canPoint) },
-                    enabled = run !is ProxyRun.Starting,
-                ) {
-                    Text("Start")
-                }
-            }
-        }
-        if (run !is ProxyRun.Listening && pointing) StrandedNote(tool)
-        if (run is ProxyRun.Listening) {
-            SpeedRow()
-            if (canPoint) {
-                PointRow(pointing) { here ->
-                    scope.launch {
-                        if (!TrafficProxy.point(context, here)) {
-                            tool.say("The phone's proxy setting didn't change.")
-                        }
-                    }
-                }
-            } else {
-                ManualPointing(tool)
-            }
-        } else {
-            ToolNote(
-                "Start points the phone here. While it does, an app that doesn't trust the " +
-                    "certificate can't reach its HTTPS hosts. Stop puts the phone's proxy setting " +
-                    "back the way it was."
-            )
-        }
-    }
-}
-
-/** How slow a network to play, for seeing an app's loading states. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun SpeedRow() {
-    val throttle by TrafficProxy.throttle.collectAsStateWithLifecycle()
-    Text(
-        "Network speed",
-        style = MaterialTheme.typography.labelLarge,
-        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
-    )
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Throttle.presets.forEach { preset ->
-            FilterChip(
-                selected = preset.throttle == throttle,
-                onClick = { TrafficProxy.throttle(preset.throttle) },
-                label = { Text(preset.name) },
-            )
-        }
-    }
-    if (!throttle.isOff) {
-        ToolNote(
-            "Every request through the proxy waits ${throttle.latencyMillis} ms and arrives at " +
-                "${FlowLabels.size(throttle.downBytesPerSecond)}/s, the apps passed through too."
-        )
-    }
-}
-
-/** The proxy has gone and the phone still points at it, so no app can reach the network. */
-@Composable
-private fun StrandedNote(tool: ToolContext) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    Text(
-        "This phone is still pointed at the proxy, so apps can't reach the network.",
-        color = MaterialTheme.colorScheme.error,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.padding(horizontal = 4.dp),
-    )
-    OutlinedButton(
-        onClick = {
-            scope.launch {
-                if (!TrafficProxy.point(context, here = false)) {
-                    tool.say("It needs Granted or Shell to change.", offerSetup = true)
-                }
-            }
-        }
-    ) {
-        Text("Take it off")
-    }
-}
-
-@Composable
-private fun PointRow(pointing: Boolean, onChange: (Boolean) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable { onChange(!pointing) }.padding(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text("Send this phone's traffic here")
-            Text(
-                if (pointing) "Every app that uses the system proxy comes through here."
-                else "Off: only apps set up to use ${TrafficProxy.ADDRESS} come through.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(checked = pointing, onCheckedChange = onChange)
-    }
-}
-
-/** Without Granted or Shell the app can't change the proxy setting, but the person can. */
-@Composable
-private fun ManualPointing(tool: ToolContext) {
-    val context = LocalContext.current
-    ToolNote(
-        "To send Wi-Fi traffic here, open the Wi-Fi network's settings, set Proxy to Manual, " +
-            "host 127.0.0.1, port ${TrafficProxy.PORT}. With Granted or Shell, Droidective does " +
-            "it for you and puts it back when you stop."
-    )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { context.openSettings(Settings.ACTION_WIFI_SETTINGS) }) {
-            Text("Open Wi-Fi settings")
-        }
-        OutlinedButton(onClick = tool.onOpenSetup) { Text("Open Setup") }
-    }
-}
-
-/** Whether the phone trusts the certificate, and how to get it to. */
-@Composable
-private fun CertificateSection(tool: ToolContext) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val say = rememberSay(tool)
-    // Kept with the list, so coming back to it lays the card out at its height straight away.
-    var trust by rememberSaveable { mutableStateOf<CertificateTrust?>(null) }
-    var resumes by remember { mutableIntStateOf(0) }
-    LifecycleResumeEffect(Unit) {
-        // Back from Settings, where it may just have been installed.
-        resumes++
-        onPauseOrDispose {}
-    }
-    LaunchedEffect(resumes) { trust = TrafficProxy.trust(context) }
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    var yourApp by rememberSaveable { mutableStateOf(false) }
-    var settled by rememberSaveable { mutableStateOf<CertificateTrust?>(null) }
-    LaunchedEffect(trust) {
-        val now = trust ?: return@LaunchedEffect
-        if (settled != null && settled != now) {
-            expanded = false
-            // What an app refused was refused under the old answer, and may not be refused now.
-            TrafficProxy.refusals.clear()
-        }
-        settled = now
-    }
-    ToolSection("Certificate") {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                when (trust) {
-                    null -> "Checking…"
-                    CertificateTrust.None -> "Not installed: HTTPS can't be read"
-                    CertificateTrust.User -> "Installed as a user certificate"
-                    CertificateTrust.System -> "Installed in the system store"
-                },
-                modifier = Modifier.weight(1f).padding(start = 4.dp),
-            )
-            when (trust) {
-                CertificateTrust.None ->
-                    TextButton(onClick = { expanded = !expanded }) {
-                        Text(if (expanded) "Hide" else "Set up")
-                    }
-                CertificateTrust.User ->
-                    TextButton(onClick = { yourApp = true }) { Text("Your app") }
-                else -> Unit
-            }
-        }
-        when {
-            trust == CertificateTrust.System ->
-                ToolNote("Every app that doesn't pin its certificates can be read.")
-            trust == CertificateTrust.None && expanded -> InstallButtons(context, scope, say)
-        }
-    }
-    if (yourApp) TrustSheet(uid = null, say, onDismiss = { yourApp = false })
-}
-
 @Composable
 private fun SearchRow(
     query: String,
@@ -459,11 +336,27 @@ private fun SearchRow(
     labels: AppLabels,
     onQuery: (String) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(
+        Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         OutlinedTextField(
             value = query,
             onValueChange = onQuery,
-            placeholder = { Text("Search, or app: host: status:4xx is:failed") },
+            placeholder = { Text("Search, or status:4xx") },
+            leadingIcon = {
+                Icon(painterResource(Symbols.byName.getValue("search").outlined), null)
+            },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQuery("") }) {
+                        Icon(
+                            painterResource(Symbols.byName.getValue("close").outlined),
+                            "Clear the search",
+                        )
+                    }
+                }
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )

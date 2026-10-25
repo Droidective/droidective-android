@@ -10,6 +10,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -46,12 +47,14 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.crashes.CrashAlerts
@@ -116,14 +119,18 @@ fun NetworkTrafficTool(tool: ToolContext) {
     // The list catches up four times a second; a flow just made, a repeat, is in the store first.
     val opened = open?.let { id -> flows.firstOrNull { it.id == id } ?: TrafficProxy.flows.get(id) }
     if (opened != null) {
-        FlowDetail(
-            opened,
-            ToolContext(tool.snackbar, onBack = { open = null }, tool.onOpenSetup),
-            onOpen = { open = it },
-            onMock = { editing = Editing.OfMock(it, isNew = true) },
-            onBreak = { editing = Editing.OfBreakpoint(it, isNew = true) },
-            onRemap = { editing = Editing.OfRemap(it, isNew = true) },
-        )
+        val actions =
+            FlowActions(
+                onOpen = { open = it },
+                onMock = { editing = Editing.OfMock(it, isNew = true) },
+                onBreak = { editing = Editing.OfBreakpoint(it, isNew = true) },
+                onRemap = { editing = Editing.OfRemap(it, isNew = true) },
+            )
+        Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->
+            Box(Modifier.padding(padding)) {
+                FlowDetail(opened, tool, onBack = { open = null }, actions)
+            }
+        }
         return
     }
     kept.SaveableStateProvider(LIST) {
@@ -393,32 +400,38 @@ private fun FlowRow(flow: Flow, labels: AppLabels, rules: TrafficRules, onClick:
             FlowLabels.graphQlOperation(flow) ?: FlowLabels.grpcMethod(flow)
         }
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(Modifier.width(STATUS_WIDTH.dp)) {
-            Text(
-                FlowLabels.status(flow),
-                color = outcomeColor(outcome),
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                flow.request.method,
-                fontFamily = FontFamily.Monospace,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Box(Modifier.width(STATUS_WIDTH.dp).padding(top = 2.dp)) { StatusPill(flow) }
         Column(Modifier.weight(1f)) {
             Text(
-                operation ?: (flow.authority + FlowLabels.path(flow)),
+                buildAnnotatedString {
+                    if (!flow.opening) {
+                        withStyle(
+                            SpanStyle(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        ) {
+                            append(flow.request.method)
+                        }
+                        append(" ")
+                    }
+                    append(
+                        when {
+                            flow.opening -> flow.authority
+                            operation != null -> operation
+                            else -> FlowLabels.path(flow)
+                        }
+                    )
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                rowDetails(flow, operation, labels, rules),
+                rowDetails(flow, labels, rules),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall,
@@ -431,18 +444,13 @@ private fun FlowRow(flow: Flow, labels: AppLabels, rules: TrafficRules, onClick:
 }
 
 /**
- * The app, the host when the first line named an operation instead, and how long and how big; for a
- * call that wasn't read, why, in a few words.
+ * The host, unless the first line is it, the app, and how long and how big; for a call that wasn't
+ * read, why, in a few words.
  */
-private fun rowDetails(
-    flow: Flow,
-    operation: String?,
-    labels: AppLabels,
-    rules: TrafficRules,
-): String {
+private fun rowDetails(flow: Flow, labels: AppLabels, rules: TrafficRules): String {
     val parts = mutableListOf<String>()
+    if (!flow.opening) parts += flow.authority
     flow.app?.let { parts += labels.of(it) }
-    if (operation != null) parts += flow.authority
     Unread.of(flow, rules)?.let {
         parts += Unread.label(it)
         return parts.joinToString(" · ")
@@ -461,19 +469,6 @@ private fun rowDetails(
     if (flow.wireLength > 0) parts += FlowLabels.size(flow.wireLength)
     return parts.joinToString(" · ")
 }
-
-@Composable
-internal fun outcomeColor(outcome: FlowOutcome): Color =
-    when (outcome) {
-        FlowOutcome.Success -> MaterialTheme.colorScheme.primary
-        FlowOutcome.Redirect,
-        FlowOutcome.Informational -> MaterialTheme.colorScheme.tertiary
-        FlowOutcome.ClientError,
-        FlowOutcome.ServerError,
-        FlowOutcome.Failed -> MaterialTheme.colorScheme.error
-        FlowOutcome.Pending,
-        FlowOutcome.PassedThrough -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
 
 private fun held(): String = "${FlowLabels.size(TrafficProxy.flows.heldBytes())} held"
 
@@ -526,7 +521,7 @@ internal val DEBUG_OVERRIDES =
 private const val PACE_MILLIS = 250L
 private const val LIST = "list"
 private const val MAX_APP_CHIPS = 6
-private const val STATUS_WIDTH = 52
+private const val STATUS_WIDTH = 64
 
 /** A mock, a remap or a breakpoint open in its editor, and whether saving it makes a new one. */
 private sealed interface Editing {

@@ -173,7 +173,7 @@ internal fun SnapshotDetail(
     LaunchedEffect(snapshot.id) {
         state = withContext(Dispatchers.IO) { Reactotron.state(snapshot) }
     }
-    ReactotronDetail(
+    DetailFrame(
         snapshot.name,
         onBack,
         find = "Find in this snapshot",

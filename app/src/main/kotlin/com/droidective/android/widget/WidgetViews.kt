@@ -43,7 +43,7 @@ import com.droidective.core.layout.WidgetGrid
  * The colours one widget draws with: the layout's own, or the wallpaper's through [GlanceTheme]
  * when it asks for them (Android 12+; earlier versions get Material's baseline).
  */
-private class WidgetColors(
+internal class WidgetColors(
     val background: ColorProvider,
     val on: ColorProvider,
     val off: ColorProvider,
@@ -53,7 +53,7 @@ private class WidgetColors(
 )
 
 @Composable
-private fun colorsFor(style: Style): WidgetColors {
+internal fun colorsFor(style: Style): WidgetColors {
     if (style.dynamicColors) {
         val theme = GlanceTheme.colors
         return WidgetColors(
@@ -79,7 +79,7 @@ private fun colorsFor(style: Style): WidgetColors {
 private fun chip(argb: Long, alpha: Int): Long = (alpha.toLong() shl 24) or (argb and 0xFFFFFF)
 
 /** White on a dark background, black on a light one. */
-private fun contrastOf(background: Long): Long {
+internal fun contrastOf(background: Long): Long {
     val r = (background shr 16) and 0xFF
     val g = (background shr 8) and 0xFF
     val b = background and 0xFF

@@ -61,6 +61,23 @@ class ShellStartsTest {
     }
 
     @Test
+    fun readsTheWifiNetworkFromDumpsysWifi() {
+        // `dumpsys wifi | grep 'mWifiInfo SSID'` on the API 36 emulator, connected: the primary
+        // connection first, then one for a network it isn't on.
+        val dumped =
+            "mWifiInfo SSID: \"AndroidWifi\", BSSID: 00:13:10:85:fe:01, MAC: 02:15:b8:00:00:00, " +
+                "IP: null,\r\n" +
+                "mWifiInfo SSID: <unknown ssid>, BSSID: <none>, MAC: 02:15:b8:00:00:00, IP: null\r\n"
+        assertEquals("AndroidWifi", Parse.wifiSsidFromDump(dumped))
+        assertNull(
+            Parse.wifiSsidFromDump("mWifiInfo SSID: <unknown ssid>, BSSID: <none>, MAC: x"),
+            "not connected",
+        )
+        assertNull(Parse.wifiSsidFromDump("mWifiInfo SSID: \"\", BSSID: <none>"))
+        assertNull(Parse.wifiSsidFromDump(""))
+    }
+
+    @Test
     fun readsTheAppInFront() {
         val api36 =
             "ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)\r\n" +

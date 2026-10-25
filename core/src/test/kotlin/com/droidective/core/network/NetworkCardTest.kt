@@ -1,5 +1,6 @@
 package com.droidective.core.network
 
+import com.droidective.core.layout.Style
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -45,7 +46,10 @@ class NetworkCardTest {
     @Test
     fun anAddressNotKnownSaysSo() {
         val lookupFailed = home.copy(publicIp = null)
-        assertEquals("Not found", NetworkCards.lines(lookupFailed, NetworkCard())[1].value)
+        assertEquals(
+            "Couldn't look it up",
+            NetworkCards.lines(lookupFailed, NetworkCard())[1].value,
+        )
         val offline = NetworkNow(Transport.None)
         assertEquals(listOf("—", "—"), NetworkCards.lines(offline, NetworkCard()).map { it.value })
     }
@@ -60,6 +64,10 @@ class NetworkCardTest {
     @Test
     fun anOldFileReadsAsItDidAndTheChoicesRoundTrip() {
         assertEquals(NetworkCard(), Json.decodeFromString(NetworkCard.serializer(), "{}"))
+        // 0.25.0 kept no style: those widgets take the bars' own look, not the wallpaper's.
+        val before = Json.decodeFromString(NetworkCard.serializer(), """{"showPublic":false}""")
+        assertEquals(Style(), before.style)
+        assertEquals(false, before.showPublic)
         val chosen = NetworkCard(showName = false, showPublic = false, copies = Copies.Public)
         val json = Json.encodeToString(NetworkCard.serializer(), chosen)
         assertEquals(chosen, Json.decodeFromString(NetworkCard.serializer(), json))

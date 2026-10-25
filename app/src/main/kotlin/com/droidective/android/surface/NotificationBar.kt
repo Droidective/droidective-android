@@ -6,32 +6,23 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.droidective.android.R
 import com.droidective.android.droidective
-import com.droidective.android.ui.Symbols
-import com.droidective.android.widget.AppIcons
 import com.droidective.core.layout.Cell
-import com.droidective.core.layout.CellIcon
 import com.droidective.core.layout.LayoutKind
 import com.droidective.core.layout.Tap
 import kotlinx.coroutines.launch
 
 /**
- * Notification-bar layouts, each posted as an ongoing notification with a row of toggles. No
- * foreground service backs it: Play accepts one only while it's needed, and on Android 14+ people
- * can swipe the notification away regardless. It comes back whenever the app refreshes it.
+ * Notification-bar layouts, each posted as an ongoing notification with a row of toggles, drawn as
+ * its style asks ([NotificationBarViews]). No foreground service backs it: Play accepts one only
+ * while it's needed, and on Android 14+ people can swipe the notification away regardless. It comes
+ * back whenever the app refreshes it.
  */
 object NotificationBar {
     private const val CHANNEL = "bar"
     private const val TAG = "bar"
-    private val slots =
-        listOf(R.id.slot0, R.id.slot1, R.id.slot2, R.id.slot3, R.id.slot4, R.id.slot5)
-
-    /** Beside each slot, the text it shows in place of its icon when its text is the point. */
-    private val texts =
-        listOf(R.id.text0, R.id.text1, R.id.text2, R.id.text3, R.id.text4, R.id.text5)
 
     suspend fun refresh(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -50,14 +41,14 @@ object NotificationBar {
             .filter { it.tag?.startsWith("$TAG:") == true && it.tag.removePrefix("$TAG:") !in live }
             .forEach { manager.cancel(it.tag, it.id) }
         layouts.forEach { layout ->
-            val cells = Surfaces.cells(context, layout).take(slots.size)
+            val cells = Surfaces.cells(context, layout).take(NotificationBarViews.SIZE)
+            val views = NotificationBarViews(context, layout.style) { pendingFor(context, it) }
             val notification =
                 NotificationCompat.Builder(context, CHANNEL)
                     .setSmallIcon(R.drawable.sym_toggle_on)
                     .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-                    .setCustomContentView(
-                        views(context, layout.style.iconOn, layout.style.iconOff, cells)
-                    )
+                    .setCustomContentView(views.collapsed(cells))
+                    .apply { views.expanded(cells)?.let(::setCustomBigContentView) }
                     .setOngoing(true)
                     .setSilent(true)
                     .setShowWhen(false)
@@ -69,44 +60,6 @@ object NotificationBar {
                 // POST_NOTIFICATIONS was revoked between the check and the post.
             }
         }
-    }
-
-    private fun views(context: Context, on: Long, off: Long, cells: List<Cell>): RemoteViews {
-        val views = RemoteViews(context.packageName, R.layout.notification_bar)
-        slots.forEachIndexed { index, slot ->
-            val cell = cells.getOrNull(index)
-            val text = texts[index]
-            views.setViewVisibility(text, android.view.View.GONE)
-            if (cell == null) {
-                views.setViewVisibility(slot, android.view.View.GONE)
-                return@forEachIndexed
-            }
-            if (cell.readout) {
-                views.setViewVisibility(slot, android.view.View.GONE)
-                views.setViewVisibility(text, android.view.View.VISIBLE)
-                views.setTextViewText(text, cell.label)
-                pendingFor(context, cell)?.let { views.setOnClickPendingIntent(text, it) }
-                return@forEachIndexed
-            }
-            views.setViewVisibility(slot, android.view.View.VISIBLE)
-            views.setContentDescription(slot, cell.label)
-            when (val icon = cell.icon) {
-                is CellIcon.Symbol -> {
-                    val symbol = Symbols.byName[icon.name] ?: Symbols.byName.getValue("toggle_on")
-                    views.setImageViewResource(
-                        slot,
-                        if (cell.active) symbol.filled else symbol.outlined,
-                    )
-                    views.setInt(slot, "setColorFilter", cell.tint(on, off).toInt())
-                }
-                is CellIcon.AppIcon ->
-                    views.setImageViewBitmap(slot, AppIcons.bitmap(context, icon.packageName))
-                is CellIcon.File ->
-                    views.setImageViewBitmap(slot, AppIcons.file(context, icon.path))
-            }
-            pendingFor(context, cell)?.let { views.setOnClickPendingIntent(slot, it) }
-        }
-        return views
     }
 
     /**

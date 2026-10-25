@@ -61,9 +61,9 @@ import com.droidective.core.layout.Display
 import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
 import com.droidective.core.layout.LayoutEdits
+import com.droidective.core.layout.LayoutKind
 import com.droidective.core.layout.Look
 import com.droidective.core.layout.previewStyle
-import com.droidective.core.layout.usesWholeStyle
 import kotlinx.coroutines.launch
 
 /**
@@ -221,11 +221,14 @@ fun LayoutEditor(layoutId: String, onDone: () -> Unit) {
     }
 }
 
-/** The panel's name: a home-screen widget has a whole style, the others only colours. */
+/** The panel's name: a folder has only colours, the others a style. */
 private fun styleTitle(layout: Layout): String =
-    if (layout.kind.usesWholeStyle) "Style" else "Colours"
+    if (layout.kind == LayoutKind.Folder) "Colours" else "Style"
 
-/** Grid or list for a home-screen widget, and on a phone, the way into the style panel. */
+/**
+ * Grid or list for a home-screen widget or a notification bar, and on a phone, the way into the
+ * style panel.
+ */
 @Composable
 private fun DisplayRow(
     layout: Layout,
@@ -237,7 +240,7 @@ private fun DisplayRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (layout.kind.usesWholeStyle) {
+        if (layout.kind != LayoutKind.Folder) {
             SingleChoiceSegmentedButtonRow(Modifier.weight(1f)) {
                 Display.entries.forEachIndexed { index, display ->
                     SegmentedButton(

@@ -122,6 +122,8 @@ enum class CellShape(val title: String) {
  * @property labelColor the labels' colour, or null for [iconOff].
  * @property stateText says each slot's state ("On", "0.5×") under its label.
  * @property dynamicColors takes the colours from the wallpaper (Android 12+) instead of these.
+ * @property filled a notification bar draws [background] behind its slots; off, it sits on the
+ *   shade's own colour, as every notification bar did before it could be filled.
  */
 @Serializable
 data class Style(
@@ -139,6 +141,7 @@ data class Style(
     val labelColor: Long? = null,
     val stateText: Boolean = false,
     val dynamicColors: Boolean = false,
+    val filled: Boolean = false,
 ) {
     /** The style with every number inside what a widget can draw, for a hand-edited file. */
     fun clamped(): Style =

@@ -5,6 +5,7 @@ import android.app.StatusBarManager
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -61,6 +62,9 @@ import com.droidective.android.editor.Preview
 import com.droidective.android.surface.LiveSurfaces
 import com.droidective.android.surface.Surfaces
 import com.droidective.android.surface.TileSlots
+import com.droidective.android.widget.NetworkConfigureActivity
+import com.droidective.android.widget.NetworkWidgetReceiver
+import com.droidective.android.widget.NetworkWidgets
 import com.droidective.android.widget.Starter
 import com.droidective.android.widget.ToggleBarWidget
 import com.droidective.android.widget.WidgetReceiver
@@ -102,6 +106,10 @@ fun WidgetsScreen(app: DroidectiveApplication) {
         return
     }
 
+    val networkWidgets by
+        produceState(NetworkWidgets.placedIds(context)) {
+            Surfaces.changes.collect { value = NetworkWidgets.placedIds(context) }
+        }
     val layouts by
         produceState(app.layouts.all()) {
             value = app.layouts.all()
@@ -166,6 +174,9 @@ fun WidgetsScreen(app: DroidectiveApplication) {
                     )
                 }
             }
+            networkWidgets.forEach { widgetId ->
+                item(key = "network-$widgetId") { NetworkCardRow(widgetId) }
+            }
             item(key = "tiles") {
                 TilesSection(
                     slots,
@@ -186,6 +197,10 @@ fun WidgetsScreen(app: DroidectiveApplication) {
             onHomeScreen = { starter ->
                 creating = false
                 pinWidget(context, starter)
+            },
+            onNetwork = {
+                creating = false
+                pinNetworkWidget(context)
             },
             onNotificationBar = {
                 creating = false
@@ -504,6 +519,7 @@ private val Starter.note: String
 private fun NewSheet(
     onDismiss: () -> Unit,
     onHomeScreen: (Starter) -> Unit,
+    onNetwork: () -> Unit,
     onNotificationBar: () -> Unit,
     onFolder: () -> Unit,
 ) {
@@ -544,6 +560,14 @@ private fun NewSheet(
                     }
                 }
             }
+            Choice(
+                symbol = "wifi",
+                title = "Network",
+                note = "The Wi-Fi name and IP address, local and public; a tap copies it",
+                enabled = canPin,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onNetwork,
+            )
             SectionHeader("Elsewhere")
             Choice(
                 symbol = "notifications",
@@ -664,6 +688,58 @@ private fun delete(
 ) {
     repository.delete(layout.id)
     scope.launch { Surfaces.refresh(context) }
+}
+
+/** Asks the launcher to place a network widget; it shows its own confirmation. */
+private fun pinNetworkWidget(context: Context) {
+    val manager = AppWidgetManager.getInstance(context)
+    if (manager.isRequestPinAppWidgetSupported) {
+        manager.requestPinAppWidget(
+            ComponentName(context, NetworkWidgetReceiver::class.java),
+            null,
+            null,
+        )
+    }
+}
+
+/** A placed network widget: what it shows, and a tap to change it. */
+@Composable
+private fun NetworkCardRow(widgetId: Int) {
+    val context = LocalContext.current
+    val card = remember(widgetId) { NetworkWidgets.card(context, widgetId) }
+    val shows =
+        listOfNotNull(
+                "name".takeIf { card.showName },
+                "local IP".takeIf { card.showLocal },
+                "public IP".takeIf { card.showPublic },
+            )
+            .joinToString(", ")
+            .replaceFirstChar { it.uppercase() }
+    Surface(
+        onClick = {
+            context.startActivity(
+                Intent(context, NetworkConfigureActivity::class.java)
+                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            )
+        },
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            SymbolIcon("wifi", tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Network", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Home-screen widget · ${shows.ifEmpty { "Local IP" }}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            SymbolIcon("chevron_right")
+        }
+    }
 }
 
 /** Asks the launcher to place a widget of [starter]'s kind; it shows its own confirmation. */

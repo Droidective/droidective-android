@@ -94,6 +94,11 @@ receipt_long
 pause
 vertical_align_bottom
 videocam
+expand_more
+expand_less
+view_list
+view_column
+smart_button
 # Widget actions: what an action slot draws (Cells.actionIcon).
 block
 cleaning_services

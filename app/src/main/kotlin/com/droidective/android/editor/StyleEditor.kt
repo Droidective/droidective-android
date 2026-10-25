@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,10 +54,12 @@ import com.droidective.android.ui.Symbols
 import com.droidective.core.layout.Cell
 import com.droidective.core.layout.CellShape
 import com.droidective.core.layout.Display
+import com.droidective.core.layout.LayoutKind
 import com.droidective.core.layout.Look
 import com.droidective.core.layout.Style
 import com.droidective.core.layout.StylePreset
 import com.droidective.core.layout.WidgetGrid
+import com.droidective.core.layout.usesWholeStyle
 
 /** Colours an icon or a label can take. */
 private val iconColours =
@@ -94,9 +97,23 @@ private val backgroundColours =
         0xFFFFFFFF,
     )
 
-/** Everything about how a layout draws, with the preview above it showing each change. */
+/**
+ * How a layout draws, with the preview showing each change. The few choices most people make come
+ * first (a colour set, the size, labels); the rest waits under More options. A notification bar or
+ * a folder uses only its two colours, so it shows only those.
+ */
 @Composable
-internal fun StyleControls(style: Style, onChange: (Style) -> Unit) {
+internal fun StyleControls(kind: LayoutKind, style: Style, onChange: (Style) -> Unit) {
+    if (!kind.usesWholeStyle) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Colour when on")
+            Swatches(iconColours, style.iconOn) { onChange(style.copy(iconOn = it)) }
+            Text("Colour when off")
+            Swatches(iconColours, style.iconOff) { onChange(style.copy(iconOff = it)) }
+        }
+        return
+    }
+    var more by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Section("Colours")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -112,39 +129,8 @@ internal fun StyleControls(style: Style, onChange: (Style) -> Unit) {
                     )
                 }
         }
-        if (!style.dynamicColors) {
-            Text("Background")
-            Swatches(backgroundColours, style.background or ALPHA_MASK) { rgb ->
-                onChange(
-                    style.copy(background = (style.background and ALPHA_MASK) or (rgb and RGB_MASK))
-                )
-            }
-            LabeledSlider("Opacity", "${(alphaOf(style.background) * 100).toInt()}%") {
-                Slider(
-                    value = alphaOf(style.background),
-                    onValueChange = { a ->
-                        onChange(style.copy(background = withAlpha(style.background, a)))
-                    },
-                )
-            }
-            Text("Colour when on")
-            Swatches(iconColours, style.iconOn) { onChange(style.copy(iconOn = it)) }
-            Text("Colour when off")
-            Swatches(iconColours, style.iconOff) { onChange(style.copy(iconOff = it)) }
-        }
 
-        Section("Arrangement")
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            Display.entries.forEachIndexed { index, display ->
-                SegmentedButton(
-                    selected = style.display == display,
-                    onClick = { onChange(style.copy(display = display)) },
-                    shape = SegmentedButtonDefaults.itemShape(index, Display.entries.size),
-                ) {
-                    Text(display.title)
-                }
-            }
-        }
+        Section("Size")
         if (style.display == Display.Grid) {
             LabeledSlider(
                 "Columns",
@@ -161,39 +147,82 @@ internal fun StyleControls(style: Style, onChange: (Style) -> Unit) {
         IntSlider("Icon size", style.iconSize, Style.ICON_SIZES, "dp") {
             onChange(style.copy(iconSize = it))
         }
-        IntSlider("Corners", style.cornerRadius, Style.CORNERS, "dp") {
-            onChange(style.copy(cornerRadius = it))
-        }
-        IntSlider("Edge padding", style.padding, Style.PADDINGS, "dp") {
-            onChange(style.copy(padding = it))
-        }
-        Text("Behind each icon")
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            CellShape.entries.forEachIndexed { index, shape ->
-                SegmentedButton(
-                    selected = style.cellShape == shape,
-                    onClick = { onChange(style.copy(cellShape = shape)) },
-                    shape = SegmentedButtonDefaults.itemShape(index, CellShape.entries.size),
-                ) {
-                    Text(shape.title)
-                }
-            }
-        }
 
         Section("Text")
         SwitchRow("Show labels", style.labels) { onChange(style.copy(labels = it)) }
-        SwitchRow("Show each slot's state", style.stateText) {
+        SwitchRow("Show each item's state", style.stateText) {
             onChange(style.copy(stateText = it))
         }
-        IntSlider("Text size", style.labelSize, Style.LABEL_SIZES, "sp") {
-            onChange(style.copy(labelSize = it))
+
+        MoreToggle(open = more) { more = !more }
+        if (more) MoreStyle(style, onChange)
+    }
+}
+
+/** The finer points: exact colours, corners, padding, chips and text. */
+@Composable
+private fun MoreStyle(style: Style, onChange: (Style) -> Unit) {
+    if (!style.dynamicColors) {
+        Text("Background")
+        Swatches(backgroundColours, style.background or ALPHA_MASK) { rgb ->
+            onChange(
+                style.copy(background = (style.background and ALPHA_MASK) or (rgb and RGB_MASK))
+            )
         }
-        if (!style.dynamicColors) {
-            Text("Text colour")
-            Swatches(iconColours, style.labelColor ?: style.iconOff) {
-                onChange(style.copy(labelColor = it))
+        LabeledSlider("Opacity", "${(alphaOf(style.background) * 100).toInt()}%") {
+            Slider(
+                value = alphaOf(style.background),
+                onValueChange = { a ->
+                    onChange(style.copy(background = withAlpha(style.background, a)))
+                },
+            )
+        }
+        Text("Colour when on")
+        Swatches(iconColours, style.iconOn) { onChange(style.copy(iconOn = it)) }
+        Text("Colour when off")
+        Swatches(iconColours, style.iconOff) { onChange(style.copy(iconOff = it)) }
+    }
+    IntSlider("Corners", style.cornerRadius, Style.CORNERS, "dp") {
+        onChange(style.copy(cornerRadius = it))
+    }
+    IntSlider("Edge padding", style.padding, Style.PADDINGS, "dp") {
+        onChange(style.copy(padding = it))
+    }
+    Text("Behind each icon")
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        CellShape.entries.forEachIndexed { index, shape ->
+            SegmentedButton(
+                selected = style.cellShape == shape,
+                onClick = { onChange(style.copy(cellShape = shape)) },
+                shape = SegmentedButtonDefaults.itemShape(index, CellShape.entries.size),
+            ) {
+                Text(shape.title)
             }
         }
+    }
+    IntSlider("Text size", style.labelSize, Style.LABEL_SIZES, "sp") {
+        onChange(style.copy(labelSize = it))
+    }
+    if (!style.dynamicColors) {
+        Text("Text colour")
+        Swatches(iconColours, style.labelColor ?: style.iconOff) {
+            onChange(style.copy(labelColor = it))
+        }
+    }
+}
+
+@Composable
+private fun MoreToggle(open: Boolean, onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Text(if (open) "Fewer options" else "More options")
+        Spacer(Modifier.width(4.dp))
+        Icon(
+            painterResource(
+                Symbols.byName.getValue(if (open) "expand_less" else "expand_more").outlined
+            ),
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 

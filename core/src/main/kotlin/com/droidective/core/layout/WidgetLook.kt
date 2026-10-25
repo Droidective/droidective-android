@@ -19,6 +19,29 @@ object WidgetGrid {
     private const val CELL_GUTTER_DP = 24
 }
 
+/**
+ * Whether this kind draws with the whole [Style]. Notification bars and folders take only the on
+ * and off colours: the notification shade and the folder screen draw everything else.
+ */
+val LayoutKind.usesWholeStyle: Boolean
+    get() = this == LayoutKind.Bar
+
+/**
+ * What a preview of this layout draws with: its own style for a home-screen widget, and for the
+ * others only the colours they use, as a grid on a clear ground.
+ */
+fun Layout.previewStyle(): Style =
+    if (kind.usesWholeStyle) style
+    else Style(background = CLEAR, iconOn = style.iconOn, iconOff = style.iconOff)
+
+private const val CLEAR = 0x00000000L
+
+/** The Quick Settings tile slots, numbered from 1. */
+object TileSlotNumbers {
+    /** The lowest of 1 to [count] that [taken] doesn't hold, or null when every slot is used. */
+    fun firstFree(taken: Set<Int>, count: Int): Int? = (1..count).firstOrNull { it !in taken }
+}
+
 /** Ready-made colour sets. Each keeps the layout's arrangement and changes only its colours. */
 enum class StylePreset(val title: String) {
     Droidective("Droidective"),

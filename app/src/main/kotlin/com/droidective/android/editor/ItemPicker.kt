@@ -9,15 +9,21 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -33,7 +39,9 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -106,40 +114,90 @@ fun ItemPicker(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        androidx.compose.material3.Surface(Modifier.fillMaxSize()) {
-            Column {
-                Text(
-                    "Add",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(16.dp),
+        // The whole screen on a phone; on a tablet, a panel with the screen around it.
+        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            val panel = maxWidth >= PANEL_WIDTH + PANEL_MARGIN * 2
+            androidx.compose.material3.Surface(
+                shape = if (panel) RoundedCornerShape(28.dp) else RectangleShape,
+                modifier =
+                    if (panel) {
+                        Modifier.width(PANEL_WIDTH).fillMaxHeight(PANEL_HEIGHT)
+                    } else {
+                        Modifier.fillMaxSize()
+                    },
+            ) {
+                PickerContent(
+                    kind,
+                    tabs,
+                    tab,
+                    query,
+                    { tab = it },
+                    { query = it },
+                    onPick,
+                    onDismiss,
                 )
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text("Search") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                )
-                PrimaryScrollableTabRow(selectedTabIndex = tab, edgePadding = 16.dp) {
-                    tabs.forEachIndexed { index, it ->
-                        Tab(
-                            selected = tab == index,
-                            onClick = { tab = index },
-                            text = { Text(it.title) },
-                        )
-                    }
-                }
-                when (tabs[tab]) {
-                    PickerTab.Toggles -> ToggleList(query, onPick)
-                    PickerTab.Apps -> AppList(query, onPick)
-                    PickerTab.Actions -> ActionList(query, onPick)
-                    PickerTab.Tools -> ToolList(query, onPick)
-                    PickerTab.Custom -> CustomList(kind, query, onPick)
-                }
             }
         }
     }
 }
+
+@Composable
+private fun PickerContent(
+    kind: LayoutKind,
+    tabs: List<PickerTab>,
+    tab: Int,
+    query: String,
+    onTab: (Int) -> Unit,
+    onQuery: (String) -> Unit,
+    onPick: (Item) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        ) {
+            Text(
+                "Add",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    painterResource(Symbols.byName.getValue("close").outlined),
+                    contentDescription = "Close",
+                )
+            }
+        }
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQuery,
+            placeholder = { Text("Search") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        )
+        PrimaryScrollableTabRow(selectedTabIndex = tab, edgePadding = 16.dp) {
+            tabs.forEachIndexed { index, it ->
+                Tab(
+                    selected = tab == index,
+                    onClick = { onTab(index) },
+                    text = { Text(it.title) },
+                )
+            }
+        }
+        when (tabs[tab]) {
+            PickerTab.Toggles -> ToggleList(query, onPick)
+            PickerTab.Apps -> AppList(query, onPick)
+            PickerTab.Actions -> ActionList(query, onPick)
+            PickerTab.Tools -> ToolList(query, onPick)
+            PickerTab.Custom -> CustomList(kind, query, onPick)
+        }
+    }
+}
+
+private val PANEL_WIDTH = 640.dp
+private val PANEL_MARGIN = 48.dp
+private const val PANEL_HEIGHT = 0.9f
 
 @Composable
 private fun ToggleList(query: String, onPick: (Item) -> Unit) {

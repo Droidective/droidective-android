@@ -9,27 +9,33 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ListItem
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,39 +48,46 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.droidective.android.DroidectiveApplication
 import com.droidective.android.droidective
 import com.droidective.android.editor.ItemPicker
 import com.droidective.android.editor.LayoutEditor
+import com.droidective.android.editor.Preview
 import com.droidective.android.surface.LiveSurfaces
 import com.droidective.android.surface.Surfaces
 import com.droidective.android.surface.TileSlots
 import com.droidective.android.widget.Starter
 import com.droidective.android.widget.ToggleBarWidget
 import com.droidective.android.widget.WidgetReceiver
-import com.droidective.core.ago
 import com.droidective.core.device.AppFreezers
 import com.droidective.core.features.Features
 import com.droidective.core.layout.Cell
+import com.droidective.core.layout.Cells
 import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
 import com.droidective.core.layout.LayoutKind
 import com.droidective.core.layout.LayoutRepository
+import com.droidective.core.layout.TileSlotNumbers
+import com.droidective.core.layout.previewStyle
+import com.droidective.core.toggles.Toggles
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/** Every place toggles live: home-screen bars, notification bars, folders and tiles. */
+/** Every place toggles live: home-screen widgets, notification bars, folders and tiles. */
 @Composable
 fun WidgetsScreen(app: DroidectiveApplication) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
+    var creating by rememberSaveable { mutableStateOf(false) }
     var pickingSlot by rememberSaveable { mutableStateOf<Int?>(null) }
+    var deleting by remember { mutableStateOf<Layout?>(null) }
     var slots by remember { mutableStateOf(TileSlots.all(context)) }
     val askNotifications =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -112,138 +125,489 @@ fun WidgetsScreen(app: DroidectiveApplication) {
         scope.launch { Surfaces.refresh(context) }
     }
 
-    LazyColumn(
-        Modifier.fillMaxSize()
-            .windowInsetsPadding(ScaffoldDefaults.contentWindowInsets)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item {
-            Text(
-                "Widgets",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(top = 16.dp),
-            )
-        }
-        item { LiveSurfacesRow() }
-
-        item { SectionHeader("Home-screen widgets") }
-        items(layouts.filter { it.kind == LayoutKind.Bar }, key = { it.id }) { layout ->
-            LayoutCard(
-                layout,
-                onEdit = { editing = layout.id },
-                onDelete = { delete(app.layouts, layout, scope, context) },
-            )
-        }
-        item {
-            Text(
-                "Add to the home screen",
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Starter.entries.forEach { starter ->
-                    OutlinedButton(
-                        onClick = { pinWidget(context, starter) },
+    AdaptiveColumns(
+        Modifier.fillMaxSize().windowInsetsPadding(ScaffoldDefaults.contentWindowInsets)
+    ) { columns ->
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item(key = "title") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Widgets",
+                        style = MaterialTheme.typography.headlineMedium,
                         modifier = Modifier.weight(1f),
-                    ) {
-                        Text(starter.short)
+                    )
+                    Button(onClick = { creating = true }) {
+                        SymbolIcon("add", Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("New")
                     }
                 }
             }
-        }
-
-        item { SectionHeader("Notification bars") }
-        items(layouts.filter { it.kind == LayoutKind.Notification }, key = { it.id }) { layout ->
-            LayoutCard(
-                layout,
-                onEdit = { editing = layout.id },
-                onDelete = { delete(app.layouts, layout, scope, context) },
-            )
-        }
-        item {
-            OutlinedButton(
-                onClick = {
-                    if (needsNotificationPermission(context)) {
-                        askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                    create(
-                        LayoutKind.Notification,
-                        "Notification bar",
-                        ToggleBarWidget.starterToggles,
+            if (layouts.isEmpty()) {
+                item(key = "empty") { EmptyWidgets() }
+            } else {
+                adaptiveItems(
+                    layouts.sortedWith(compareBy({ it.kind.ordinal }, { it.name.lowercase() })),
+                    columns,
+                    key = { it.id },
+                    gutter = 0.dp,
+                    // The preview measures its width with BoxWithConstraints.
+                    equalHeights = false,
+                ) { layout, modifier ->
+                    LayoutCard(
+                        layout,
+                        modifier,
+                        onEdit = { editing = layout.id },
+                        onDelete = { deleting = layout },
                     )
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("New notification bar")
+                }
             }
-        }
-
-        item { SectionHeader("Folders") }
-        items(layouts.filter { it.kind == LayoutKind.Folder }, key = { it.id }) { layout ->
-            LayoutCard(
-                layout,
-                onEdit = { editing = layout.id },
-                onDelete = { delete(app.layouts, layout, scope, context) },
-            )
-        }
-        item {
-            OutlinedButton(
-                onClick = { create(LayoutKind.Folder, "Folder", emptyList()) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("New folder")
+            item(key = "tiles") {
+                TilesSection(
+                    slots,
+                    onChoose = { pickingSlot = it },
+                    onRemove = { slot ->
+                        TileSlots.bind(context, slot, null)
+                        slots = TileSlots.all(context)
+                    },
+                )
             }
+            item(key = "live") { LiveSurfacesCard() }
         }
+    }
 
-        item { SectionHeader("Quick Settings tiles") }
-        items((1..TileSlots.COUNT).toList(), key = { "slot-$it" }) { slot ->
-            TileSlotRow(
-                context,
-                slot,
-                slots[slot],
-                onChoose = { pickingSlot = slot },
-                onClear = {
-                    TileSlots.bind(context, slot, null)
-                    slots = TileSlots.all(context)
-                },
-            )
-        }
-        item { Text(" ") }
+    if (creating) {
+        NewSheet(
+            onDismiss = { creating = false },
+            onHomeScreen = { starter ->
+                creating = false
+                pinWidget(context, starter)
+            },
+            onNotificationBar = {
+                creating = false
+                if (needsNotificationPermission(context)) {
+                    askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                create(LayoutKind.Notification, "Notification bar", ToggleBarWidget.starterToggles)
+            },
+            onFolder = {
+                creating = false
+                create(LayoutKind.Folder, "Folder", emptyList())
+            },
+        )
     }
 
     pickingSlot?.let { slot ->
         ItemPicker(
             kind = LayoutKind.Bar,
             onPick = { item ->
+                val isNew = slots[slot] == null
                 TileSlots.bind(context, slot, item)
                 slots = TileSlots.all(context)
                 pickingSlot = null
+                // A new tile goes straight on to the panel; Android asks before it adds it.
+                if (isNew) requestTile(context, slot)
             },
             onDismiss = { pickingSlot = null },
         )
+    }
+
+    deleting?.let { layout ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text("Delete “${layout.name}”?") },
+            text = { Text(deleteNote(layout.kind)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deleting = null
+                        delete(app.layouts, layout, scope, context)
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
+        )
+    }
+}
+
+private fun deleteNote(kind: LayoutKind): String =
+    when (kind) {
+        LayoutKind.Bar -> "If it’s on the home screen, it goes back to how it started."
+        LayoutKind.Notification -> "Its notification goes away."
+        LayoutKind.Folder -> "Slots that open it go away too."
+    }
+
+@Composable
+private fun EmptyWidgets() {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            "Nothing yet. A widget puts toggles, apps and tools a tap away on the home screen, " +
+                "in a notification or in a folder. Tap New to make one.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(20.dp),
+        )
+    }
+}
+
+/** One widget, notification bar or folder: what it is, what it holds, and how it looks. */
+@Composable
+private fun LayoutCard(
+    layout: Layout,
+    modifier: Modifier,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val context = LocalContext.current
+    val cells by produceState(emptyList<Cell>(), layout) { value = Surfaces.cells(context, layout) }
+    var menu by remember { mutableStateOf(false) }
+    Surface(
+        onClick = onEdit,
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier,
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SymbolIcon(layout.kind.symbol, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        layout.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        "${layout.kind.title} · ${count(layout.items.size)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Box {
+                    IconButton(onClick = { menu = true }) {
+                        SymbolIcon("more_vert", description = "More for ${layout.name}")
+                    }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Edit") },
+                            onClick = {
+                                menu = false
+                                onEdit()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            onClick = {
+                                menu = false
+                                onDelete()
+                            },
+                        )
+                    }
+                }
+            }
+            Preview(layout.previewStyle(), cells)
+        }
+    }
+}
+
+private fun count(items: Int): String =
+    when (items) {
+        0 -> "empty"
+        1 -> "1 item"
+        else -> "$items items"
+    }
+
+private val LayoutKind.symbol: String
+    get() =
+        when (this) {
+            LayoutKind.Bar -> "widgets"
+            LayoutKind.Notification -> "notifications"
+            LayoutKind.Folder -> "folder"
+        }
+
+/** A Quick Settings tile slot that holds something, or the place to add the next one. */
+private sealed interface TileEntry {
+    data class Slot(val number: Int, val item: Item) : TileEntry
+
+    data class Add(val number: Int) : TileEntry
+}
+
+/** The tiles in use, and one place to add another, instead of a row for every empty slot. */
+@Composable
+private fun TilesSection(
+    slots: Map<Int, Item>,
+    onChoose: (Int) -> Unit,
+    onRemove: (Int) -> Unit,
+) {
+    val entries =
+        slots.entries.sortedBy { it.key }.map { TileEntry.Slot(it.key, it.value) } +
+            listOfNotNull(
+                TileSlotNumbers.firstFree(slots.keys, TileSlots.COUNT)?.let(TileEntry::Add)
+            )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionHeader("Quick Settings tiles")
+        Text(
+            "Tiles sit in the panel you pull down from the top of the screen. Pick what one " +
+                "does, and Android asks to add it there.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        AdaptiveColumns(minWidth = TILE_MIN) { columns ->
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                AdaptiveRows(entries, columns) { entry, modifier ->
+                    when (entry) {
+                        is TileEntry.Slot -> SlotTile(entry, modifier, onChoose, onRemove)
+                        is TileEntry.Add -> AddTile(modifier) { onChoose(entry.number) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SlotTile(
+    entry: TileEntry.Slot,
+    modifier: Modifier,
+    onChoose: (Int) -> Unit,
+    onRemove: (Int) -> Unit,
+) {
+    val context = LocalContext.current
+    var menu by remember { mutableStateOf(false) }
+    Box(modifier) {
+        Surface(
+            onClick = { menu = true },
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                SymbolIcon(tileSymbol(entry.item), tint = MaterialTheme.colorScheme.primary)
+                Text(
+                    tileLabel(context, entry.item),
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "Tile ${entry.number}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            DropdownMenuItem(
+                text = { Text("Change") },
+                onClick = {
+                    menu = false
+                    onChoose(entry.number)
+                },
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                DropdownMenuItem(
+                    text = { Text("Add to Quick Settings") },
+                    onClick = {
+                        menu = false
+                        requestTile(context, entry.number)
+                    },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text("Remove") },
+                onClick = {
+                    menu = false
+                    onRemove(entry.number)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddTile(modifier: Modifier, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = modifier,
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            SymbolIcon("add", tint = MaterialTheme.colorScheme.primary)
+            Text("Add a tile", style = MaterialTheme.typography.titleSmall)
+        }
+    }
+}
+
+private fun tileLabel(context: Context, item: Item): String =
+    when (item) {
+        is Item.Toggle -> Toggles.byId(item.toggleId)?.title ?: "Removed toggle"
+        is Item.App -> item.label
+        is Item.Shortcut -> item.label
+        is Item.DeepLink -> item.label
+        is Item.SettingsScreen -> item.label
+        is Item.Folder -> context.droidective.layouts.get(item.folderId)?.name ?: "Folder"
+        is Item.Command ->
+            context.droidective.commands.get(item.commandId)?.name ?: "Removed command"
+        is Item.Automation ->
+            context.droidective.automations.get(item.automationId)?.name ?: "Removed automation"
+        is Item.Action -> item.label
+        is Item.Tool -> Features.byId(item.featureId)?.title ?: "Removed tool"
+    }
+
+private fun tileSymbol(item: Item): String =
+    when (item) {
+        is Item.Toggle -> Toggles.byId(item.toggleId)?.icon ?: "toggle_on"
+        is Item.App -> "apps"
+        is Item.Shortcut -> "open_in_new"
+        is Item.DeepLink -> "link"
+        is Item.SettingsScreen -> "settings"
+        is Item.Folder -> "folder"
+        is Item.Command -> "terminal"
+        is Item.Automation -> "bolt"
+        is Item.Action -> Cells.actionIcon(item.action)
+        is Item.Tool -> Features.byId(item.featureId)?.icon ?: "build"
+    }
+
+/** What a new widget starts as, in the words the New sheet uses. */
+private val Starter.symbol: String
+    get() =
+        when (this) {
+            Starter.Bar -> "view_column"
+            Starter.Button -> "smart_button"
+            Starter.List -> "view_list"
+        }
+
+private val Starter.note: String
+    get() =
+        when (this) {
+            Starter.Bar -> "A row of icons"
+            Starter.Button -> "One big button"
+            Starter.List -> "Names and states, in rows"
+        }
+
+/** Everything that can be made, each with what it is, so nothing needs guessing. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NewSheet(
+    onDismiss: () -> Unit,
+    onHomeScreen: (Starter) -> Unit,
+    onNotificationBar: () -> Unit,
+    onFolder: () -> Unit,
+) {
+    val context = LocalContext.current
+    val canPin = remember { AppWidgetManager.getInstance(context).isRequestPinAppWidgetSupported }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("New", style = MaterialTheme.typography.titleLarge)
+            SectionHeader("On the home screen")
+            Text(
+                if (canPin) {
+                    "Pick how it starts. You can change everything about it afterwards."
+                } else {
+                    "This launcher adds widgets from its own list: touch and hold the home " +
+                        "screen, then Widgets, then Droidective."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            AdaptiveColumns(minWidth = STARTER_MIN) { columns ->
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    AdaptiveRows(Starter.entries, columns.coerceAtMost(Starter.entries.size)) {
+                        starter,
+                        modifier ->
+                        Choice(
+                            symbol = starter.symbol,
+                            title = starter.short,
+                            note = starter.note,
+                            enabled = canPin,
+                            modifier = modifier,
+                        ) {
+                            onHomeScreen(starter)
+                        }
+                    }
+                }
+            }
+            SectionHeader("Elsewhere")
+            Choice(
+                symbol = "notifications",
+                title = "Notification bar",
+                note =
+                    "Up to ${LayoutKind.Notification.maxItems} items in a notification, one " +
+                        "swipe away anywhere",
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onNotificationBar,
+            )
+            Choice(
+                symbol = "folder",
+                title = "Folder",
+                note = "A group of items that one slot opens",
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onFolder,
+            )
+        }
+    }
+}
+
+@Composable
+private fun Choice(
+    symbol: String,
+    title: String,
+    note: String,
+    modifier: Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier,
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            SymbolIcon(symbol, tint = MaterialTheme.colorScheme.primary)
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                note,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
 /** The switch for [LiveSurfaces]: a service that keeps widget taps instant and widgets current. */
 @Composable
-private fun LiveSurfacesRow() {
+private fun LiveSurfacesCard() {
     val context = LocalContext.current
     var on by remember { mutableStateOf(LiveSurfaces.enabled(context)) }
     val holdsTaps = remember { AppFreezers.holdsWidgetTaps(Build.MANUFACTURER) }
-    ListItem(
-        modifier =
-            Modifier.toggleable(
-                value = on,
-                role = Role.Switch,
-                onValueChange = {
-                    LiveSurfaces.setEnabled(context, it)
-                    on = it
-                },
-            ),
-        headlineContent = { Text("Keep widgets live") },
-        supportingContent = {
-            Text(
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    ) {
+        SwitchRow(
+            "Keep widgets live",
+            checked = on,
+            note =
                 buildString {
                     append(
                         "Widgets, tiles and notification bars follow changes made anywhere, " +
@@ -255,11 +619,14 @@ private fun LiveSurfacesRow() {
                                 "widget tap for half a minute; keeping widgets live stops that."
                         )
                     }
-                }
-            )
-        },
-        trailingContent = { Switch(checked = on, onCheckedChange = null) },
-    )
+                },
+            modifier = Modifier.padding(16.dp),
+            onChange = {
+                LiveSurfaces.setEnabled(context, it)
+                on = it
+            },
+        )
+    }
 }
 
 @Composable
@@ -268,99 +635,31 @@ private fun SectionHeader(text: String) {
         text.uppercase(),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 16.dp),
+        modifier = Modifier.padding(top = 12.dp),
     )
 }
 
 @Composable
-private fun LayoutCard(layout: Layout, onEdit: () -> Unit, onDelete: () -> Unit) {
-    val context = LocalContext.current
-    val cells by produceState(emptyList<Cell>(), layout) { value = Surfaces.cells(context, layout) }
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit),
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(layout.name, style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        "Last edited ${ago(layout.editedAt, System.currentTimeMillis())}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                TextButton(onClick = onDelete) { Text("Delete") }
-            }
-            FlowRow(
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(layout.style.background))
-                        .padding(4.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                cells.forEach {
-                    CellButton(
-                        it,
-                        Color(layout.style.iconOn),
-                        Color(layout.style.iconOff),
-                        false,
-                        null,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TileSlotRow(
-    context: Context,
-    slot: Int,
-    item: Item?,
-    onChoose: () -> Unit,
-    onClear: () -> Unit,
+private fun SymbolIcon(
+    name: String,
+    modifier: Modifier = Modifier,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    description: String? = null,
 ) {
-    val label =
-        when (item) {
-            null -> "Empty"
-            is Item.Toggle ->
-                com.droidective.core.toggles.Toggles.byId(item.toggleId)?.title ?: "Removed toggle"
-            is Item.App -> item.label
-            is Item.Shortcut -> item.label
-            is Item.DeepLink -> item.label
-            is Item.SettingsScreen -> item.label
-            is Item.Folder -> "Folder"
-            is Item.Command ->
-                context.droidective.commands.get(item.commandId)?.name ?: "Removed command"
-            is Item.Automation ->
-                context.droidective.automations.get(item.automationId)?.name ?: "Removed automation"
-            is Item.Action -> item.label
-            is Item.Tool -> Features.byId(item.featureId)?.title ?: "Removed tool"
-        }
-    ListItem(
-        headlineContent = { Text("Droidective $slot") },
-        supportingContent = { Text(label) },
-        trailingContent = {
-            Row {
-                if (item != null) TextButton(onClick = onClear) { Text("Clear") }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    TextButton(onClick = { requestTile(context, slot) }) {
-                        Text("Add to Quick Settings")
-                    }
-                }
-            }
-        },
-        modifier = Modifier.clickable(onClick = onChoose),
+    androidx.compose.material3.Icon(
+        painterResource(
+            Symbols.byName[name]?.outlined ?: Symbols.byName.getValue("toggle_on").outlined
+        ),
+        contentDescription = description,
+        tint = tint,
+        modifier = modifier,
     )
 }
 
 private fun delete(
     repository: LayoutRepository,
     layout: Layout,
-    scope: kotlinx.coroutines.CoroutineScope,
+    scope: CoroutineScope,
     context: Context,
 ) {
     repository.delete(layout.id)
@@ -387,3 +686,6 @@ private fun requestTile(context: Context, slot: Int) {
         context.mainExecutor,
     ) {}
 }
+
+private val TILE_MIN = 150.dp
+private val STARTER_MIN = 100.dp

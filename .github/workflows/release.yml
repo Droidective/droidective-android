@@ -40,6 +40,8 @@ jobs:
           DROIDECTIVE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           DROIDECTIVE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           DROIDECTIVE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
           export DROIDECTIVE_KEYSTORE="$RUNNER_TEMP/release.jks"
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode >"$DROIDECTIVE_KEYSTORE"

@@ -22,9 +22,12 @@ import androidx.compose.ui.unit.dp
 import com.droidective.android.crashes.OwnCrashes
 import com.droidective.core.ago
 
-/** Shown only after Droidective itself crashed: the reports, ready for a bug report. */
+/**
+ * Shown only after Droidective itself crashed: the reports, ready for a bug report. [reporting] is
+ * whether crash reports go to Sentry, which changes what this card can promise.
+ */
 @Composable
-fun OwnCrashesCard(crashes: OwnCrashes) {
+fun OwnCrashesCard(crashes: OwnCrashes, reporting: Boolean) {
     val context = LocalContext.current
     var recent by remember { mutableStateOf(crashes.recent()) }
     val last = recent.firstOrNull() ?: return
@@ -42,7 +45,13 @@ fun OwnCrashesCard(crashes: OwnCrashes) {
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                "Copy it into a bug report. Nothing leaves this phone unless you paste it somewhere.",
+                if (reporting) {
+                    "Copy it into a bug report. This full report stays on the phone; the crash " +
+                        "report Droidective sent left out names, paths and addresses."
+                } else {
+                    "Copy it into a bug report. Nothing leaves this phone unless you paste it " +
+                        "somewhere."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

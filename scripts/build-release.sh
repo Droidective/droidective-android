@@ -29,6 +29,13 @@ pin=$(tr -d '[:space:]:' <release-cert.sha256 2>/dev/null | tr '[:upper:]' '[:lo
 
 notes=$(scripts/release-notes.sh "$tag")
 
+# Neither stops a release: without the DSN the APK sends no crash reports, and without the token
+# its crashes arrive with R8's names in their stack traces.
+[ -n "${SENTRY_DSN:-}" ] ||
+  echo "build-release: warning: SENTRY_DSN is not set, so this APK sends no crash reports" >&2
+[ -n "${SENTRY_AUTH_TOKEN:-}" ] ||
+  echo "build-release: warning: SENTRY_AUTH_TOKEN is not set, so the R8 mapping isn't uploaded" >&2
+
 ./gradlew --console=plain :app:assembleRelease
 
 sdk=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}

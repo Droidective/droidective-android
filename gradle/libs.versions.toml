@@ -14,6 +14,9 @@ kotlinx-coroutines = "1.11.0"
 shizuku = "13.1.5"
 # Google's own pure-Java brotli decoder (MIT). 0.1.2 is its last Maven release; no known advisories.
 brotli = "0.1.2"
+# Crash reports. 8.61.1 is newer than the 7-day cooldown; Dependabot will offer it.
+sentry = "8.61.0"
+sentry-gradle-plugin = "6.24.0"
 junit4 = "4.13.2"
 junit-jupiter = "6.1.3"
 kotest = "6.2.5"
@@ -40,6 +43,9 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
 brotli-dec = { module = "org.brotli:dec", version.ref = "brotli" }
 shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
+# The core SDK alone: sentry-android would add the NDK and Session Replay modules, and this app has
+# no native code of its own and must never record its screens.
+sentry-android-core = { module = "io.sentry:sentry-android-core", version.ref = "sentry" }
 junit4 = { module = "junit:junit", version.ref = "junit4" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
@@ -57,3 +63,4 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktfmt = { id = "com.ncorti.ktfmt.gradle", version.ref = "ktfmt-plugin" }
+sentry-android-gradle = { id = "io.sentry.android.gradle", version.ref = "sentry-gradle-plugin" }

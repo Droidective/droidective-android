@@ -56,6 +56,7 @@ object Symbols {
             "cast_connected" to
                 Symbol(R.drawable.sym_cast_connected, R.drawable.sym_cast_connected_fill),
             "chat" to Symbol(R.drawable.sym_chat, R.drawable.sym_chat_fill),
+            "check" to Symbol(R.drawable.sym_check, R.drawable.sym_check_fill),
             "check_circle" to Symbol(R.drawable.sym_check_circle, R.drawable.sym_check_circle_fill),
             "cleaning_services" to
                 Symbol(R.drawable.sym_cleaning_services, R.drawable.sym_cleaning_services_fill),
@@ -91,6 +92,8 @@ object Symbols {
             "engineering" to Symbol(R.drawable.sym_engineering, R.drawable.sym_engineering_fill),
             "error" to Symbol(R.drawable.sym_error, R.drawable.sym_error_fill),
             "event" to Symbol(R.drawable.sym_event, R.drawable.sym_event_fill),
+            "expand_less" to Symbol(R.drawable.sym_expand_less, R.drawable.sym_expand_less_fill),
+            "expand_more" to Symbol(R.drawable.sym_expand_more, R.drawable.sym_expand_more_fill),
             "extension" to Symbol(R.drawable.sym_extension, R.drawable.sym_extension_fill),
             "favorite" to Symbol(R.drawable.sym_favorite, R.drawable.sym_favorite_fill),
             "filter_alt" to Symbol(R.drawable.sym_filter_alt, R.drawable.sym_filter_alt_fill),
@@ -189,6 +192,7 @@ object Symbols {
                 Symbol(R.drawable.sym_shopping_cart, R.drawable.sym_shopping_cart_fill),
             "signal_cellular_alt" to
                 Symbol(R.drawable.sym_signal_cellular_alt, R.drawable.sym_signal_cellular_alt_fill),
+            "smart_button" to Symbol(R.drawable.sym_smart_button, R.drawable.sym_smart_button_fill),
             "smart_toy" to Symbol(R.drawable.sym_smart_toy, R.drawable.sym_smart_toy_fill),
             "sms" to Symbol(R.drawable.sym_sms, R.drawable.sym_sms_fill),
             "speed" to Symbol(R.drawable.sym_speed, R.drawable.sym_speed_fill),
@@ -223,6 +227,8 @@ object Symbols {
                 ),
             "vibration" to Symbol(R.drawable.sym_vibration, R.drawable.sym_vibration_fill),
             "videocam" to Symbol(R.drawable.sym_videocam, R.drawable.sym_videocam_fill),
+            "view_column" to Symbol(R.drawable.sym_view_column, R.drawable.sym_view_column_fill),
+            "view_list" to Symbol(R.drawable.sym_view_list, R.drawable.sym_view_list_fill),
             "visibility" to Symbol(R.drawable.sym_visibility, R.drawable.sym_visibility_fill),
             "visibility_off" to
                 Symbol(R.drawable.sym_visibility_off, R.drawable.sym_visibility_off_fill),

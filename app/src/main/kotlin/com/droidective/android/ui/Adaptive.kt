@@ -46,12 +46,14 @@ fun AdaptiveColumns(
 
 /**
  * [items] as a list on a phone, and in rows of [columns] where there's room, every row as tall as
- * its tallest item so the cards line up. [content] gets the modifier that sizes its item.
+ * its tallest item so the cards line up. [content] gets the modifier that sizes its item; [gutter]
+ * is the space either side of a row of more than one, for lists that don't pad.
  */
 fun <T> LazyListScope.adaptiveItems(
     items: List<T>,
     columns: Int,
     key: (T) -> Any,
+    gutter: Dp = 12.dp,
     content: @Composable RowScope.(item: T, modifier: Modifier) -> Unit,
 ) {
     if (columns <= 1) {
@@ -62,7 +64,7 @@ fun <T> LazyListScope.adaptiveItems(
         Row(
             Modifier.fillMaxWidth()
                 .height(IntrinsicSize.Max)
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(horizontal = gutter, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             row.forEach { item -> content(item, Modifier.weight(1f).fillMaxHeight()) }

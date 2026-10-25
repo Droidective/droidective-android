@@ -56,7 +56,6 @@ object Symbols {
             "cast_connected" to
                 Symbol(R.drawable.sym_cast_connected, R.drawable.sym_cast_connected_fill),
             "chat" to Symbol(R.drawable.sym_chat, R.drawable.sym_chat_fill),
-            "check" to Symbol(R.drawable.sym_check, R.drawable.sym_check_fill),
             "check_circle" to Symbol(R.drawable.sym_check_circle, R.drawable.sym_check_circle_fill),
             "cleaning_services" to
                 Symbol(R.drawable.sym_cleaning_services, R.drawable.sym_cleaning_services_fill),

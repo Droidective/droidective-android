@@ -86,7 +86,7 @@ The Android side is in `app`:
 | `ui/tools/NetworkTrafficProxyUi.kt` | The proxy chip and sheet: start and stop, pointing the phone, network speed; and the card that says how to start |
 | `ui/tools/NetworkTrafficCertificate.kt` | The Certificate tab, installing it, and the steps that make your app trust it |
 | `ui/tools/NetworkTrafficRules.kt` | The Rules tab, and the Mocks tab's lists of mocks, remaps and breakpoints |
-| `ui/tools/NetworkTrafficDetail.kt` | One flow: overview, headers, body, cURL, rule shortcuts |
+| `ui/tools/NetworkTrafficDetail.kt` | One flow: its status, the body before the headers, find inside it, send again, and the rest in its menu |
 | `ui/tools/NetworkTrafficUnread.kt` | Why calls weren't read: the banner, a flow's reason and fix, and the sheet that makes your app trust the certificate |
 | `ui/tools/NetworkTrafficCompose.kt` | Edit and send: a captured request changed and sent again |
 | `ui/tools/NetworkTrafficMocks.kt` | The mock editor and its rows |

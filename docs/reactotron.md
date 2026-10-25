@@ -29,9 +29,10 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `app/reactotron/Reactotron.kt` | The one server, its state, the apps connected, the timeline |
 | `app/reactotron/ReactotronService.kt` | The foreground service that keeps it listening |
 | `app/ui/tools/ReactotronTool.kt` | The screen: the header, the tabs (Timeline, State, Snapshots, Console), the timeline; on a tablet, what's open beside the list |
-| `app/ui/tools/ReactotronFindUi.kt` | Find inside an entry or a snapshot: the find bar, highlights, next and previous |
+| `app/ui/tools/FindUi.kt` | Find inside an entry or a snapshot: the find bar, highlights, next and previous |
 | `app/ui/tools/ReactotronServerUi.kt` | The status chip, the server sheet, and the card that says how to connect |
-| `app/ui/tools/ReactotronEntryUi.kt` | An entry whole: overview, request or response, stack, payload; the frame every detail shares |
+| `app/ui/tools/ReactotronEntryUi.kt` | An entry whole: overview, request or response, stack, payload |
+| `app/ui/tools/DetailFrame.kt` | The frame a detail sits in, Reactotron's and Network Traffic's: title, actions, find, scrolling |
 | `app/ui/tools/ReactotronStateUi.kt` | Reading the apps' state and dispatching an action, with what comes back shown in place |
 | `app/ui/tools/ReactotronWatchUi.kt` | Watch: each path with what it holds now, as it changes |
 | `app/ui/tools/ReactotronSnapshotsUi.kt` | Snapshots: taking one, the ones kept, and one whole to restore, rename or delete (Delete asks first) |

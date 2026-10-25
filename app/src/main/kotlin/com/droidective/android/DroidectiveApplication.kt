@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.core.content.edit
 import com.droidective.android.automation.Automations
+import com.droidective.android.crashes.CrashReporting
 import com.droidective.android.crashes.OwnCrashes
 import com.droidective.android.proxy.ProxyNotices
 import com.droidective.android.proxy.TrafficProxy
@@ -83,6 +84,8 @@ class DroidectiveApplication : Application() {
             OwnCrashes(File(filesDir, "own-crashes")).also {
                 it.install(Thread.getDefaultUncaughtExceptionHandler())
             }
+        // Its handler wraps the one above: the crash is reported, then written down, then fatal.
+        CrashReporting.start(this)
         layouts = LayoutRepository(filesDir)
         commands = CommandRepository(filesDir)
         deepLinks = DeepLinkRepository(filesDir)

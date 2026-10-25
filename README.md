@@ -65,6 +65,15 @@ does the closest thing it can without it, usually opening the right system scree
 
 The Setup tab shows where the phone stands and the next step for each level.
 
+## Privacy
+
+Release builds send crash reports through [Sentry](https://sentry.io): the stack trace of a crash
+or a freeze, with the phone's model and Android version. Before anything leaves the phone, package
+names, file paths, IP addresses, email addresses, host names and URLs are taken out of every
+message, and nothing on screen is captured: no screenshots, no view hierarchy, no session replay.
+Setup ▸ Crash reports turns it off. Nothing else is collected, and a build without a Sentry DSN,
+including any you build yourself, sends nothing.
+
 ## Building
 
 Kotlin 2.4 and Jetpack Compose, three modules: `core` (plain Kotlin, every rule and parser),

@@ -42,6 +42,19 @@ never commit it (`.gitignore` already refuses `*.jks` and `*.keystore`).
 If Play ever happens, upload this same key to Play App Signing, so a Play install and a GitHub
 install update each other.
 
+4. Give it Sentry, for crash reports from the `droidective-android` project in the `ro-is`
+   organization. The DSN goes into the APK at build time; the auth token uploads the R8 mapping
+   and source context, so a crash's stack trace reads as source rather than R8's short names. Make
+   the token under Settings ▸ Auth Tokens ▸ Organization Tokens.
+
+   ```sh
+   gh secret set SENTRY_DSN --body "<the project's DSN, from Settings ▸ Client Keys>"
+   gh secret set SENTRY_AUTH_TOKEN
+   ```
+
+   A release builds without either, with a warning: no DSN means the APK sends nothing, and no
+   token means stack traces stay obfuscated. Debug builds and builds without the DSN never report.
+
 ## Where the key is
 
 Made on 2026-10-19 (RSA 4096, valid to 2126, certificate SHA-256 in `release-cert.sha256`):
@@ -52,7 +65,7 @@ Made on 2026-10-19 (RSA 4096, valid to 2126, certificate SHA-256 in `release-cer
   second copy of the keystore, base64, is the item "Droidective Android release keystore (base64)".
 - A copy of the keystore with a README, in `~/Desktop/Droidective Android release key/` on that
   Mac. The password isn't in it; the README says how to read it from the Keychain.
-- GitHub: the four repository secrets above.
+- GitHub: the four repository secrets above (plus Sentry's two, which aren't the key).
 
 Every copy outside GitHub is on one Mac, so move one somewhere else (a password manager or an
 offline drive), with the password. To build a release locally:

@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,6 +43,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.droidective.android.DroidectiveApplication
+import com.droidective.android.crashes.CrashReporting
 import com.droidective.core.AccessLevel
 import com.droidective.core.Grants
 import com.droidective.platform.RootUse
@@ -152,7 +154,14 @@ fun SetupScreen(app: DroidectiveApplication) {
         }
 
         UpdatesCard()
-        OwnCrashesCard(app.ownCrashes)
+        var reporting by remember { mutableStateOf(CrashReporting.enabled(context)) }
+        if (CrashReporting.available) {
+            CrashReportsCard(reporting) {
+                CrashReporting.setEnabled(context, it)
+                reporting = it
+            }
+        }
+        OwnCrashesCard(app.ownCrashes, reporting = CrashReporting.available && reporting)
     }
 }
 

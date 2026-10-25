@@ -5,9 +5,10 @@ import com.droidective.android.BuildConfig
 import java.io.File
 
 /**
- * Droidective's own crash log: no SDK and nothing sent anywhere. An uncaught exception is written
+ * Droidective's own crash log, kept on the phone and sent nowhere. An uncaught exception is written
  * to a file before Android's handler takes the process down, and Setup offers the last one to copy
- * into a bug report. Crash Catcher sees these too, but only once it has its permissions.
+ * into a bug report. Crash Catcher sees these too, but only once it has its permissions. The
+ * scrubbed copy that goes to Sentry is [CrashReporting]'s.
  */
 class OwnCrashes(private val dir: File) {
     /** A crash this app recorded: when, and the report as written. */

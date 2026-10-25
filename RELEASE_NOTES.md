@@ -3,6 +3,16 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.22.0
+
+- **Crash reports.** When Droidective crashes or freezes, its stack trace now goes to the
+  developer through Sentry, with the phone's model and Android version, so a crash gets fixed
+  without anyone copying a report. Package names, file paths, IP addresses, email addresses, host
+  names and URLs are taken out on the phone first, and nothing on screen is captured: no
+  screenshots, no view hierarchy, no session replay. Setup ▸ Crash reports turns it off, and
+  [the privacy policy](https://droidective.com/privacy.html) has the details. The full report
+  Setup offers after a crash still stays on the phone.
+
 ## 0.21.1
 
 - **The app picker no longer crashes on devices with two Chrome channels.** Every Chrome channel

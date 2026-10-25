@@ -179,7 +179,12 @@ private data class Launchable(
     val packageName: String,
     val activity: String,
     val icon: Bitmap,
-)
+) {
+    // Activity names repeat across packages (every Chrome channel declares
+    // com.google.android.apps.chrome.Main), so a row key must carry the package.
+    val rowKey: String
+        get() = "$packageName/$activity"
+}
 
 private suspend fun launchables(context: Context, intent: Intent): List<Launchable> =
     withContext(Dispatchers.IO) {
@@ -209,7 +214,7 @@ private fun AppList(query: String, onPick: (Item) -> Unit) {
                 )
         }
     LazyColumn {
-        items(apps.filter { it.label.contains(query, ignoreCase = true) }, key = { it.activity }) {
+        items(apps.filter { it.label.contains(query, ignoreCase = true) }, key = { it.rowKey }) {
             app ->
             ListItem(
                 headlineContent = { Text(app.label) },
@@ -278,7 +283,7 @@ private fun CustomList(kind: LayoutKind, query: String, onPick: (Item) -> Unit) 
         item { Header("From other apps") }
         items(
             providers.filter { it.label.contains(query, ignoreCase = true) },
-            key = { "p-${it.activity}" },
+            key = { "p-${it.rowKey}" },
         ) { app ->
             ListItem(
                 headlineContent = { Text(app.label) },

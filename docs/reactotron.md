@@ -22,6 +22,7 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `core/reactotron/ReactotronEvent.kt` | Each command read for what it says, as Droidective for Mac reads it |
 | `core/reactotron/ReactotronTimeline.kt` | What the apps said, bounded by count and by bytes |
 | `core/reactotron/ReactotronLabels.kt` | A row's tag and summary, the filter's kinds, the search |
+| `core/reactotron/ReactotronSearch.kt` | One search of the timeline, keeping each entry's answer so new entries are all it reads |
 | `core/reactotron/ReactotronCommands.kt` | The custom commands apps register, running one, asking for state, backing it up and restoring it |
 | `core/reactotron/ReactotronSnapshots.kt` | The states kept to put back: an index, a file each, bounded |
 | `core/reactotron/ReactotronWatch.kt` | Watched paths: what each app last said they hold, and which answer which |
@@ -91,6 +92,11 @@ cleartext to localhost, which is all a `ws://` connection there needs.
   whole. With nothing after four seconds, the screen says what the app is missing. Watched values
   sit under the path that asked for them (`ReactotronWatch.readings`), a `.*` path with a value
   per key.
+- **Search reads everything an entry carried**, not only its row: a response's body and headers,
+  a request's, an action, a state answer. Keys and values are searched as text, so a body sent as
+  text is found as it reads (`"status":"placed"`), and nulls aren't text. That's up to 32 MB, so
+  the screen searches once typing pauses, off the main thread, and a `ReactotronSearch` keeps each
+  entry's answer: a timeline growing under a search reads only what's new.
 - **A slot or an automation restores a snapshot by its id**, so renaming it changes nothing. A
   snapshot deleted, or dropped past the bounds, makes the slot say it is gone rather than guess
   at another.

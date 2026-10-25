@@ -63,6 +63,7 @@ import com.droidective.android.ui.Symbols
 import com.droidective.core.reactotron.ReactotronEvent
 import com.droidective.core.reactotron.ReactotronKind
 import com.droidective.core.reactotron.ReactotronLabels
+import com.droidective.core.reactotron.ReactotronSearch
 import com.droidective.core.reactotron.ReactotronSnapshot
 import com.droidective.core.reactotron.ReactotronTimeline
 import java.time.Instant
@@ -306,10 +307,18 @@ private fun TimelineTab(
     var query by rememberSaveable { mutableStateOf("") }
     var kindName by rememberSaveable { mutableStateOf<String?>(null) }
     val kind = kindName?.let(ReactotronKind::valueOf)
-    val visible =
-        remember(entries, kind, query) {
-            entries.filter { ReactotronLabels.matches(it, kind, query) }.asReversed()
-        }
+    // A search reads every payload, so it runs once typing pauses, and off the main thread; the
+    // first pass here is in place, so a list coming back keeps its scroll.
+    var searched by remember { mutableStateOf(query) }
+    LaunchedEffect(query) {
+        delay(SEARCH_PAUSE_MILLIS)
+        searched = query
+    }
+    val search = remember(kind, searched) { ReactotronSearch(kind, searched) }
+    var visible by remember { mutableStateOf(search.filter(entries).asReversed()) }
+    LaunchedEffect(entries, search) {
+        visible = withContext(Dispatchers.Default) { search.filter(entries) }.asReversed()
+    }
     val clients by Reactotron.clients.collectAsStateWithLifecycle()
     // Labelled by app once more than one has spoken, connected now or not.
     val many = remember(entries) { entries.mapNotNullTo(HashSet()) { it.app }.size > 1 }
@@ -376,7 +385,7 @@ private fun Filters(
         OutlinedTextField(
             value = query,
             onValueChange = onQuery,
-            placeholder = { Text("Search") },
+            placeholder = { Text("Search logs, URLs, bodies") },
             leadingIcon = {
                 Icon(painterResource(Symbols.byName.getValue("search").outlined), null)
             },
@@ -548,4 +557,5 @@ private const val DETAIL_WEIGHT = 1.2f
 private val CARD_MAX = 560.dp
 private const val COUNT = "count"
 private const val PACE_MILLIS = 250L
+private const val SEARCH_PAUSE_MILLIS = 300L
 private const val TAG_WIDTH = 92

@@ -14,8 +14,10 @@ import com.droidective.core.reactotron.ReactotronEvent.StateAnswer
 import com.droidective.core.reactotron.ReactotronEvent.StateChange
 import com.droidective.core.reactotron.ReactotronEvent.Unknown
 import java.util.Locale
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /** The timeline's sorts, as its filter chips name them. */
@@ -79,14 +81,33 @@ object ReactotronLabels {
                 else event.type
         }
 
-    /** Whether an entry is wanted: of [kind] when there is one, and saying [query] somewhere. */
+    /**
+     * Whether an entry is wanted: of [kind] when there is one, and saying [query] somewhere: in its
+     * row, or anywhere in what it carried, such as a response's body or a request's headers.
+     */
     fun matches(entry: ReactotronTimeline.Entry, kind: ReactotronKind?, query: String): Boolean {
         if (kind != null && kind(entry.event) != kind) return false
         val wanted = query.trim()
         if (wanted.isEmpty()) return true
         return listOfNotNull(entry.app, entry.command.type, tag(entry.event), summary(entry.event))
-            .any { it.contains(wanted, ignoreCase = true) }
+            .any { it.contains(wanted, ignoreCase = true) } || holds(entry.command.payload, wanted)
     }
+
+    /**
+     * Whether [value] says [wanted] in a key or a value. A body sent as text is searched as the
+     * text it is, so `"status":"placed"` finds it as it reads.
+     */
+    private fun holds(value: JsonElement?, wanted: String): Boolean =
+        when (value) {
+            null,
+            JsonNull -> false
+            is JsonPrimitive -> value.content.contains(wanted, ignoreCase = true)
+            is JsonObject ->
+                value.any { (key, child) ->
+                    key.contains(wanted, ignoreCase = true) || holds(child, wanted)
+                }
+            is JsonArray -> value.any { holds(it, wanted) }
+        }
 
     /** A REPL answer in a line: text as itself, anything else as the JSON it came as. */
     private fun replied(value: JsonElement?): String =

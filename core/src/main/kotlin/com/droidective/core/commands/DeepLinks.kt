@@ -30,6 +30,17 @@ class DeepLinkRepository(root: File) {
 
         /** A scheme, "://", and something after it, with no spaces. */
         fun isLink(text: String): Boolean = scheme.matches(text.trim())
+
+        /** The links whose name or link contains [query], by name, for a picker's search. */
+        fun matching(links: List<DeepLink>, query: String): List<DeepLink> {
+            val wanted = query.trim()
+            return links
+                .filter {
+                    it.label.contains(wanted, ignoreCase = true) ||
+                        it.uri.contains(wanted, ignoreCase = true)
+                }
+                .sortedBy { it.label.lowercase() }
+        }
     }
 }
 

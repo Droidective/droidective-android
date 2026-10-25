@@ -55,6 +55,7 @@ import com.droidective.core.net.proxy.Repeater
 import com.droidective.core.net.proxy.RequestDraft
 import com.droidective.core.net.proxy.TlsFailure
 import com.droidective.core.net.proxy.TrafficRules
+import com.droidective.core.net.proxy.Unread
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -92,6 +93,10 @@ fun FlowDetail(
         return
     }
     val labels = remember { AppLabels(context) }
+    val rules by TrafficProxy.rules.collectAsStateWithLifecycle()
+    val unread = remember(flow, rules) { Unread.of(flow, rules) }
+    var trusting by remember { mutableStateOf(false) }
+    if (trusting) TrustSheet(flow.uid, say, onDismiss = { trusting = false })
     // A gRPC call's bodies read with the app's own schema, when the protos folder has it.
     var schemasKept by remember { mutableIntStateOf(0) }
     val ask = rememberServerAsk(flow, say) { schemasKept++ }
@@ -122,6 +127,8 @@ fun FlowDetail(
                     say("Copied the URL")
                 },
         )
+        // A call that wasn't read has nothing else to show: why, and the fix, come first.
+        unread?.let { UnreadSection(flow, it, labels, say, onTrust = { trusting = true }) }
         ToolSection("Overview") {
             InfoRow("Status", FlowLabels.status(flow))
             FlowLabels.grpc(flow)?.let { InfoRow("gRPC", it.toString()) }
@@ -137,7 +144,7 @@ fun FlowDetail(
                 InfoRow("Breakpoint", if (flow.edited) "Held, and sent on changed" else "Held")
             }
         }
-        flow.failure?.let { FailureSection(it) }
+        if (unread !is Unread.Refused) flow.failure?.let { FailureSection(it) }
         if (!flow.tunnelled || flow.response != null) {
             val sides = listOfNotNull("Request", "Response", "Messages".takeIf { flow.socket })
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -269,6 +276,8 @@ private fun connection(flow: Flow): String =
         flow.repeatOf != null -> "HTTP, sent again by Droidective"
         flow.tunnelled && flow.response == null ->
             FlowLabels.passed(flow)?.replaceFirstChar { it.uppercase() } ?: "Passed through"
+        flow.failure?.startsWith(TlsFailure.REFUSED) == true ->
+            "HTTPS, not read: the app refused the certificate"
         flow.socket && flow.secure -> "A secure WebSocket, read through the proxy's certificate"
         flow.socket -> "A WebSocket, read as it talks"
         flow.tunnelled -> "Upgraded, then carried as bytes"

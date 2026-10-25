@@ -93,6 +93,26 @@ class ReactotronTimelineTest {
     }
 
     @Test
+    fun theTimelinesSearchReadsTheRowNotWhatTheEntryCarried() {
+        // A body, headers or a payload are searched inside the entry, opened; the timeline's
+        // search finding every entry that carries a word would bury the one row looked for.
+        val call =
+            ReactotronCommand.parse(
+                """{"type":"api.response","payload":{"duration":184,""" +
+                    """"request":{"url":"https://api.example.com/v1/orders","method":"POST",""" +
+                    """"headers":{"Authorization":"Bearer abc123"}},""" +
+                    """"response":{"status":200,"body":"{\"status\":\"placed\"}"}}}"""
+            )!!
+        val timeline = ReactotronTimeline()
+        timeline.add(0, 1, "ShopApp", call, 10)
+        val entry = timeline.snapshot().single()
+        assertTrue(ReactotronLabels.matches(entry, null, "orders"), "the URL is on the row")
+        assertTrue(ReactotronLabels.matches(entry, null, "200"), "so is the status")
+        assertFalse(ReactotronLabels.matches(entry, null, "placed"), "the body isn't")
+        assertFalse(ReactotronLabels.matches(entry, null, "Bearer"), "nor a header")
+    }
+
+    @Test
     fun aRequestWithNoAnswerSaysItFailed() {
         val event = ReactotronEvent.of(api("POST", "https://api.example.com/pay", 0))
         assertEquals("FAILED", ReactotronLabels.tag(event))

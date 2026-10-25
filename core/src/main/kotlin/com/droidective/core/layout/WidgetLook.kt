@@ -20,19 +20,78 @@ object WidgetGrid {
 }
 
 /**
- * Whether this kind draws with the whole [Style]. Notification bars and folders take only the on
- * and off colours: the notification shade and the folder screen draw everything else.
+ * Whether this kind draws with the whole [Style]. A notification bar draws the part of it the shade
+ * leaves room for ([NotificationLook]); a folder takes only the on and off colours, since the
+ * folder screen draws everything else.
  */
 val LayoutKind.usesWholeStyle: Boolean
     get() = this == LayoutKind.Bar
 
 /**
- * What a preview of this layout draws with: its own style for a home-screen widget, and for the
- * others only the colours they use, as a grid on a clear ground.
+ * What a preview of this layout draws with: its own style for a home-screen widget, what the shade
+ * draws for a notification bar, and a folder's colours alone, as a grid on a clear ground.
  */
 fun Layout.previewStyle(): Style =
-    if (kind.usesWholeStyle) style
-    else Style(background = CLEAR, iconOn = style.iconOn, iconOff = style.iconOff)
+    when (kind) {
+        LayoutKind.Bar -> style
+        LayoutKind.Notification -> NotificationLook.preview(style)
+        LayoutKind.Folder ->
+            Style(background = CLEAR, iconOn = style.iconOn, iconOff = style.iconOff)
+    }
+
+/**
+ * How a notification bar draws its [Style]. Collapsed, Android gives a custom notification one 48
+ * dp row, so that's icons at their size and nothing under them; expanded there's room for labels,
+ * or for a row per slot. Its padding is fixed, and so are the corners of its own background.
+ */
+object NotificationLook {
+    /** What fits the 48 dp collapsed row, with a little room around the icon. */
+    val ICON_SIZES = 16..40
+
+    /** What the expanded notification shows, beyond the collapsed row. */
+    enum class Expanded {
+        /** Nothing more: it expands to the same row. */
+        Row,
+
+        /** The row again, with each slot's label (and state, when asked) under its icon. */
+        Labelled,
+
+        /** One row per slot: its icon, its label and its state. */
+        List,
+    }
+
+    fun iconSize(style: Style): Int = style.iconSize.coerceIn(ICON_SIZES)
+
+    /** The space around an icon in the collapsed row, in dp, so it draws at [iconSize]. */
+    fun rowPadding(style: Style): Int = (ROW_DP - iconSize(style)) / 2
+
+    fun expanded(style: Style): Expanded =
+        when {
+            style.display == Display.List -> Expanded.List
+            style.labels || style.stateText -> Expanded.Labelled
+            else -> Expanded.Row
+        }
+
+    /** What the editor previews: what the expanded notification shows, on its own background. */
+    fun preview(style: Style): Style =
+        Style(
+            background = if (style.filled) style.background else CLEAR,
+            iconOn = style.iconOn,
+            iconOff = style.iconOff,
+            labels = style.labels,
+            display = style.display,
+            iconSize = iconSize(style),
+            stateText = style.stateText,
+            labelColor = style.labelColor,
+            filled = style.filled,
+            cornerRadius = CORNER_DP,
+        )
+
+    private const val ROW_DP = 48
+
+    /** The corners of its own background, as `notification_fill.xml` draws them. */
+    private const val CORNER_DP = 16
+}
 
 private const val CLEAR = 0x00000000L
 

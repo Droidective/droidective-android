@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Expanded: up to six slots in a row, each with its label, and its state when asked, under
+     its icon. Content descriptions and sizes are set per slot in code. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:id="@+id/fill"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/notification_fill"
+        android:visibility="gone"
+        tools:ignore="ContentDescription" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:baselineAligned="false"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/cell0"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingBottom="6dp"
+            android:visibility="gone">
+            <ImageView
+                android:id="@+id/cellIcon0"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:scaleType="fitCenter"
+                tools:ignore="ContentDescription" />
+            <TextView
+                android:id="@+id/cellLabel0"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:hyphenationFrequency="normal"
+                android:maxLines="2"
+                android:paddingHorizontal="2dp"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/cellState0"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/cell1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingBottom="6dp"
+            android:visibility="gone">
+            <ImageView
+                android:id="@+id/cellIcon1"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:scaleType="fitCenter"
+                tools:ignore="ContentDescription" />
+            <TextView
+                android:id="@+id/cellLabel1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:hyphenationFrequency="normal"
+                android:maxLines="2"
+                android:paddingHorizontal="2dp"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/cellState1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/cell2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingBottom="6dp"
+            android:visibility="gone">
+            <ImageView
+                android:id="@+id/cellIcon2"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:scaleType="fitCenter"
+                tools:ignore="ContentDescription" />
+            <TextView
+                android:id="@+id/cellLabel2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:hyphenationFrequency="normal"
+                android:maxLines="2"
+                android:paddingHorizontal="2dp"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/cellState2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/cell3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingBottom="6dp"
+            android:visibility="gone">
+            <ImageView
+                android:id="@+id/cellIcon3"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:scaleType="fitCenter"
+                tools:ignore="ContentDescription" />
+            <TextView
+                android:id="@+id/cellLabel3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:hyphenationFrequency="normal"
+                android:maxLines="2"
+                android:paddingHorizontal="2dp"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/cellState3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/cell4"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingBottom="6dp"
+            android:visibility="gone">
+            <ImageView
+                android:id="@+id/cellIcon4"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:scaleType="fitCenter"
+                tools:ignore="ContentDescription" />
+            <TextView
+                android:id="@+id/cellLabel4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:hyphenationFrequency="normal"
+                android:maxLines="2"
+                android:paddingHorizontal="2dp"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/cellState4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/cell5"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingBottom="6dp"
+            android:visibility="gone">
+            <ImageView
+                android:id="@+id/cellIcon5"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:scaleType="fitCenter"
+                tools:ignore="ContentDescription" />
+            <TextView
+                android:id="@+id/cellLabel5"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:hyphenationFrequency="normal"
+                android:maxLines="2"
+                android:paddingHorizontal="2dp"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/cellState5"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

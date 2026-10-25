@@ -56,6 +56,7 @@ import com.droidective.core.layout.CellShape
 import com.droidective.core.layout.Display
 import com.droidective.core.layout.LayoutKind
 import com.droidective.core.layout.Look
+import com.droidective.core.layout.NotificationLook
 import com.droidective.core.layout.Style
 import com.droidective.core.layout.StylePreset
 import com.droidective.core.layout.WidgetGrid
@@ -104,6 +105,10 @@ private val backgroundColours =
  */
 @Composable
 internal fun StyleControls(kind: LayoutKind, style: Style, onChange: (Style) -> Unit) {
+    if (kind == LayoutKind.Notification) {
+        NotificationStyle(style, onChange)
+        return
+    }
     if (!kind.usesWholeStyle) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Colour when on")
@@ -156,6 +161,67 @@ internal fun StyleControls(kind: LayoutKind, style: Style, onChange: (Style) -> 
 
         MoreToggle(open = more) { more = !more }
         if (more) MoreStyle(style, onChange)
+    }
+}
+
+/**
+ * What a notification bar can change: its colours, its icons' size, labels and states under them
+ * (the expanded notification shows those), and a background of its own instead of the shade's.
+ */
+@Composable
+private fun NotificationStyle(style: Style, onChange: (Style) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Section("Colours")
+        Text("Colour when on")
+        Swatches(iconColours, style.iconOn) { onChange(style.copy(iconOn = it)) }
+        Text("Colour when off")
+        Swatches(iconColours, style.iconOff) { onChange(style.copy(iconOff = it)) }
+
+        Section("Size")
+        IntSlider(
+            "Icon size",
+            NotificationLook.iconSize(style),
+            NotificationLook.ICON_SIZES,
+            "dp",
+        ) {
+            onChange(style.copy(iconSize = it))
+        }
+
+        Section("Text")
+        Text(
+            "Collapsed, a notification has room for one row of icons; labels and states show when " +
+                "it's expanded, as does List.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SwitchRow("Show labels under icons", style.labels) { onChange(style.copy(labels = it)) }
+        SwitchRow("Show each item's state", style.stateText) {
+            onChange(style.copy(stateText = it))
+        }
+
+        Section("Background")
+        SwitchRow(
+            "Own background",
+            style.filled,
+            note = "Off, it sits on the notification shade's colour",
+        ) {
+            onChange(style.copy(filled = it))
+        }
+        if (style.filled) {
+            Swatches(backgroundColours, style.background or ALPHA_MASK) { rgb ->
+                onChange(
+                    style.copy(background = (style.background and ALPHA_MASK) or (rgb and RGB_MASK))
+                )
+            }
+            LabeledSlider("Opacity", "${(alphaOf(style.background) * 100).toInt()}%") {
+                Slider(
+                    value = alphaOf(style.background),
+                    onValueChange = { a ->
+                        onChange(style.copy(background = withAlpha(style.background, a)))
+                    },
+                )
+            }
+        }
     }
 }
 

@@ -90,8 +90,11 @@ IP or Wi-Fi name).
   label, symbol and colour. A field added to `Style` defaults to how layouts drew before it,
   which `WidgetLookTest` checks against a 0.1.x file. `WidgetGrid` is the arithmetic the widget
   and the editor's preview share. Only a home-screen widget draws the whole style
-  (`LayoutKind.usesWholeStyle`): notification bars and folders take the on and off colours alone,
-  so their editor offers only those, and `Layout.previewStyle()` previews them that way.
+  (`LayoutKind.usesWholeStyle`). A notification bar draws what fits the shade (`NotificationLook`):
+  icon size, labels and states, list, and its own rounded background (`Style.filled`). Collapsed
+  it's one 48 dp row of icons; labels, states and list show expanded (`NotificationBarViews`).
+  Folders take the on and off colours alone. Each kind's editor offers only what it draws, and
+  `Layout.previewStyle()` previews it that way.
 - **The launcher lists three kinds** (`Starter`: Bar, Button, List), one receiver each. They differ
   only in what a new one starts as; any can be restyled into any other. A new kind needs a
   receiver, an `appwidget-provider` file and a `ManifestTest` entry.

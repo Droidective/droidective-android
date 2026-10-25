@@ -8,6 +8,7 @@ import com.droidective.core.automations.Automation
 import com.droidective.core.automations.level
 import com.droidective.core.commands.CustomCommand
 import com.droidective.core.features.Features
+import com.droidective.core.network.NetworkFact
 import com.droidective.core.toggles.ToggleDef
 import com.droidective.core.toggles.Toggles
 import com.droidective.core.toggles.Write
@@ -28,6 +29,9 @@ sealed interface Tap {
 
     /** Starts an activity straight from the tap, never through a trampoline. */
     data class Open(val target: Target) : Tap
+
+    /** Copies [text] to the clipboard, such as the IP address a network slot shows. */
+    data class Copy(val text: String) : Tap
 }
 
 sealed interface Target {
@@ -67,6 +71,8 @@ sealed interface CellIcon {
  * @property degraded the toggle's level is missing, so the tap does its stand-in instead.
  * @property state the state as a person reads it, such as "On" or "0.5×", when there is one.
  * @property color the slot's own "on" colour, from its [Look], or null for the layout's.
+ * @property readout its label is what it's for, such as an IP address, so it shows even where
+ *   labels are off, in place of the icon where there's no room for both.
  */
 data class Cell(
     val key: String,
@@ -77,6 +83,7 @@ data class Cell(
     val tap: Tap,
     val state: String? = null,
     val color: Long? = null,
+    val readout: Boolean = false,
 ) {
     /**
      * The colour the icon draws in, given the layout's [on] and [off]: the slot's own colour while
@@ -105,6 +112,7 @@ object Cells {
      * @param folderName looks up a folder's name for its label.
      * @param command looks up a saved command.
      * @param automation looks up an automation.
+     * @param network what a network slot says now, or null while it isn't known.
      * @return null for an item that points at something gone, such as a removed toggle.
      */
     fun plan(
@@ -114,8 +122,10 @@ object Cells {
         folderName: (String) -> String?,
         command: (String) -> CustomCommand? = { null },
         automation: (String) -> Automation? = { null },
+        network: (NetworkFact) -> String? = { null },
     ): Cell? =
         when (item) {
+            is Item.Network -> networkCell(item, network(item.shows))
             is Item.Automation ->
                 automation(item.automationId)?.let { found ->
                     Cell(
@@ -191,6 +201,22 @@ object Cells {
                     Tap.Open(Target.SystemScreen(item.action)),
                 )
         }
+
+    /**
+     * A network slot reads as what it shows, such as 192.168.1.23, and copies it. Not known yet, it
+     * says what it would show and opens the IP tool, which says why.
+     */
+    private fun networkCell(item: Item.Network, value: String?): Cell =
+        Cell(
+            item.key,
+            value ?: item.shows.title,
+            CellIcon.Symbol(item.shows.symbol),
+            active = false,
+            degraded = false,
+            if (value != null) Tap.Copy(value) else Tap.Open(Target.Tool(IP_TOOL)),
+            state = item.shows.title,
+            readout = true,
+        )
 
     /**
      * An action draws as what it does. One that sets a toggle lights up while the toggle is in that
@@ -291,3 +317,6 @@ object Cells {
         )
     }
 }
+
+/** The IP tool, which a network slot opens while what it shows isn't known. */
+private const val IP_TOOL = "get-ip"

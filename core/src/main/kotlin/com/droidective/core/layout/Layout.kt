@@ -74,6 +74,17 @@ sealed interface Item {
         val label: String,
     ) : Item
 
+    /**
+     * Shows one fact about the phone's network as its label, such as its IP address, and copies it
+     * on a tap.
+     */
+    @Serializable
+    @SerialName("network")
+    data class Network(
+        override val key: String,
+        val shows: com.droidective.core.network.NetworkFact,
+    ) : Item
+
     /** Opens one of Droidective's tools, such as Logcat or Current activity. */
     @Serializable
     @SerialName("tool")

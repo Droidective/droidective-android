@@ -72,7 +72,8 @@ Every surface (home-screen bars, notification bars, folders, tiles) holds the sa
 `Cells.plan` decides how each draws and what a tap does (`Tap`). A slot can be a toggle, an app,
 another app's shortcut, a deep link, a Settings screen, a folder, a saved command, an automation
 (run now), one automation `Action` on its own (a toggle set to one state, an app force-stopped, a
-permission granted), or one of the app's tools.
+permission granted), one of the app's tools, or a fact about the network (its IP address, public
+IP or Wi-Fi name).
 
 - **Every background tap goes through `BackgroundTaps.run`**, from the widget's Glance callbacks,
   the notification bar's receiver and the tiles alike, so a slot does the same thing wherever it's
@@ -99,7 +100,9 @@ permission granted), or one of the app's tools.
   tap copies an address. The Wi-Fi name comes through the shell (`cmd wifi status`): Android
   tells an app without location access only `<unknown ssid>`. The public IP is asked of
   api64.ipify.org and kept per network for ten minutes. It redraws when the phone joins a
-  network (a PendingIntent network callback, asked again on every app start).
+  network (a PendingIntent network callback, asked again on every app start). The same facts
+  fill network slots (`Item.Network`) on any surface; their cells are a `readout`, text that shows
+  even with labels off, in place of the icon in the notification bar, and a tap is `Tap.Copy`.
 
 ## Automations
 

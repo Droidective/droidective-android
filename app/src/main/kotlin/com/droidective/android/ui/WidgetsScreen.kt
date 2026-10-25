@@ -222,6 +222,7 @@ fun WidgetsScreen(app: DroidectiveApplication) {
             onPick = { item ->
                 val isNew = slots[slot] == null
                 TileSlots.bind(context, slot, item)
+                if (item is Item.Network) NetworkWidgets.watch(context)
                 slots = TileSlots.all(context)
                 pickingSlot = null
                 // A new tile goes straight on to the panel; Android asks before it adds it.
@@ -480,6 +481,7 @@ private fun tileLabel(context: Context, item: Item): String =
             context.droidective.automations.get(item.automationId)?.name ?: "Removed automation"
         is Item.Action -> item.label
         is Item.Tool -> Features.byId(item.featureId)?.title ?: "Removed tool"
+        is Item.Network -> item.shows.title
     }
 
 private fun tileSymbol(item: Item): String =
@@ -494,6 +496,7 @@ private fun tileSymbol(item: Item): String =
         is Item.Automation -> "bolt"
         is Item.Action -> Cells.actionIcon(item.action)
         is Item.Tool -> Features.byId(item.featureId)?.icon ?: "build"
+        is Item.Network -> item.shows.symbol
     }
 
 /** What a new widget starts as, in the words the New sheet uses. */

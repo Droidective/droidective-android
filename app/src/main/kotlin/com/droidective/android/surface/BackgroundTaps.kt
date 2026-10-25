@@ -1,12 +1,26 @@
 package com.droidective.android.surface
 
 import android.content.Context
+import android.os.Build
+import android.widget.Toast
 import com.droidective.android.automation.ActionTaps
 import com.droidective.android.automation.Automations
 import com.droidective.android.droidective
+import com.droidective.android.ui.copy
 import com.droidective.core.layout.Tap
 import com.droidective.core.toggles.Outcome
 import com.droidective.core.toggles.Toggles
+
+/** Copying what a slot shows, such as an IP address, from wherever it's tapped. */
+object Copies {
+    fun copy(context: Context, text: String) {
+        context.copy("Copied from Droidective", text)
+        // Android 13 and later confirm a copy on their own.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            Toast.makeText(context, "Copied $text", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
 
 /**
  * A slot's tap that runs in the background: from a home-screen widget, a tile or the notification
@@ -33,6 +47,7 @@ object BackgroundTaps {
                 val step = ActionTaps.run(context, tap.action, tap.label)
                 if (!step.ok) Problems.reportStep(context, tap.label, step.detail)
             }
+            is Tap.Copy -> Copies.copy(context, tap.text)
             is Tap.Open -> Unit
         }
     }

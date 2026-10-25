@@ -37,6 +37,7 @@ import com.droidective.core.automations.Review
 import com.droidective.core.automations.isDestructive
 import com.droidective.core.features.Features
 import com.droidective.core.layout.Item
+import com.droidective.core.network.NetworkFact
 import com.droidective.core.reactotron.ReactotronCommands
 import com.droidective.core.toggles.Toggles
 import com.droidective.platform.hasHardwareFor
@@ -217,7 +218,24 @@ private fun ConfirmDialog(item: Item.Action, onDismiss: () -> Unit, onAdd: () ->
 @Composable
 internal fun ToolList(query: String, onPick: (Item) -> Unit) {
     val tools = Features.all.filter { it.matches(query) }
+    val facts =
+        NetworkFact.entries.filter {
+            query.isBlank() ||
+                it.title.contains(query, ignoreCase = true) ||
+                NETWORK_WORDS.any { word -> word.contains(query.trim(), ignoreCase = true) }
+        }
     LazyColumn {
+        if (facts.isNotEmpty()) item(key = "network") { Header("Network") }
+        items(facts, key = { "network-${it.name}" }) { fact ->
+            ListItem(
+                headlineContent = { Text(fact.title) },
+                supportingContent = { Text("Shows it on the slot; a tap copies it") },
+                leadingContent = {
+                    Icon(painterResource(Symbols.byName.getValue(fact.symbol).outlined), null)
+                },
+                modifier = Modifier.clickable { onPick(Item.Network(key(), fact)) },
+            )
+        }
         tools
             .groupBy { it.category }
             .forEach { (category, inCategory) ->
@@ -249,3 +267,6 @@ private fun Note(text: String) {
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
 }
+
+/** What finds the network slots in a search, beside their own names. */
+private val NETWORK_WORDS = listOf("network", "ip", "wifi", "wi-fi", "ssid", "address")

@@ -41,6 +41,7 @@ import com.droidective.android.surface.Surfaces
 import com.droidective.android.ui.CellButton
 import com.droidective.android.ui.CommandOutput
 import com.droidective.android.ui.DroidectiveTheme
+import com.droidective.android.ui.copy
 import com.droidective.android.ui.openSafely
 import com.droidective.android.ui.runInForeground
 import com.droidective.core.layout.Cell
@@ -127,6 +128,10 @@ private fun FolderPanel(id: String, name: String, on: Long, off: Long, onOpened:
                                         if (step.ok) "${tap.label}: done"
                                         else "${tap.label}: ${step.detail ?: "it didn’t work"}"
                                 }
+                            is Tap.Copy -> {
+                                context.copy("Copied from Droidective", tap.text)
+                                message = "Copied ${tap.text}"
+                            }
                             is Tap.Open -> {
                                 Launch.intentFor(context, tap.target)?.let(context::openSafely)
                                 onOpened()

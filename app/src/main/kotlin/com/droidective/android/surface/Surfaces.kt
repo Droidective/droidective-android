@@ -10,7 +10,10 @@ import com.droidective.core.layout.Cell
 import com.droidective.core.layout.Cells
 import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
+import com.droidective.core.network.NetworkCards
+import com.droidective.core.network.NetworkFact
 import com.droidective.core.toggles.Toggles
+import com.droidective.platform.NetworkReader
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -27,6 +30,17 @@ object Surfaces {
     suspend fun cells(context: Context, layout: Layout): List<Cell> {
         val app = context.droidective
         val access = app.access.settled()
+        // Read once for the layout, and only when it shows the network: the Wi-Fi name takes the
+        // shell, and the public address a lookup.
+        val facts = layout.items.filterIsInstance<Item.Network>().map { it.shows }
+        val network =
+            if (facts.isEmpty()) null
+            else
+                NetworkReader.now(
+                    context,
+                    public = NetworkFact.PublicIp in facts,
+                    shell = app.access.shell(),
+                )
         return layout.items.mapNotNull { item ->
             val state =
                 when (item) {
@@ -48,6 +62,7 @@ object Surfaces {
                     folderName = { id -> app.layouts.get(id)?.name },
                     command = app.commands::get,
                     automation = app.automations::get,
+                    network = { fact -> network?.let { NetworkCards.fact(it, fact) } },
                 )
                 ?.let { Cells.styled(it, layout.looks[item.key]) }
         }

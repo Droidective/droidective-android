@@ -55,8 +55,10 @@ import com.droidective.android.ui.AdaptiveColumns
 import com.droidective.android.ui.AdaptiveRows
 import com.droidective.android.ui.CellIconView
 import com.droidective.android.ui.Symbols
+import com.droidective.android.widget.NetworkWidgets
 import com.droidective.core.layout.Cell
 import com.droidective.core.layout.Display
+import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
 import com.droidective.core.layout.LayoutEdits
 import com.droidective.core.layout.Look
@@ -208,6 +210,8 @@ fun LayoutEditor(layoutId: String, onDone: () -> Unit) {
                     is LayoutEdits.Result.Done -> {
                         refusal = null
                         update(result.layout)
+                        // A network slot redraws when the phone joins a network.
+                        if (item is Item.Network) NetworkWidgets.watch(context)
                     }
                     is LayoutEdits.Result.Refused -> refusal = result.reason
                 }

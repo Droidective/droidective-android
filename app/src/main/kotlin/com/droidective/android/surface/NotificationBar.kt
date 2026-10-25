@@ -29,6 +29,10 @@ object NotificationBar {
     private val slots =
         listOf(R.id.slot0, R.id.slot1, R.id.slot2, R.id.slot3, R.id.slot4, R.id.slot5)
 
+    /** Beside each slot, the text it shows in place of its icon when its text is the point. */
+    private val texts =
+        listOf(R.id.text0, R.id.text1, R.id.text2, R.id.text3, R.id.text4, R.id.text5)
+
     suspend fun refresh(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
         if (!manager.areNotificationsEnabled()) return
@@ -71,8 +75,17 @@ object NotificationBar {
         val views = RemoteViews(context.packageName, R.layout.notification_bar)
         slots.forEachIndexed { index, slot ->
             val cell = cells.getOrNull(index)
+            val text = texts[index]
+            views.setViewVisibility(text, android.view.View.GONE)
             if (cell == null) {
                 views.setViewVisibility(slot, android.view.View.GONE)
+                return@forEachIndexed
+            }
+            if (cell.readout) {
+                views.setViewVisibility(slot, android.view.View.GONE)
+                views.setViewVisibility(text, android.view.View.VISIBLE)
+                views.setTextViewText(text, cell.label)
+                pendingFor(context, cell)?.let { views.setOnClickPendingIntent(text, it) }
                 return@forEachIndexed
             }
             views.setViewVisibility(slot, android.view.View.VISIBLE)
@@ -119,6 +132,10 @@ object NotificationBar {
                     putExtra(NotificationTapReceiver.EXTRA_ACTION, SlotActions.encode(tap.action))
                     putExtra(NotificationTapReceiver.EXTRA_LABEL, tap.label)
                 }
+            is Tap.Copy ->
+                broadcast(context, "copy:${cell.key}") {
+                    putExtra(NotificationTapReceiver.EXTRA_COPY, tap.text)
+                }
             is Tap.Open ->
                 Launch.intentFor(context, tap.target)?.let { intent ->
                     PendingIntent.getActivity(
@@ -164,6 +181,9 @@ class NotificationTapReceiver : BroadcastReceiver() {
         intent.getStringExtra(EXTRA_AUTOMATION_ID)?.let {
             return Tap.RunAutomation(it)
         }
+        intent.getStringExtra(EXTRA_COPY)?.let {
+            return Tap.Copy(it)
+        }
         val action = intent.getStringExtra(EXTRA_ACTION)?.let(SlotActions::decode) ?: return null
         return Tap.RunAction(action, intent.getStringExtra(EXTRA_LABEL).orEmpty())
     }
@@ -174,5 +194,6 @@ class NotificationTapReceiver : BroadcastReceiver() {
         const val EXTRA_AUTOMATION_ID = "com.droidective.android.extra.AUTOMATION_ID"
         const val EXTRA_ACTION = "com.droidective.android.extra.ACTION"
         const val EXTRA_LABEL = "com.droidective.android.extra.LABEL"
+        const val EXTRA_COPY = "com.droidective.android.extra.COPY"
     }
 }

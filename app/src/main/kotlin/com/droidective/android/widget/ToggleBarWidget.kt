@@ -138,6 +138,10 @@ internal fun actionFor(context: Context, cell: Cell): Action? =
                     RunActionAction.labelKey to tap.label,
                 )
             )
+        is Tap.Copy ->
+            actionRunCallback<CopyAddressAction>(
+                actionParametersOf(CopyAddressAction.addressKey to tap.text)
+            )
         is Tap.Open ->
             Launch.intentFor(context, tap.target)?.let {
                 actionStartActivity(OpenActivity.wrap(context, it))

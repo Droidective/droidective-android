@@ -88,7 +88,9 @@ permission granted), or one of the app's tools.
   padding, chips, labels, state text, wallpaper colours) **plus `Layout.looks`**, each slot's own
   label, symbol and colour. A field added to `Style` defaults to how layouts drew before it,
   which `WidgetLookTest` checks against a 0.1.x file. `WidgetGrid` is the arithmetic the widget
-  and the editor's preview share.
+  and the editor's preview share. Only a home-screen widget draws the whole style
+  (`LayoutKind.usesWholeStyle`): notification bars and folders take the on and off colours alone,
+  so their editor offers only those, and `Layout.previewStyle()` previews them that way.
 - **The launcher lists three kinds** (`Starter`: Bar, Button, List), one receiver each. They differ
   only in what a new one starts as; any can be restyled into any other. A new kind needs a
   receiver, an `appwidget-provider` file and a `ManifestTest` entry.
@@ -148,6 +150,11 @@ runs actions.
   every `]` outside a set; JVM tests accept a bare `}` that crashes on a phone.
   `RegexPortabilityTest` holds every `Regex` literal to that rule.
 - **Read back after every write.** `ToggleRunner.apply` reports `DidNotStick` when Android ignored it.
+- **Lists of rows or cards go through `ui/Adaptive.kt`**, so a tablet gets columns and a phone a
+  list: `AdaptiveColumns` measures the space it has (not the window), `adaptiveItems` and
+  `AdaptiveRows` lay rows out in as many columns as fit. Their equal-height rows ask each item for
+  its intrinsic height, which a lazy list or a `BoxWithConstraints` inside it can't answer: such
+  items pass `equalHeights = false`, or the screen crashes on a tablet and nowhere else.
 - **No WebView and no downloaded code anywhere in the app.** Remote v2 will run inside this app.
 - **Exported components are an allowlist** (`ManifestTest`). Adding one means adding it there.
 - **One build, distributed outside Play** (GitHub releases, and the Mac's adb install). There's no

@@ -155,6 +155,8 @@ fun WidgetsScreen(app: DroidectiveApplication) {
                     columns,
                     key = { it.id },
                     gutter = 0.dp,
+                    // The preview measures its width with BoxWithConstraints.
+                    equalHeights = false,
                 ) { layout, modifier ->
                     LayoutCard(
                         layout,
@@ -527,7 +529,9 @@ private fun NewSheet(
             )
             AdaptiveColumns(minWidth = STARTER_MIN) { columns ->
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    AdaptiveRows(Starter.entries, columns) { starter, modifier ->
+                    AdaptiveRows(Starter.entries, columns.coerceAtMost(Starter.entries.size)) {
+                        starter,
+                        modifier ->
                         Choice(
                             symbol = starter.symbol,
                             title = starter.short,

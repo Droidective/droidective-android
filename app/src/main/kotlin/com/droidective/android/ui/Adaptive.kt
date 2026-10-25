@@ -48,12 +48,17 @@ fun AdaptiveColumns(
  * [items] as a list on a phone, and in rows of [columns] where there's room, every row as tall as
  * its tallest item so the cards line up. [content] gets the modifier that sizes its item; [gutter]
  * is the space either side of a row of more than one, for lists that don't pad.
+ *
+ * Lining heights up asks each item for its intrinsic height, which Compose can't answer for a lazy
+ * list or a BoxWithConstraints inside it: such items pass [equalHeights] false and keep their own
+ * heights, top-aligned.
  */
 fun <T> LazyListScope.adaptiveItems(
     items: List<T>,
     columns: Int,
     key: (T) -> Any,
     gutter: Dp = 12.dp,
+    equalHeights: Boolean = true,
     content: @Composable RowScope.(item: T, modifier: Modifier) -> Unit,
 ) {
     if (columns <= 1) {
@@ -63,11 +68,12 @@ fun <T> LazyListScope.adaptiveItems(
     items(items.chunked(columns), key = { row -> "row-${key(row.first())}" }) { row ->
         Row(
             Modifier.fillMaxWidth()
-                .height(IntrinsicSize.Max)
+                .let { if (equalHeights) it.height(IntrinsicSize.Max) else it }
                 .padding(horizontal = gutter, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            row.forEach { item -> content(item, Modifier.weight(1f).fillMaxHeight()) }
+            val size = if (equalHeights) Modifier.fillMaxHeight() else Modifier
+            row.forEach { item -> content(item, Modifier.weight(1f).then(size)) }
             repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
@@ -78,14 +84,16 @@ fun <T> LazyListScope.adaptiveItems(
 fun <T> AdaptiveRows(
     items: List<T>,
     columns: Int,
+    equalHeights: Boolean = true,
     content: @Composable RowScope.(item: T, modifier: Modifier) -> Unit,
 ) {
     items.chunked(columns.coerceAtLeast(1)).forEach { row ->
         Row(
-            Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+            Modifier.fillMaxWidth().let { if (equalHeights) it.height(IntrinsicSize.Max) else it },
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            row.forEach { item -> content(item, Modifier.weight(1f).fillMaxHeight()) }
+            val size = if (equalHeights) Modifier.fillMaxHeight() else Modifier
+            row.forEach { item -> content(item, Modifier.weight(1f).then(size)) }
             repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }

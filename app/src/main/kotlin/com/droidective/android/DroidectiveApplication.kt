@@ -10,6 +10,7 @@ import com.droidective.android.proxy.ProxyNotices
 import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.surface.AppPlatformToggles
 import com.droidective.android.update.Updates
+import com.droidective.android.widget.NetworkWidgets
 import com.droidective.core.apps.SavedIntents
 import com.droidective.core.automations.AutomationLedger
 import com.droidective.core.automations.AutomationRepository
@@ -97,6 +98,8 @@ class DroidectiveApplication : Application() {
         // A force stop clears the app's alarms; starting again puts the schedules back.
         scope.launch { Automations.reschedule(this@DroidectiveApplication) }
         scope.launch { Updates.schedule(this@DroidectiveApplication) }
+        // A force stop or a reboot drops Android's word on network changes; ask again.
+        NetworkWidgets.watch(this)
         scope.launch {
             // A service Android is restarting gets going first: it may still be listening.
             delay(STRANDED_GRACE_MILLIS)

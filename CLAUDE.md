@@ -94,6 +94,12 @@ permission granted), or one of the app's tools.
 - **The launcher lists three kinds** (`Starter`: Bar, Button, List), one receiver each. They differ
   only in what a new one starts as; any can be restyled into any other. A new kind needs a
   receiver, an `appwidget-provider` file and a `ManifestTest` entry.
+- **The Network widget isn't a layout**: it shows the Wi-Fi name and the local and public IP
+  (`core/…/network/`, `NetworkReader`), each widget's choices in `network-widgets.json`, and a
+  tap copies an address. The Wi-Fi name comes through the shell (`cmd wifi status`): Android
+  tells an app without location access only `<unknown ssid>`. The public IP is asked of
+  api64.ipify.org and kept per network for ten minutes. It redraws when the phone joins a
+  network (a PendingIntent network callback, asked again on every app start).
 
 ## Automations
 

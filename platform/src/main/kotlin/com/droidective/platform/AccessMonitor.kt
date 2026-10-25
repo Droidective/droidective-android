@@ -54,14 +54,15 @@ enum class RootUse {
  */
 class AccessMonitor(private val context: Context, private val scope: CoroutineScope) {
     private val shizuku = ShizukuShell(context.packageName)
-    private val rootShell = RootShell()
+    private val rootShell = RootShell(onLost = ::rootLost)
     private val prefs = context.getSharedPreferences("access", Context.MODE_PRIVATE)
     private val state = MutableStateFlow(Access.Nothing)
     private val firstRefresh = CompletableDeferred<Unit>()
     private val refreshing = Mutex()
 
     /**
-     * su's answer in this process. Asking can show the root manager's prompt, so it's asked once.
+     * su's answer in this process. Asking starts su, which shows the root manager's prompt or
+     * toast, so it's asked once, and not at all in a process started after su said yes before.
      */
     @Volatile private var rootAnswer: Boolean? = null
     private val rootUse = MutableStateFlow(storedRootUse())
@@ -90,6 +91,7 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
             prefs.edit {
                 putBoolean(KEY_ROOT_ALLOWED, value)
                 remove(KEY_ROOT_REFUSED)
+                remove(KEY_ROOT_GRANTED)
             }
             rootAnswer = null
             rootUse.value = if (value) RootUse.Asking else RootUse.Off
@@ -175,7 +177,9 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
     /**
      * Whether to run as root. su isn't asked again after it said no, until Use root is turned off
      * and on: every resume refreshes access, and asking each time put a new prompt over the one
-     * just answered.
+     * just answered. Once it has said yes, a new process takes that answer without asking: a widget
+     * tap, an alarm or a boot starts one, and asking there showed the root toast each time, even
+     * when nothing it did needed root. su is started by the first command that does.
      */
     private suspend fun useRoot(): Boolean {
         val stored = storedRootUse()
@@ -185,13 +189,24 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
         }
         val granted =
             rootAnswer
+                ?: prefs.getBoolean(KEY_ROOT_GRANTED, false).takeIf { it }
                 ?: run {
                     rootUse.value = RootUse.Asking
-                    RootShell.isGranted().also { rootAnswer = it }
+                    rootShell.isGranted()
                 }
-        if (!granted) prefs.edit { putBoolean(KEY_ROOT_REFUSED, true) }
+        rootAnswer = granted
+        prefs.edit {
+            if (granted) putBoolean(KEY_ROOT_GRANTED, true) else putBoolean(KEY_ROOT_REFUSED, true)
+        }
         rootUse.value = if (granted) RootUse.Granted else RootUse.Refused
         return granted
+    }
+
+    /** su stopped answering a command: revoked or gone. Its old yes no longer counts; ask again. */
+    private fun rootLost() {
+        rootAnswer = null
+        prefs.edit { remove(KEY_ROOT_GRANTED) }
+        scope.launch { refresh() }
     }
 
     private fun storedRootUse(): RootUse =
@@ -234,6 +249,7 @@ class AccessMonitor(private val context: Context, private val scope: CoroutineSc
         const val SHIZUKU_REQUEST_CODE = 7001
         const val KEY_ROOT_ALLOWED = "root_allowed"
         const val KEY_ROOT_REFUSED = "root_refused"
+        const val KEY_ROOT_GRANTED = "root_granted"
         const val SETTLE_TIMEOUT_MILLIS = 3_000L
         const val LOG_TAG = "DroidectiveAccess"
     }

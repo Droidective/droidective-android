@@ -15,8 +15,8 @@ https://claude.ai/code/artifact/7f001a8e-334b-49d9-9619-5939c84b2c22
   automation model live here and test in seconds without an emulator. The compiler enforces the
   boundary the way `PortabilityGuardTests` does for ADBKit.
 - **`platform/`**: Android library. Implements core's interfaces: `AndroidSettingsStore`,
-  `AndroidPlatformToggles`, the shells (`ShizukuShell` via a Shizuku user service, `RootShell` via
-  `su -c`, `AppShell`), and `AccessMonitor`.
+  `AndroidPlatformToggles`, the shells (`ShizukuShell` via a Shizuku user service, `RootShell`
+  through one `su` session, `AppShell`), and `AccessMonitor`.
 - **`app/`**: Compose UI, Glance widgets, tiles, the notification bar, shortcuts. UI only: if a
   screen reaches for a command, a setting key or a parser, move it down.
 
@@ -175,6 +175,10 @@ runs actions.
 - Android 12+ won't let an app *read* a hidden settings key that isn't marked readable, even one
   it may write: `SettingsStore.get` returns `Unreadable` and `ToggleRunner` reads it as the shell.
 - The Shizuku user service is a daemon, started once per boot; a cold widget tap only rebinds.
+- **Root runs through one `su` per process** (`ShellSession`): Magisk and KernelSU ask and toast
+  once per `su`, so `su -c` per command toasted every few seconds while the proxy or an automation
+  worked in the background. Once su has said yes, a new process trusts that and starts su only for
+  its first root command; `RootShell` reports a lost su so access is asked again.
 - **`Shell.stream` runs one long command, `exec`'d** (`streamArgv`): without `exec`, `sh -c`
   forks it and stopping `sh` orphans it. Through Shizuku the service hands back a pipe; the app
   closing its end stops the command, and a `poll()` watch (POLLERR on a pipe with no reader)

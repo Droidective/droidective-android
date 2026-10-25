@@ -2,12 +2,15 @@ package com.droidective.android.widget
 
 import android.appwidget.AppWidgetManager
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -32,22 +36,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.droidective.android.droidective
 import com.droidective.android.ui.DroidectiveTheme
 import com.droidective.android.ui.SwitchRow
 import com.droidective.android.ui.Symbols
+import com.droidective.core.layout.LayoutKind
+import com.droidective.core.layout.Style
+import com.droidective.core.layout.StylePreset
 import com.droidective.core.network.Copies
 import com.droidective.core.network.NetworkCard
 import com.droidective.core.network.NetworkCards
@@ -81,13 +89,18 @@ class NetworkConfigureActivity : ComponentActivity() {
         setContent {
             DroidectiveTheme {
                 Surface(Modifier.fillMaxSize()) {
-                    NetworkSettings(start) { card ->
-                        NetworkWidgets.save(this, widgetId, card)
-                        lifecycleScope.launch {
-                            NetworkWidgets.refresh(this@NetworkConfigureActivity)
-                            finish()
-                        }
-                    }
+                    // Every change is saved and drawn at once, so there's nothing to lose by
+                    // leaving without Done.
+                    NetworkSettings(
+                        start,
+                        onChange = { card ->
+                            NetworkWidgets.save(this, widgetId, card)
+                            lifecycleScope.launch {
+                                NetworkWidgets.refresh(this@NetworkConfigureActivity)
+                            }
+                        },
+                        onDone = ::finish,
+                    )
                 }
             }
         }
@@ -95,10 +108,17 @@ class NetworkConfigureActivity : ComponentActivity() {
 }
 
 @Composable
-private fun NetworkSettings(start: NetworkCard, onDone: (NetworkCard) -> Unit) {
+private fun NetworkSettings(
+    start: NetworkCard,
+    onChange: (NetworkCard) -> Unit,
+    onDone: () -> Unit,
+) {
     val context = LocalContext.current
     var card by rememberSaveable(stateSaver = CardSaver) { mutableStateOf(start) }
-    val access by context.droidective.access.access.collectAsStateWithLifecycle()
+    val change = { next: NetworkCard ->
+        card = next
+        onChange(next)
+    }
     val now by
         produceState<NetworkNow?>(null, card.showPublic) {
             value = NetworkWidgets.read(context, card)
@@ -116,55 +136,124 @@ private fun NetworkSettings(start: NetworkCard, onDone: (NetworkCard) -> Unit) {
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.weight(1f),
             )
-            Button(onClick = { onDone(card) }) { Text("Done") }
+            Button(onClick = onDone) { Text("Done") }
         }
         Preview(now, card)
         Section("Show")
+        val nameProblem = now?.nameProblem
         SwitchRow(
             "Network name",
             card.showName,
             note =
-                if (access.shell != null) "The Wi-Fi name, or Mobile data"
-                else
-                    "Android tells apps the Wi-Fi name only with Shell or location access, so " +
-                        "without Shell it says Wi-Fi.",
+                if (nameProblem != null) "Couldn't read the Wi-Fi name: $nameProblem"
+                else "The Wi-Fi name, or Mobile data",
+            noteColor =
+                if (nameProblem != null) MaterialTheme.colorScheme.error else Color.Unspecified,
         ) {
-            card = card.copy(showName = it)
+            change(card.copy(showName = it))
         }
         SwitchRow("Local IP", card.showLocal, note = "This phone's address on the network") {
-            card = card.copy(showLocal = it)
+            change(card.copy(showLocal = it))
         }
+        val publicProblem = now?.publicProblem?.takeIf { card.showPublic }
         SwitchRow(
             "Public IP",
             card.showPublic,
             note =
-                "The address servers see, looked up from ${PublicIp.URL.substringAfter("://")} " +
-                    "when the network changes",
+                publicProblem
+                    ?: ("The address servers see, looked up from " +
+                        "${PublicIp.URL.substringAfter("://")} when the network changes"),
+            noteColor =
+                if (publicProblem != null) MaterialTheme.colorScheme.error else Color.Unspecified,
         ) {
-            card = card.copy(showPublic = it)
+            change(card.copy(showPublic = it))
         }
         Section("A tap copies")
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             Copies.entries.forEachIndexed { index, copies ->
                 SegmentedButton(
                     selected = card.copies == copies,
-                    onClick = { card = card.copy(copies = copies) },
+                    onClick = { change(card.copy(copies = copies)) },
                     shape = SegmentedButtonDefaults.itemShape(index, Copies.entries.size),
                 ) {
                     Text(copies.title)
                 }
             }
         }
+        Section("Look")
+        Looks(card.style) { change(card.copy(style = it)) }
     }
 }
 
-/** The widget as it will draw, with this phone's network, on the colours of the app's theme. */
+/**
+ * The look: the same as one of the person's bars, colours and corners and all, or one of the colour
+ * sets bars offer.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Looks(style: Style, onChange: (Style) -> Unit) {
+    val context = LocalContext.current
+    val bars = remember { context.droidective.layouts.all().filter { it.kind == LayoutKind.Bar } }
+    if (bars.isNotEmpty()) {
+        Text("Same as", style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            bars.forEach { bar ->
+                FilterChip(
+                    selected = sameLook(bar.style, style),
+                    onClick = { onChange(lookOf(bar.style)) },
+                    label = { Text(bar.name) },
+                )
+            }
+        }
+    }
+    Text("Colours", style = MaterialTheme.typography.labelLarge)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        StylePreset.entries
+            .filter {
+                it != StylePreset.Wallpaper || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            }
+            .forEach { preset ->
+                FilterChip(
+                    selected = preset.isOn(style),
+                    onClick = { onChange(preset.applyTo(style)) },
+                    label = { Text(preset.title) },
+                )
+            }
+    }
+}
+
+/** A bar's style as far as this widget draws it: colours and corners, not columns or labels. */
+private fun lookOf(bar: Style): Style =
+    Style()
+        .copy(
+            background = bar.background,
+            iconOn = bar.iconOn,
+            iconOff = bar.iconOff,
+            labelColor = bar.labelColor,
+            dynamicColors = bar.dynamicColors,
+            cornerRadius = bar.cornerRadius,
+        )
+
+private fun sameLook(bar: Style, style: Style): Boolean = lookOf(bar) == lookOf(style)
+
+/** The widget as it will draw, with this phone's network, in its own colours and corners. */
 @Composable
 private fun Preview(now: NetworkNow?, card: NetworkCard) {
     val shown = now ?: NetworkNow(Transport.Other)
+    val style = card.style
+    val dynamic = style.dynamicColors
+    val background =
+        if (dynamic) MaterialTheme.colorScheme.surfaceContainerHigh else Color(style.background)
+    val accent = if (dynamic) MaterialTheme.colorScheme.primary else Color(style.iconOn)
+    val label =
+        if (dynamic) MaterialTheme.colorScheme.onSurfaceVariant
+        else Color(style.labelColor ?: style.iconOff)
+    val value =
+        if (dynamic) MaterialTheme.colorScheme.onSurface
+        else Color(style.labelColor ?: contrastOf(style.background))
     Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(style.cornerRadius.dp),
+        color = background,
         modifier = Modifier.widthIn(max = PREVIEW_MAX).fillMaxWidth(),
     ) {
         Column(
@@ -178,14 +267,14 @@ private fun Preview(now: NetworkNow?, card: NetworkCard) {
                             Symbols.byName.getValue(symbolOf(shown.transport)).outlined
                         ),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = accent,
                         modifier = Modifier.size(16.dp),
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         if (now == null) "Reading…" else NetworkCards.title(shown),
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = label,
                     )
                 }
             }
@@ -196,18 +285,20 @@ private fun Preview(now: NetworkNow?, card: NetworkCard) {
                         style = MaterialTheme.typography.headlineSmall,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
+                        color = value,
                     )
                 } else {
                     Text(
                         line.label.uppercase(),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = label,
                         modifier = Modifier.padding(top = 4.dp),
                     )
                     Text(
                         line.value,
                         style = MaterialTheme.typography.bodyMedium,
                         fontFamily = FontFamily.Monospace,
+                        color = value,
                     )
                 }
             }

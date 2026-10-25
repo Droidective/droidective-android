@@ -50,6 +50,17 @@ object Parse {
                 ?.takeUnless { it == "<unknown ssid>" }
     }
 
+    private val dumpedSsid = Regex("""mWifiInfo SSID: "(.*?)",""")
+
+    /**
+     * The network `dumpsys wifi` says the phone is on, or null. Its first `mWifiInfo` line is the
+     * primary connection; others are for networks it isn't on, and say `<unknown ssid>`.
+     */
+    fun wifiSsidFromDump(output: String): String? =
+        lines(output)
+            .firstNotNullOfOrNull { dumpedSsid.find(it)?.groupValues?.get(1) }
+            ?.takeUnless { it.isEmpty() || it == "<unknown ssid>" }
+
     private val resumed =
         Regex(
             """(?:topResumedActivity|mResumedActivity|ResumedActivity)[=:]\s*ActivityRecord\{\S+ u\d+ ([\w.]+)/([\w.$]+)"""

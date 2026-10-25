@@ -10,6 +10,9 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -45,6 +48,7 @@ import androidx.glance.text.FontFamily
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import com.droidective.android.droidective
 import com.droidective.android.surface.Copies
 import com.droidective.android.surface.Surfaces
@@ -59,6 +63,9 @@ import com.droidective.core.network.Transport
 import com.droidective.core.store.JsonFileStore
 import com.droidective.platform.NetworkReader
 import java.io.File
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -72,24 +79,40 @@ class NetworkWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val widgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
-        val card = NetworkWidgets.card(context, widgetId)
-        val now = NetworkWidgets.read(context, card)
-        provideContent { GlanceTheme { NetworkCardView(now, card) } }
+        val first = NetworkWidgets.load(context, widgetId)
+        provideContent {
+            // A session outlives one update: what's shown is read again on every refresh, or a
+            // changed setting or a new network would wait for the session to end.
+            val shown by
+                produceState(first) {
+                    NetworkWidgets.changes.collect {
+                        value = NetworkWidgets.load(context, widgetId)
+                    }
+                }
+            GlanceTheme { NetworkCardView(shown.first, shown.second) }
+        }
     }
 }
 
-/** The widget as it draws: the network's name, then each address, the first largest. */
+/**
+ * The widget as it draws, in the same style as a bar: the network's name in the off colour with the
+ * icon in the on colour, then each address, the first largest.
+ */
 @Composable
 private fun NetworkCardView(now: NetworkNow, card: NetworkCard) {
-    val colors = GlanceTheme.colors
+    val style = card.style
+    val colors = colorsFor(style)
+    val value =
+        if (style.dynamicColors) GlanceTheme.colors.onSurface
+        else ColorProvider(Color(style.labelColor ?: contrastOf(style.background)))
     val lines = NetworkCards.lines(now, card)
     // One cell tall has room for the first address alone.
     val roomy = LocalSize.current.height >= ROOMY_HEIGHT
     val copied = NetworkCards.copied(now, card)
     Column(
         GlanceModifier.fillMaxSize()
-            .background(colors.widgetBackground)
-            .cornerRadius(CORNER)
+            .background(colors.background)
+            .cornerRadius(style.cornerRadius.dp)
             .padding(horizontal = 14.dp, vertical = 10.dp)
             .clickable(
                 actionRunCallback<CopyAddressAction>(
@@ -103,7 +126,7 @@ private fun NetworkCardView(now: NetworkNow, card: NetworkCard) {
                 Image(
                     ImageProvider(Symbols.byName.getValue(symbolOf(now.transport)).outlined),
                     contentDescription = null,
-                    colorFilter = ColorFilter.tint(colors.primary),
+                    colorFilter = ColorFilter.tint(colors.on),
                     modifier = GlanceModifier.size(16.dp),
                 )
                 Spacer(GlanceModifier.width(6.dp))
@@ -112,7 +135,7 @@ private fun NetworkCardView(now: NetworkNow, card: NetworkCard) {
                     maxLines = 1,
                     style =
                         TextStyle(
-                            color = colors.onSurfaceVariant,
+                            color = colors.label,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                         ),
@@ -129,7 +152,7 @@ private fun NetworkCardView(now: NetworkNow, card: NetworkCard) {
                         maxLines = 1,
                         style =
                             TextStyle(
-                                color = colors.onSurface,
+                                color = value,
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace,
@@ -142,7 +165,7 @@ private fun NetworkCardView(now: NetworkNow, card: NetworkCard) {
                         line.label.uppercase(),
                         style =
                             TextStyle(
-                                color = colors.onSurfaceVariant,
+                                color = colors.label,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Medium,
                             ),
@@ -152,7 +175,7 @@ private fun NetworkCardView(now: NetworkNow, card: NetworkCard) {
                         maxLines = 1,
                         style =
                             TextStyle(
-                                color = colors.onSurface,
+                                color = value,
                                 fontSize = 14.sp,
                                 fontFamily = FontFamily.Monospace,
                             ),
@@ -264,7 +287,21 @@ object NetworkWidgets {
         return NetworkReader.now(context, public = card.showPublic, shell = access.shell())
     }
 
-    suspend fun refresh(context: Context) = NetworkWidget().updateAll(context)
+    private val ticks = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /** Fires on every refresh, for widget sessions already drawn to read again. */
+    val changes: SharedFlow<Unit> = ticks.asSharedFlow()
+
+    /** A widget's settings and the network now, as it shows them. */
+    suspend fun load(context: Context, widgetId: Int): Pair<NetworkNow, NetworkCard> {
+        val card = card(context, widgetId)
+        return read(context, card) to card
+    }
+
+    suspend fun refresh(context: Context) {
+        ticks.tryEmit(Unit)
+        NetworkWidget().updateAll(context)
+    }
 
     /**
      * Asks Android to say whenever the phone joins a network, even with the app stopped, so a
@@ -305,4 +342,3 @@ object NetworkWidgets {
 }
 
 private val ROOMY_HEIGHT = 80.dp
-private val CORNER = 20.dp

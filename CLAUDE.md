@@ -96,10 +96,13 @@ IP or Wi-Fi name).
   only in what a new one starts as; any can be restyled into any other. A new kind needs a
   receiver, an `appwidget-provider` file and a `ManifestTest` entry.
 - **The Network widget isn't a layout**: it shows the Wi-Fi name and the local and public IP
-  (`core/…/network/`, `NetworkReader`), each widget's choices in `network-widgets.json`, and a
-  tap copies an address. The Wi-Fi name comes through the shell (`cmd wifi status`): Android
-  tells an app without location access only `<unknown ssid>`. The public IP is asked of
-  api64.ipify.org and kept per network for ten minutes. It redraws when the phone joins a
+  (`core/…/network/`, `NetworkReader`), each widget's choices and look (a bar's `Style`) in
+  `network-widgets.json`, and a tap copies an address. Android tells an app without location
+  access only `<unknown ssid>`, so the Wi-Fi name comes from `dumpsys wifi` as the app itself with
+  DUMP (Granted: no root, no toast), else through the shell. The public IP is asked of
+  api64.ipify.org past any proxy (`Proxy.NO_PROXY`: through Network Traffic's, the app's own
+  certificate would answer) and kept per network for ten minutes. A widget session outlives one
+  update, so its content re-reads on `NetworkWidgets.changes`. It redraws when the phone joins a
   network (a PendingIntent network callback, asked again on every app start). The same facts
   fill network slots (`Item.Network`) on any surface; their cells are a `readout`, text that shows
   even with labels off, in place of the icon in the notification bar, and a tap is `Tap.Copy`.

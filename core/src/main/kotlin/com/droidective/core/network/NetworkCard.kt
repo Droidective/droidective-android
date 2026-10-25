@@ -1,5 +1,6 @@
 package com.droidective.core.network
 
+import com.droidective.core.layout.Style
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -25,6 +26,10 @@ data class NetworkNow(
     val wifiName: String? = null,
     val localIp: String? = null,
     val publicIp: String? = null,
+    /** Why the Wi-Fi name isn't known, on Wi-Fi: what the widget's settings say. */
+    val nameProblem: String? = null,
+    /** Why the public address isn't known, when it was asked for. */
+    val publicProblem: String? = null,
 )
 
 /** One fact about the network that a slot shows as its label, and a tap on it copies. */
@@ -49,6 +54,7 @@ enum class Copies(val title: String) {
  * @property showName the Wi-Fi name, or the kind of connection, on top.
  * @property showLocal the address on this network, such as 192.168.1.23.
  * @property showPublic the address servers see, looked up from api.ipify.org.
+ * @property style its colours and corners, the same as a bar's: Droidective's dark look to start.
  */
 @Serializable
 data class NetworkCard(
@@ -56,6 +62,7 @@ data class NetworkCard(
     val showLocal: Boolean = true,
     val showPublic: Boolean = true,
     val copies: Copies = Copies.Local,
+    val style: Style = Style(),
 )
 
 /** One address the widget draws: [main] is the first, drawn largest. */
@@ -104,5 +111,5 @@ object NetworkCards {
         }
 
     private const val NONE = "—"
-    private const val UNKNOWN = "Not found"
+    private const val UNKNOWN = "Couldn't look it up"
 }

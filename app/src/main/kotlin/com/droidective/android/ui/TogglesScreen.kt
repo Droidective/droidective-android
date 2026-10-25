@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -33,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -66,34 +66,43 @@ fun TogglesScreen(app: DroidectiveApplication, onOpenSetup: () -> Unit) {
     fun tap(toggle: ToggleDef) = scope.tapToggle(context, toggle, snackbar, onOpenSetup)
 
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-            item {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text("Search toggles") },
-                    leadingIcon = {
-                        Icon(painterResource(Symbols.byName.getValue("search").outlined), null)
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                )
-            }
-            visible
-                .groupBy { it.group }
-                .forEach { (group, toggles) ->
-                    item(key = "header-${group.name}") {
-                        Text(
-                            group.title.uppercase(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp),
-                        )
-                    }
-                    items(toggles, key = { it.id }) { toggle ->
-                        ToggleRow(toggle, states[toggle.id], access, onClick = { tap(toggle) })
-                    }
+        AdaptiveColumns(Modifier.fillMaxSize().padding(padding)) { columns ->
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                item {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text("Search toggles") },
+                        leadingIcon = {
+                            Icon(painterResource(Symbols.byName.getValue("search").outlined), null)
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    )
                 }
+                visible
+                    .groupBy { it.group }
+                    .forEach { (group, toggles) ->
+                        item(key = "header-${group.name}") {
+                            Text(
+                                group.title.uppercase(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier =
+                                    Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp),
+                            )
+                        }
+                        adaptiveItems(toggles, columns, key = { it.id }) { toggle, modifier ->
+                            ToggleRow(
+                                toggle,
+                                states[toggle.id],
+                                access,
+                                modifier = modifier,
+                                onClick = { tap(toggle) },
+                            )
+                        }
+                    }
+            }
         }
     }
 }
@@ -103,7 +112,8 @@ fun ToggleRow(
     toggle: ToggleDef,
     state: String?,
     access: Access,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
+    modifier: Modifier = Modifier,
+    containerColor: Color = Color.Unspecified,
     onClick: () -> Unit,
 ) {
     val symbol = Symbols.byName.getValue(toggle.icon)
@@ -128,9 +138,13 @@ fun ToggleRow(
             )
         },
         trailingContent = { LevelChip(toggle.level, missing = !runsInPlace) },
-        colors = ListItemDefaults.colors(containerColor = containerColor),
+        colors =
+            ListItemDefaults.colors(
+                containerColor = containerColor.takeOrElse { rowContainerColor() }
+            ),
         modifier =
-            Modifier.padding(horizontal = 4.dp)
+            modifier
+                .padding(horizontal = 4.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .clickable(onClick = onClick)
                 .semantics(mergeDescendants = true) {},

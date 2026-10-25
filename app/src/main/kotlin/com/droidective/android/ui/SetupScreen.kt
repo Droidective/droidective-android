@@ -9,6 +9,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -69,23 +70,9 @@ fun SetupScreen(app: DroidectiveApplication) {
                 .isNotificationPolicyAccessGranted
         }
     val shizuku = remember(resumes, access) { app.access.shizukuStatus() }
+    var reporting by remember { mutableStateOf(CrashReporting.enabled(context)) }
 
-    Column(
-        modifier =
-            Modifier.fillMaxSize()
-                .windowInsetsPadding(ScaffoldDefaults.contentWindowInsets)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text("Setup", style = MaterialTheme.typography.headlineMedium)
-        Text(
-            "Each toggle needs one of four levels. Without its level, a toggle opens the closest " +
-                "system screen instead, or brings you here.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
+    val ladder: @Composable ColumnScope.() -> Unit = {
         Rung(AccessLevel.App, "Ordinary app permissions", done = canWriteSystem && hasDnd) {
             Check("Modify system settings", canWriteSystem) {
                 context.openSafely(
@@ -152,9 +139,9 @@ fun SetupScreen(app: DroidectiveApplication) {
                     else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-
+    }
+    val thisApp: @Composable ColumnScope.() -> Unit = {
         UpdatesCard()
-        var reporting by remember { mutableStateOf(CrashReporting.enabled(context)) }
         if (CrashReporting.available) {
             CrashReportsCard(reporting) {
                 CrashReporting.setEnabled(context, it)
@@ -163,7 +150,48 @@ fun SetupScreen(app: DroidectiveApplication) {
         }
         OwnCrashesCard(app.ownCrashes, reporting = CrashReporting.available && reporting)
     }
+
+    Column(
+        modifier =
+            Modifier.fillMaxSize()
+                .windowInsetsPadding(ScaffoldDefaults.contentWindowInsets)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text("Setup", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "Each toggle needs one of four levels. Without its level, a toggle opens the closest " +
+                "system screen instead, or brings you here.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        // Side by side where there's room: the ladder, and the app's own settings.
+        AdaptiveColumns(minWidth = SETUP_COLUMN_MIN) { columns ->
+            if (columns > 1) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(
+                        Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        content = ladder,
+                    )
+                    Column(
+                        Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        content = thisApp,
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ladder()
+                    thisApp()
+                }
+            }
+        }
+    }
 }
+
+private val SETUP_COLUMN_MIN = 420.dp
 
 @Composable
 private fun ShizukuStep(status: ShizukuStatus, onRequest: () -> Unit, context: Context) {

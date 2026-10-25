@@ -1,9 +1,12 @@
 package com.droidective.android.ui.automations
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import com.droidective.android.ui.AdaptiveColumns
+import com.droidective.android.ui.AdaptiveRows
 import com.droidective.android.ui.tools.ToolNote
 import com.droidective.android.ui.tools.ToolSection
 import com.droidective.core.automations.Action
@@ -53,10 +56,16 @@ internal val examples: List<Automation> =
 @Composable
 internal fun Examples(onAdd: (Automation) -> Unit) {
     ToolSection("Start from an example") {
-        examples.forEach { example ->
-            Text(example.name, style = MaterialTheme.typography.titleSmall)
-            ToolNote(example.trigger.describe())
-            TextButton(onClick = { onAdd(example) }) { Text("Add it, switched off") }
+        AdaptiveColumns { columns ->
+            Column {
+                AdaptiveRows(examples, columns) { example, modifier ->
+                    Column(modifier) {
+                        Text(example.name, style = MaterialTheme.typography.titleSmall)
+                        ToolNote(example.trigger.describe())
+                        TextButton(onClick = { onAdd(example) }) { Text("Add it, switched off") }
+                    }
+                }
+            }
         }
     }
 }

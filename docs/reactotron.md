@@ -29,7 +29,7 @@ cleartext to localhost, which is all a `ws://` connection there needs.
 | `app/reactotron/ReactotronService.kt` | The foreground service that keeps it listening |
 | `app/ui/tools/ReactotronTool.kt` | The screen: the header, the tabs (Timeline, State, Snapshots, Console), the timeline |
 | `app/ui/tools/ReactotronServerUi.kt` | The status chip, the server sheet, and the card that says how to connect |
-| `app/ui/tools/ReactotronEntryUi.kt` | An entry whole: overview, request and response, stack, payload |
+| `app/ui/tools/ReactotronEntryUi.kt` | An entry whole: overview, request or response, stack, payload; the frame every detail shares |
 | `app/ui/tools/ReactotronStateUi.kt` | Reading the apps' state, and dispatching an action |
 | `app/ui/tools/ReactotronWatchUi.kt` | Watch: the paths, and their values as they change |
 | `app/ui/tools/ReactotronSnapshotsUi.kt` | Snapshots: taking one, and one whole, to restore, rename or delete |

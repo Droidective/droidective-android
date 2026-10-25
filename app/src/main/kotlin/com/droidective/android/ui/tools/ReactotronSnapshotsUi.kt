@@ -176,6 +176,7 @@ internal fun SnapshotDetail(
     ReactotronDetail(
         snapshot.name,
         onBack,
+        find = "Find in this snapshot",
         actions = { SnapshotMenu(onRename = { renaming = true }, onDelete = { deleting = true }) },
     ) {
         Button(
@@ -208,7 +209,8 @@ internal fun SnapshotDetail(
             InfoRow("Size", FlowLabels.size(snapshot.bytes))
         }
         val shown = state
-        if (shown == null) ToolNote("Reading it…") else ReactotronPayload("State", shown)
+        if (shown == null) ToolNote("Reading it…")
+        else ReactotronPayload("State", shown, findId = "0 state")
     }
     if (renaming) {
         TextDialog(

@@ -21,14 +21,18 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.copy
 import com.droidective.core.reactotron.ReactotronEvent
+import com.droidective.core.reactotron.ReactotronFind
 import com.droidective.core.reactotron.ReactotronLabels
 import com.droidective.core.reactotron.ReactotronTimeline
 import java.time.Instant
@@ -48,16 +53,28 @@ import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * A detail's frame: its title and actions over a scrolling column. With [onBack] it has a back
- * arrow, and system back goes back too; without, it sits beside the list it was opened from.
+ * arrow, and system back goes back too; without, it sits beside the list it was opened from. With
+ * [find], the placeholder of its find bar, a search button opens a find for the text inside it.
  */
 @Composable
 internal fun ReactotronDetail(
     title: String,
     onBack: (() -> Unit)?,
+    find: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val scroll = rememberScrollState()
+    val margin = with(LocalDensity.current) { FIND_MARGIN.toPx() }
+    val finder = remember(scroll, margin) { Finder(scroll, margin) }
+    var finding by rememberSaveable { mutableStateOf(false) }
+    fun closeFind() {
+        finding = false
+        finder.look("")
+    }
     if (onBack != null) BackHandler(onBack = onBack)
+    // After the detail's own: back closes the find first.
+    BackHandler(enabled = finding, onBack = ::closeFind)
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth()
@@ -76,19 +93,28 @@ internal fun ReactotronDetail(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(vertical = 12.dp),
             )
+            if (find != null && !finding) {
+                IconButton(onClick = { finding = true }) {
+                    Icon(painterResource(Symbols.byName.getValue("search").outlined), find)
+                }
+            }
             actions()
         }
-        Column(
-            Modifier.fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = content,
-        )
+        if (find != null && finding) FindBar(finder, find, onClose = ::closeFind)
+        CompositionLocalProvider(LocalFinder provides finder.takeIf { finding }) {
+            Column(
+                Modifier.fillMaxSize()
+                    .verticalScroll(scroll)
+                    .onGloballyPositioned { finder.content = it }
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                content = content,
+            )
+        }
     }
 }
 
-/** One entry, whole: what it was, and everything it carried. */
+/** One entry, whole: what it was, and everything it carried, with a find for inside it. */
 @Composable
 internal fun EntryDetail(
     entry: ReactotronTimeline.Entry,
@@ -101,6 +127,7 @@ internal fun EntryDetail(
     ReactotronDetail(
         ReactotronLabels.tag(event).lowercase().replaceFirstChar { it.uppercase() },
         onBack,
+        find = "Find in this entry",
         actions = {
             val payload = entry.command.payload
             if (payload != null) {
@@ -127,9 +154,13 @@ internal fun EntryDetail(
             else -> {
                 Text(ReactotronLabels.summary(event), style = MaterialTheme.typography.bodyMedium)
                 if (event is ReactotronEvent.StateAnswer) {
-                    ReactotronPayload(if (event.keys) "Keys" else "Value", event.value ?: JsonNull)
+                    ReactotronPayload(
+                        if (event.keys) "Keys" else "Value",
+                        event.value ?: JsonNull,
+                        findId = "0 value",
+                    )
                 } else {
-                    ReactotronPayload("Payload", entry.command.payload)
+                    ReactotronPayload("Payload", entry.command.payload, findId = "0 payload")
                 }
                 Overview(entry)
             }
@@ -163,15 +194,24 @@ private fun ApiDetail(
     val context = LocalContext.current
     // The answer is what's usually looked for; the request is a tap away.
     var side by rememberSaveable(entry.id) { mutableIntStateOf(RESPONSE) }
-    Text(
+    // What a find has in the side that isn't showing, so the switch can say so.
+    val query = LocalFinder.current?.query.orEmpty()
+    val found =
+        remember(entry.id, query) {
+            listOf(
+                    event.request.child("headers") to event.request.child("data"),
+                    event.response.child("headers") to event.response.child("body"),
+                )
+                .map { (headers, body) -> foundIn(headers, body, query) }
+        }
+    FoundText(
+        "0 url",
         "${event.method} ${event.url}",
-        fontFamily = FontFamily.Monospace,
-        style = MaterialTheme.typography.bodySmall,
-        modifier =
-            Modifier.clickable {
-                context.copy("URL", event.url)
-                say("Copied the URL")
-            },
+        MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+        Modifier.clickable {
+            context.copy("URL", event.url)
+            say("Copied the URL")
+        },
     )
     Overview(entry) {
         InfoRow(
@@ -187,7 +227,7 @@ private fun ApiDetail(
                 onClick = { side = index },
                 shape = SegmentedButtonDefaults.itemShape(index, SIDES.size),
             ) {
-                Text(label)
+                Text(if (found[index] > 0) "$label · ${found[index]}" else label)
             }
         }
     }
@@ -198,30 +238,50 @@ private fun ApiDetail(
         } else {
             Headers(headers)
         }
-        ReactotronPayload("Body", event.response.child("body"))
+        ReactotronPayload("Body", event.response.child("body"), findId = "2 body")
     } else {
         Headers(event.request.child("headers"))
-        ReactotronPayload("Body", event.request.child("data"))
+        ReactotronPayload("Body", event.request.child("data"), findId = "2 body")
     }
+}
+
+/** How many times [query] is in one side of a call, its headers and its body, as they show. */
+private fun foundIn(headers: JsonElement?, body: JsonElement?, query: String): Int {
+    if (query.isBlank()) return 0
+    val fields = (headers as? JsonObject).orEmpty()
+    val inHeaders =
+        fields.entries.sumOf { (name, value) ->
+            ReactotronFind.matches(name, query).size +
+                ReactotronFind.matches(headerText(value), query).size
+        }
+    val inBody =
+        body
+            ?.takeIf { it != JsonNull }
+            ?.let { ReactotronFind.matches(prettyPayload(it).take(MAX_SHOWN), query).size } ?: 0
+    return inHeaders + inBody
 }
 
 @Composable
 private fun LogDetail(event: ReactotronEvent.Log, entry: ReactotronTimeline.Entry) {
-    ReactotronPayload("Message", entry.command.payload.child("message"))
+    ReactotronPayload("Message", entry.command.payload.child("message"), findId = "0 message")
     if (event.stack.isNotEmpty()) {
         ToolSection("Stack") {
-            event.stack.forEach { frame ->
+            event.stack.forEachIndexed { index, frame ->
                 val at = listOfNotNull(frame.line, frame.column).joinToString(":")
+                val id = "1 stack ${index.toString().padStart(ID_DIGITS, '0')}"
                 Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)) {
-                    Text(
+                    FoundText(
+                        "$id a",
                         frame.functionName.ifEmpty { "(anonymous)" },
-                        style = MaterialTheme.typography.bodyMedium,
+                        MaterialTheme.typography.bodyMedium,
                     )
-                    Text(
+                    FoundText(
+                        "$id b",
                         "${frame.fileName} $at",
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
                     )
                 }
             }
@@ -234,23 +294,48 @@ private fun Headers(headers: JsonElement?) {
     val fields = (headers as? JsonObject).orEmpty()
     ToolSection("Headers") {
         if (fields.isEmpty()) ToolNote("No headers.")
-        fields.forEach { (name, value) ->
-            InfoRow(name, (value as? JsonPrimitive)?.content ?: value.toString(), mono = true)
+        fields.entries.forEachIndexed { index, (name, value) ->
+            val id = "1 headers ${index.toString().padStart(ID_DIGITS, '0')}"
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                FoundText(
+                    "$id a",
+                    name,
+                    MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    Modifier.weight(NAME_WEIGHT),
+                )
+                FoundText(
+                    "$id b",
+                    headerText(value),
+                    MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
+                    Modifier.weight(1f - NAME_WEIGHT),
+                )
+            }
         }
     }
 }
 
-/** A part of the payload, laid out as JSON — text that is itself JSON, as a body often is, too. */
+private fun headerText(value: JsonElement): String =
+    (value as? JsonPrimitive)?.content ?: value.toString()
+
+/**
+ * A part of the payload, laid out as JSON — text that is itself JSON, as a body often is, too.
+ * [findId] is where it sorts among the detail's other text a find looks through.
+ */
 @Composable
-internal fun ReactotronPayload(title: String, value: JsonElement?) {
+internal fun ReactotronPayload(title: String, value: JsonElement?, findId: String) {
     if (value == null || value == JsonNull) return
     val shown = remember(value) { prettyPayload(value) }
     ToolSection(title) {
         SelectionContainer {
-            Text(
+            FoundText(
+                findId,
                 shown.take(MAX_SHOWN),
-                fontFamily = FontFamily.Monospace,
-                style = MaterialTheme.typography.bodySmall,
+                MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
             )
         }
         if (shown.length > MAX_SHOWN)
@@ -278,3 +363,10 @@ private val PRETTY = Json { prettyPrint = true }
 private val SIDES = listOf("Request", "Response")
 private const val RESPONSE = 1
 private const val MAX_SHOWN = 100_000
+
+/** Room above a match a find scrolls to, so the lines before it give it context. */
+private val FIND_MARGIN = 96.dp
+
+/** Header and stack rows numbered so their find ids sort in order: up to 1,000 of each. */
+private const val ID_DIGITS = 3
+private const val NAME_WEIGHT = 0.42f

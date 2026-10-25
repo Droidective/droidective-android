@@ -3,6 +3,13 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.21.1
+
+- **The app picker no longer crashes on devices with two Chrome channels.** Every Chrome channel
+  (Stable, Beta, Dev, Canary) names its launcher activity `com.google.android.apps.chrome.Main`,
+  and the picker keyed its rows by activity name alone — opening it with two Chromes installed
+  took the app down. Rows are now keyed by package and activity.
+
 ## 0.21.0
 
 The APK Inspector reads an APK the way Android Studio's APK Analyzer does.

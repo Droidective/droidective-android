@@ -3,6 +3,22 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.28.0
+
+Closing Droidective now cleans up after it: nothing it started keeps running, and nothing it
+changed for a while stays changed.
+
+- **Commands end with the app.** A Monkey test, a screen recording or a Terminal command, and
+  anything it started in the background, ends within a second of Droidective being swiped away,
+  force stopped or killed, as root or through Shizuku. Before, as root, they kept running. Leaving
+  the Terminal also ends the command it was running. App snapshots still finish, so a copy is never
+  left half-made.
+- **Temporary changes go back.** If Droidective closes mid-recording, show taps and the demo
+  status bar go back to how they were the next time it starts, and the recording so far is saved
+  to Movies. A phone forced into Doze from Background Work wakes up, and mock location gives
+  every app its real location again. Leftover temporary files, such as copies of other apps'
+  files, are deleted.
+
 ## 0.27.0
 
 Widget taps now say how they went, the Wireless debugging button shows where to connect, and the

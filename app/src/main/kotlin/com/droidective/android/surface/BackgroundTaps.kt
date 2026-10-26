@@ -11,6 +11,7 @@ import com.droidective.android.ui.copy
 import com.droidective.core.layout.Tap
 import com.droidective.core.toggles.Outcome
 import com.droidective.core.toggles.TapNotes
+import com.droidective.core.toggles.ToggleDef
 import com.droidective.core.toggles.Toggles
 import com.droidective.platform.AdbPort
 import kotlinx.coroutines.Dispatchers
@@ -74,17 +75,24 @@ object BackgroundTaps {
         }
         val note = TapNotes.applied(toggle, outcome.state) ?: return null
         if (!TapNotes.addsAdbAddress(toggle, outcome.state)) return Said(note)
-        return Said(withAdbAddress(context, note), long = true)
+        return Said(withAdbAddress(context, toggle, note), long = true)
     }
 
     /** Wireless debugging's note with where to connect, or what kept the app from finding out. */
-    private suspend fun withAdbAddress(context: Context, note: String): String {
+    private suspend fun withAdbAddress(context: Context, toggle: ToggleDef, note: String): String {
         if (!AdbPort.allowed(context)) {
             Problems.reportLocalNetwork(context)
             return "$note. To see its port, allow local network access from the notification."
         }
-        val address = AdbPort.address(context) ?: return "$note. Its port didn’t show up."
-        return "$note · $address"
+        AdbPort.address(context)?.let {
+            return "$note · $it"
+        }
+        // Off Wi-Fi, Android turns it back off a moment after the write read back as on.
+        if (context.droidective.toggles.read(toggle) == "off") {
+            Surfaces.refresh(context)
+            return "Android turned ${toggle.title} off again: it works only on Wi-Fi."
+        }
+        return "$note. Its port didn’t show up."
     }
 
     private suspend fun command(context: Context, commandId: String): Said? {

@@ -6,8 +6,14 @@ import android.content.pm.PackageManager
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
+import java.io.IOException
 import java.net.Inet4Address
+import java.net.InetSocketAddress
+import java.net.Socket
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -17,6 +23,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 object AdbPort {
     private const val SERVICE = "_adb-tls-connect._tcp"
+    private const val RETRY_MILLIS = 300L
+    private const val CONNECT_MILLIS = 500
 
     /** Whether Android lets the app look: from Android 17 it asks the person first. */
     fun allowed(context: Context): Boolean =
@@ -35,8 +43,23 @@ object AdbPort {
         return "$ip:$port"
     }
 
-    /** The port this phone's adbd advertises, or null within [timeoutMillis] if none shows up. */
-    suspend fun find(context: Context, ownAddress: String?, timeoutMillis: Long = 6_000): Int? {
+    /**
+     * The port this phone's adbd listens on, or null if it doesn't show up within [timeoutMillis].
+     * mDNS can still hold the port from the last time wireless debugging was on, under the same
+     * name; that one refuses a connection, so it asks again until the port it hears is live.
+     */
+    suspend fun find(context: Context, ownAddress: String?, timeoutMillis: Long = 6_000): Int? =
+        withTimeoutOrNull(timeoutMillis) {
+            var port = advertised(context, ownAddress)
+            while (port != null && ownAddress != null && !listening(ownAddress, port)) {
+                delay(RETRY_MILLIS)
+                port = advertised(context, ownAddress)
+            }
+            port
+        }
+
+    /** The first port adbd is heard advertising for [ownAddress]; null if discovery can't start. */
+    private suspend fun advertised(context: Context, ownAddress: String?): Int? {
         // NsdManager checks INTERNET while it's being created, not when discovery starts.
         val nsd =
             try {
@@ -44,7 +67,7 @@ object AdbPort {
             } catch (_: SecurityException) {
                 return null
             }
-        val found = CompletableDeferred<Int>()
+        val found = CompletableDeferred<Int?>()
         val listener =
             object : NsdManager.DiscoveryListener {
                 override fun onServiceFound(service: NsdServiceInfo) {
@@ -62,20 +85,31 @@ object AdbPort {
                 override fun onServiceLost(service: NsdServiceInfo) = Unit
 
                 override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-                    found.cancel()
+                    found.complete(null)
                 }
 
                 override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) = Unit
             }
         return try {
             nsd.discoverServices(SERVICE, NsdManager.PROTOCOL_DNS_SD, listener)
-            withTimeoutOrNull(timeoutMillis) { runCatching { found.await() }.getOrNull() }
+            found.await()
         } catch (_: SecurityException) {
             null
         } finally {
             runCatching { nsd.stopServiceDiscovery(listener) }
         }
     }
+
+    /** Whether something accepts a connection at [ip]:[port], as adbd does on its live port. */
+    private suspend fun listening(ip: String, port: Int): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                Socket().use { it.connect(InetSocketAddress(ip, port), CONNECT_MILLIS) }
+                true
+            } catch (_: IOException) {
+                false
+            }
+        }
 
     @Suppress("DEPRECATION") // resolveService is the only resolver before Android 14.
     private fun resolve(

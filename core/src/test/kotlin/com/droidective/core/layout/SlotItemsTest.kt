@@ -100,6 +100,16 @@ class SlotItemsTest {
     }
 
     @Test
+    fun aDeveloperSettingsSlotOpensThePhonesDeveloperOptions() {
+        val cell = plan(Item.Tool("a", "dev-settings"))
+        assertEquals("Developer Settings", cell?.label)
+        assertEquals(
+            Tap.Open(Target.SystemScreen("android.settings.APPLICATION_DEVELOPMENT_SETTINGS")),
+            cell?.tap,
+        )
+    }
+
+    @Test
     fun anActionNeedsWhatItsToggleOrTheShellNeeds() {
         assertEquals(AccessLevel.Granted, Action.SetToggle("animation-scale", "1").level())
         assertEquals(AccessLevel.Shell, Action.ForApp("a.b", AppAction.ClearData).level())

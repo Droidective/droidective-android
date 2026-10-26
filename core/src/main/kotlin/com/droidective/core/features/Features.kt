@@ -10,10 +10,15 @@ enum class FeatureCategory(val title: String) {
     Device("Device"),
 }
 
+/** A screen of the phone's own Settings, by its intent action. */
+data class PhoneScreen(val action: String, val title: String)
+
 /**
  * One tool screen. [id] is the Mac's feature id, so a feature means the same thing in both apps.
  *
  * @property level the lowest level any part of the screen needs; parts that need more say so.
+ * @property slotOpens the phone's own screen that a slot for this tool opens in its place: a button
+ *   on the home screen is for the screen the tool stands in for.
  */
 data class FeatureDef(
     val id: String,
@@ -23,6 +28,7 @@ data class FeatureDef(
     val category: FeatureCategory,
     val icon: String,
     val level: AccessLevel,
+    val slotOpens: PhoneScreen? = null,
 ) {
     fun matches(query: String): Boolean {
         val q = query.trim()
@@ -53,6 +59,11 @@ object Features {
                 FeatureCategory.Developer,
                 "construction",
                 AccessLevel.Granted,
+                slotOpens =
+                    PhoneScreen(
+                        "android.settings.APPLICATION_DEVELOPMENT_SETTINGS",
+                        "Developer options",
+                    ),
             ),
             FeatureDef(
                 "react-native",

@@ -3,6 +3,26 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.27.0
+
+Widget taps now say how they went, the Wireless debugging button shows where to connect, and the
+Developer Settings button opens the phone's Developer options.
+
+- **A toast for every tap.** A widget, notification bar, tile or floating control now says what
+  it did ("Wi-Fi: On", "Lock screen: done") or why it didn't work. Android hides an app's toasts
+  while its notifications are off, so placing a widget now asks for notifications, and the
+  Widgets screen says when they're off. Screenshots and recordings stay quiet, because the toast
+  would be captured.
+- **Wireless debugging's address.** Turning it on from a widget shows the address and port to
+  connect to, such as 192.168.1.2:45745. On Android 17, Droidective first needs local network
+  access: tap its notification to allow it. Off Wi-Fi, the toast says Android turned wireless
+  debugging back off.
+- **The right port in Wireless ADB.** After wireless debugging was turned off and on again,
+  Wireless ADB could show the previous port. It now checks that the port it finds is live.
+- **Developer Settings opens Developer options.** A Developer Settings button on a widget,
+  notification bar, folder or tile now opens the phone's Developer options. The Tools list still
+  opens Droidective's own Developer Settings.
+
 ## 0.26.0
 
 Notification bars can be styled, and the Network widget shows the Wi-Fi name more often, follows

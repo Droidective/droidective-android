@@ -76,8 +76,10 @@ permission granted), one of the app's tools, or a fact about the network (its IP
 IP or Wi-Fi name).
 
 - **Every background tap goes through `BackgroundTaps.run`**, from the widget's Glance callbacks,
-  the notification bar's receiver and the tiles alike, so a slot does the same thing wherever it's
-  placed. A tap that needs a person ends in a `Problems` notification.
+  the notification bar's receiver, the tiles and the floating controls alike, so a slot does the
+  same thing wherever it's placed. Every tap ends in a toast saying how it went (`TapNotes`: the
+  new state; nothing for a capture, which the toast would land in; wireless debugging's `ip:port`
+  through `AdbPort`). A tap that needs a person also ends in a `Problems` notification.
 - **A single action runs through the automation engine** (`ActionTaps`), so it does exactly what
   the same step does in an automation. It rides in the PendingIntent as the automation file's
   JSON (`SlotActions`). An action's level is `Action.level()`, and a slot without it opens Setup.
@@ -98,6 +100,9 @@ IP or Wi-Fi name).
 - **The launcher lists three kinds** (`Starter`: Bar, Button, List), one receiver each. They differ
   only in what a new one starts as; any can be restyled into any other. A new kind needs a
   receiver, an `appwidget-provider` file and a `ManifestTest` entry.
+- **OnePlus/OPPO tablets cap every widget at 4 × 4 cells** (OplusLauncher 17, its tablet layout:
+  `maxSpanX = min(columns, 4)`), whatever the provider declares; `maxResizeWidth` can only lower
+  it. A wider bar there means more columns in its style, or a second bar.
 - **The Network widget isn't a layout**: it shows the Wi-Fi name and the local and public IP
   (`core/…/network/`, `NetworkReader`), each widget's choices and look (a bar's `Style`) in
   `network-widgets.json`, and a tap copies an address. Android tells an app without location

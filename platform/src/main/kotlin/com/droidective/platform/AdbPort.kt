@@ -1,6 +1,8 @@
 package com.droidective.platform
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
@@ -15,6 +17,12 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 object AdbPort {
     private const val SERVICE = "_adb-tls-connect._tcp"
+
+    /** Whether Android lets the app look: from Android 17 it asks the person first. */
+    fun allowed(context: Context): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN ||
+            context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) ==
+                PackageManager.PERMISSION_GRANTED
 
     /**
      * `ip:port` for `adb connect`, or null when wireless debugging is off or nothing advertises it.

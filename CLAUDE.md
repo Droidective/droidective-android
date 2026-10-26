@@ -72,8 +72,9 @@ Every surface (home-screen bars, notification bars, folders, tiles) holds the sa
 `Cells.plan` decides how each draws and what a tap does (`Tap`). A slot can be a toggle, an app,
 another app's shortcut, a deep link, a Settings screen, a folder, a saved command, an automation
 (run now), one automation `Action` on its own (a toggle set to one state, an app force-stopped, a
-permission granted), one of the app's tools, or a fact about the network (its IP address, public
-IP or Wi-Fi name).
+permission granted), one of the app's tools (or the phone screen it stands in for,
+`FeatureDef.slotOpens`: Developer Settings opens Developer options), or a fact about the network
+(its IP address, public IP or Wi-Fi name).
 
 - **Every background tap goes through `BackgroundTaps.run`**, from the widget's Glance callbacks,
   the notification bar's receiver, the tiles and the floating controls alike, so a slot does the

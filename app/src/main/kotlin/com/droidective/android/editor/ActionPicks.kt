@@ -243,14 +243,25 @@ internal fun ToolList(query: String, onPick: (Item) -> Unit) {
                 items(inCategory, key = { it.id }) { feature ->
                     ListItem(
                         headlineContent = { Text(feature.title) },
-                        supportingContent = { Text(feature.subtitle) },
+                        supportingContent = {
+                            Text(
+                                feature.slotOpens?.let { "Opens the phone’s ${it.title}" }
+                                    ?: feature.subtitle
+                            )
+                        },
                         leadingContent = {
                             Icon(
                                 painterResource(Symbols.byName.getValue(feature.icon).outlined),
                                 null,
                             )
                         },
-                        trailingContent = { LevelChip(feature.level, missing = false) },
+                        // The phone's own screen needs no level.
+                        trailingContent =
+                            if (feature.slotOpens == null) {
+                                { LevelChip(feature.level, missing = false) }
+                            } else {
+                                null
+                            },
                         modifier = Modifier.clickable { onPick(Item.Tool(key(), feature.id)) },
                     )
                 }

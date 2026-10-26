@@ -255,7 +255,13 @@ internal fun ToolList(query: String, onPick: (Item) -> Unit) {
                                 null,
                             )
                         },
-                        trailingContent = { LevelChip(feature.level, missing = false) },
+                        // The phone's own screen needs no level.
+                        trailingContent =
+                            if (feature.slotOpens == null) {
+                                { LevelChip(feature.level, missing = false) }
+                            } else {
+                                null
+                            },
                         modifier = Modifier.clickable { onPick(Item.Tool(key(), feature.id)) },
                     )
                 }

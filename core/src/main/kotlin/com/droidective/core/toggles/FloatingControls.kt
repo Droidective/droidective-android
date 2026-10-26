@@ -32,6 +32,10 @@ object FloatingControls {
             Control("traffic-proxy", Hide.Never),
         )
 
+    /** The toggles that capture the screen, where anything drawn over it would be captured too. */
+    val captures: Set<String> =
+        controls.filter { it.hide != Hide.Never }.map { it.toggleId }.toSet()
+
     private const val SCREENSHOT_MILLIS = 2_000L
     private const val CLEAN_SCREENSHOT_MILLIS = 3_500L
     private const val CAPTURE_VIEWS_MILLIS = 9_000L

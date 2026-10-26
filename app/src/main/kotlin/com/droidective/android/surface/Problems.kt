@@ -24,14 +24,20 @@ import com.droidective.core.toggles.ToggleDef
 object Problems {
     private const val CHANNEL = "problems"
 
-    fun report(context: Context, toggle: ToggleDef, outcome: Outcome) {
-        val text = OutcomeText.describe(toggle, outcome) ?: fallbackText(toggle, outcome) ?: return
-        val intent = intentFor(context, outcome) ?: return
+    /** Posts what [outcome] needs of the person, and returns what it says; null when it worked. */
+    fun report(context: Context, toggle: ToggleDef, outcome: Outcome): String? {
+        val text =
+            OutcomeText.describe(toggle, outcome) ?: fallbackText(toggle, outcome) ?: return null
+        val intent = intentFor(context, outcome) ?: return null
         post(context, toggle.id, toggle.title, text, intent)
+        return text
     }
 
-    /** A custom command tapped in the background that couldn't run, or exited non-zero. */
-    fun reportCommand(context: Context, command: CustomCommand, result: ShellRuns.Result) {
+    /**
+     * A custom command tapped in the background that couldn't run, or exited non-zero. Returns what
+     * the notice says; null when the command worked.
+     */
+    fun reportCommand(context: Context, command: CustomCommand, result: ShellRuns.Result): String? {
         val (text, intent) =
             when (result) {
                 ShellRuns.Result.NoShell ->
@@ -41,7 +47,7 @@ object Problems {
                     "${command.name} didn’t run: ${result.message}" to
                         Launch.intentFor(context, Target.Tool("custom-commands"))
                 is ShellRuns.Result.Ran -> {
-                    if (result.result.succeeded) return
+                    if (result.result.succeeded) return null
                     val reason =
                         Parse.lines(result.result.stderr).firstOrNull { it.isNotBlank() }?.trim()
                             ?: "exit code ${result.result.exitCode}"
@@ -49,13 +55,30 @@ object Problems {
                         Launch.intentFor(context, Target.Tool("custom-commands"))
                 }
             }
-        post(context, "command:${command.id}", command.name, text, intent ?: return)
+        post(context, "command:${command.id}", command.name, text, intent ?: return null)
+        return text
     }
 
     /** An action tapped in the background that didn't work, with what went wrong. */
-    fun reportStep(context: Context, label: String, detail: String?) {
-        val intent = Intent(context, MainActivity::class.java)
-        post(context, "action:$label", label, detail ?: "It didn’t work.", intent)
+    fun reportStep(context: Context, label: String, detail: String?): String {
+        val text = detail ?: "It didn’t work."
+        post(context, "action:$label", label, text, Intent(context, MainActivity::class.java))
+        return text
+    }
+
+    /**
+     * Wireless debugging is on, but Android 17 hasn't let the app look for its port yet. The
+     * Wireless ADB tool asks as it opens.
+     */
+    fun reportLocalNetwork(context: Context) {
+        val intent = Launch.intentFor(context, Target.Tool("wireless-adb")) ?: return
+        post(
+            context,
+            "local-network",
+            "Wireless debugging’s port",
+            "Tap to allow local network access, so Droidective can find the port.",
+            intent,
+        )
     }
 
     private fun post(context: Context, tag: String, title: String, text: String, intent: Intent) {

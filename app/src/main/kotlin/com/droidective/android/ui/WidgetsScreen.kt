@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.droidective.android.DroidectiveApplication
 import com.droidective.android.droidective
 import com.droidective.android.editor.ItemPicker
@@ -93,10 +94,25 @@ fun WidgetsScreen(app: DroidectiveApplication) {
     var pickingSlot by rememberSaveable { mutableStateOf<Int?>(null) }
     var deleting by remember { mutableStateOf<Layout?>(null) }
     var slots by remember { mutableStateOf(TileSlots.all(context)) }
+    // A tap away from the app reports in a toast or a notification; Android hides both while
+    // Droidective's notifications are off.
+    var notesShow by remember { mutableStateOf(notificationsShow(context)) }
+    LifecycleResumeEffect(Unit) {
+        notesShow = notificationsShow(context)
+        onPauseOrDispose {}
+    }
     val askNotifications =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            notesShow = notificationsShow(context)
             scope.launch { Surfaces.refresh(context) }
         }
+    fun allowNotifications() {
+        if (needsNotificationPermission(context)) {
+            askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            openNotificationSettings(context)
+        }
+    }
 
     editing?.let { id ->
         // Under the status bar otherwise: the tab's own list pads for it, and this replaces it.
@@ -155,6 +171,10 @@ fun WidgetsScreen(app: DroidectiveApplication) {
                     }
                 }
             }
+            val placed = layouts.isNotEmpty() || networkWidgets.isNotEmpty() || slots.isNotEmpty()
+            if (!notesShow && placed) {
+                item(key = "notifications") { NotificationsOffCard(::allowNotifications) }
+            }
             if (layouts.isEmpty()) {
                 item(key = "empty") { EmptyWidgets() }
             } else {
@@ -196,10 +216,16 @@ fun WidgetsScreen(app: DroidectiveApplication) {
             onDismiss = { creating = false },
             onHomeScreen = { starter ->
                 creating = false
+                if (needsNotificationPermission(context)) {
+                    askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
                 pinWidget(context, starter)
             },
             onNetwork = {
                 creating = false
+                if (needsNotificationPermission(context)) {
+                    askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
                 pinNetworkWidget(context)
             },
             onNotificationBar = {
@@ -621,6 +647,32 @@ private fun Choice(
 }
 
 /** The switch for [LiveSurfaces]: a service that keeps widget taps instant and widgets current. */
+/** Says why a widget's taps go unanswered, with the way to fix it. */
+@Composable
+private fun NotificationsOffCard(onAllow: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "Taps can’t say how they went",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Text(
+                "Notifications are off for Droidective, and Android hides its toasts with " +
+                    "them, so a tap on a widget, tile or notification bar shows nothing when " +
+                    "it works or when it needs you.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Button(onClick = onAllow) { Text("Allow notifications") }
+        }
+    }
+}
+
 @Composable
 private fun LiveSurfacesCard() {
     val context = LocalContext.current

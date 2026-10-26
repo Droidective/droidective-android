@@ -18,6 +18,7 @@ import com.droidective.core.shell.ShellUnavailableException
 import com.droidective.platform.BuildConfig
 import com.droidective.platform.IShellService
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 import kotlinx.coroutines.CompletableDeferred
@@ -179,7 +180,7 @@ class ShizukuShell(packageName: String) : Shell {
 
     private companion object {
         // Bump when ShellUserService changes, so Shizuku replaces a running old copy.
-        const val SERVICE_VERSION = 3
+        const val SERVICE_VERSION = 4
     }
 }
 
@@ -191,6 +192,7 @@ internal fun streamArgv(command: String, shell: String = "sh"): List<String> =
     listOf(shell, "-c", "exec $command")
 
 private const val WATCH_MILLIS = 1_000
+private const val STOP_GRACE_SECONDS = 8L
 
 /**
  * The service Shizuku runs outside the app, as the shell user. It can't use app resources or the
@@ -224,7 +226,12 @@ class ShellUserService : IShellService.Stub() {
             while (process.isAlive) {
                 runCatching { Os.poll(arrayOf(pipe), WATCH_MILLIS) }
                 if (pipe.revents.toInt() and (OsConstants.POLLERR or OsConstants.POLLHUP) != 0) {
+                    // The poll answers at once from here on, so wait rather than loop: a wrapped
+                    // command's group gets its own few seconds to end (Stoppable).
                     process.destroy()
+                    if (!process.waitFor(STOP_GRACE_SECONDS, TimeUnit.SECONDS)) {
+                        process.destroyForcibly()
+                    }
                 }
             }
         }

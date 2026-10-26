@@ -254,7 +254,7 @@ private suspend fun runLong(context: Context, command: ShellCommand): String? {
     var exit: Int? = null
     var last: String? = null
     return try {
-        shell.stream(Terminal.wrap(command.line, Terminal.HOME)).collect { line ->
+        shell.stream(Terminal.finishing(command.line, Terminal.HOME)).collect { line ->
             val ending = Terminal.ending(line)
             if (ending != null) exit = ending.exitCode
             else if (line.isNotBlank() && Stoppable.pid(line) == null) last = line.trim()

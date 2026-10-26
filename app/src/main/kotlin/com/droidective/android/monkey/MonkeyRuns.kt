@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Process
 import androidx.core.app.NotificationCompat
 import com.droidective.android.NoticeIds
 import com.droidective.android.R
@@ -101,7 +102,7 @@ object MonkeyRuns {
         var sent = 0
         val command = Monkey.command(plan.packageName, plan.count, plan.seed, plan.swipes)
         try {
-            shell.stream(Stoppable.wrap(command)).collect { line ->
+            shell.stream(Stoppable.wrap(command, Process.myPid())).collect { line ->
                 Stoppable.pid(line)?.let {
                     pid = it
                     return@collect

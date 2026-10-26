@@ -204,6 +204,12 @@ runs actions.
   forks it and stopping `sh` orphans it. Through Shizuku the service hands back a pipe; the app
   closing its end stops the command, and a `poll()` watch (POLLERR on a pipe with no reader)
   catches it for a quiet command that never writes again.
+- **Anything that runs on, quiet or not, is a `Stoppable` group** (Monkey, screen recording, the
+  Terminal): `setsid` gives it a process group, and the group ends, children and `&` jobs
+  included, on `Stoppable.stop`, on the wrapper being told to end, or within a second of the app's
+  process going (it watches `/proc/<app pid>`). Ending the stream isn't enough as root: su's daemon
+  runs commands apart from the app, so they outlived a swipe or a force stop. App snapshots are
+  `Terminal.finishing` instead: a copy stopped halfway is worse than one that finishes.
 - Test fakes (`FakeShell`, `FakeSettingsStore`, `FakePlatformToggles`, `FixtureShell`) live in
   `core/src/testFixtures`. `FixtureShell` replays real emulator output from `fixtures/`
   (`scripts/sync-fixtures.sh` copies it from the main repo at a pinned commit).

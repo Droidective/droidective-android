@@ -146,7 +146,10 @@ object Cells {
                         CellIcon.Symbol(feature.icon),
                         active = false,
                         degraded = false,
-                        Tap.Open(Target.Tool(feature.id)),
+                        Tap.Open(
+                            feature.slotOpens?.let { Target.SystemScreen(it.action) }
+                                ?: Target.Tool(feature.id)
+                        ),
                     )
                 }
             is Item.Command ->

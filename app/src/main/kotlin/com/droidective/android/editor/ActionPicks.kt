@@ -243,7 +243,12 @@ internal fun ToolList(query: String, onPick: (Item) -> Unit) {
                 items(inCategory, key = { it.id }) { feature ->
                     ListItem(
                         headlineContent = { Text(feature.title) },
-                        supportingContent = { Text(feature.subtitle) },
+                        supportingContent = {
+                            Text(
+                                feature.slotOpens?.let { "Opens the phone’s ${it.title}" }
+                                    ?: feature.subtitle
+                            )
+                        },
                         leadingContent = {
                             Icon(
                                 painterResource(Symbols.byName.getValue(feature.icon).outlined),

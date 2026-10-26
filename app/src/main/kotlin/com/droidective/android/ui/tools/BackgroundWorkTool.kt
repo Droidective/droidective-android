@@ -67,6 +67,21 @@ fun BackgroundWorkTool(tool: ToolContext) {
             reads++
         }
     }
+    // Forced Doze holds every app's work back until reboot; if the app goes before Wake up, its
+    // next start wakes the phone.
+    fun force(commands: List<ShellCommand>, done: String) {
+        scope.launch {
+            context.droidective.putBacks.hold(Doze.putBack)
+            run(commands, done)
+        }
+    }
+    fun wake() {
+        scope.launch {
+            tool.say(runAll(context, listOf(Doze.unforce, Doze.resetBattery)) ?: "Awake again")
+            context.droidective.putBacks.release(Doze.putBack.id)
+            reads++
+        }
+    }
 
     LaunchedEffect(reads, access.shell) {
         if (access.shell == null) return@LaunchedEffect
@@ -97,19 +112,15 @@ fun BackgroundWorkTool(tool: ToolContext) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Button(onClick = { run(listOf(Doze.unplug, Doze.forceDeep), done = "Dozing") }) {
+                Button(onClick = { force(listOf(Doze.unplug, Doze.forceDeep), done = "Dozing") }) {
                     Text("Doze now")
                 }
                 OutlinedButton(
-                    onClick = { run(listOf(Doze.unplug, Doze.step), done = "One step on") }
+                    onClick = { force(listOf(Doze.unplug, Doze.step), done = "One step on") }
                 ) {
                     Text("Step")
                 }
-                OutlinedButton(
-                    onClick = { run(listOf(Doze.unforce, Doze.resetBattery), done = "Awake again") }
-                ) {
-                    Text("Wake up")
-                }
+                OutlinedButton(onClick = ::wake) { Text("Wake up") }
             }
             ToolNote(
                 "Doze now makes Android believe the phone is unplugged and goes straight to deep " +

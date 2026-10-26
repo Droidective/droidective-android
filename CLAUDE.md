@@ -196,6 +196,13 @@ runs actions.
 - Android 12+ won't let an app *read* a hidden settings key that isn't marked readable, even one
   it may write: `SettingsStore.get` returns `Unreadable` and `ToggleRunner` reads it as the shell.
 - The Shizuku user service is a daemon, started once per boot; a cold widget tap only rebinds.
+- **A change made for a while is a `PutBack`, held before it's made** (`app.putBacks`): show
+  taps and demo mode during a recording, forced Doze. The usual way back releases it; if the app
+  is swiped away, force stopped or killed first, the next process undoes what was held before it
+  started (`Leftovers.clean`), and making the change again undoes a leftover first, so "before"
+  is never the app's own leftover. The same start rescues a recording cut short into Movies,
+  deletes what the handover and file-copy folders were only holding for a moment, and
+  (synchronously, before any service) takes away mock location's leftover test providers.
 - **Root runs through one `su` per process** (`ShellSession`): Magisk and KernelSU ask and toast
   once per `su`, so `su -c` per command toasted every few seconds while the proxy or an automation
   worked in the background. Once su has said yes, a new process trusts that and starts su only for

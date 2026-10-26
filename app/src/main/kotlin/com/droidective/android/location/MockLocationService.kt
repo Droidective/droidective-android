@@ -6,6 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.location.Location
@@ -195,12 +196,6 @@ class MockLocationService : Service() {
         }
     }
 
-    private fun providers(): List<String> = buildList {
-        add(LocationManager.GPS_PROVIDER)
-        add(LocationManager.NETWORK_PROVIDER)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(LocationManager.FUSED_PROVIDER)
-    }
-
     private fun notice(): Notification {
         val now = MockLocation.state.value as? MockLocation.State.On
         val text =
@@ -257,6 +252,28 @@ class MockLocationService : Service() {
     }
 
     companion object {
+        /**
+         * Takes away the test providers a process that ended mid-way left standing in for the real
+         * ones, which kept every app's location at the last mocked fix. Run as the app starts,
+         * before any service, so it never takes away one this process has just put in place.
+         */
+        fun removeLeftovers(context: Context) {
+            val manager = context.getSystemService(LocationManager::class.java) ?: return
+            for (provider in providers()) {
+                try {
+                    manager.removeTestProvider(provider)
+                } catch (_: RuntimeException) {
+                    // None left there, or Developer options picked another mock app since.
+                }
+            }
+        }
+
+        private fun providers(): List<String> = buildList {
+            add(LocationManager.GPS_PROVIDER)
+            add(LocationManager.NETWORK_PROVIDER)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(LocationManager.FUSED_PROVIDER)
+        }
+
         internal const val ACTION_STOP = "com.droidective.android.action.STOP_MOCK_LOCATION"
         internal const val EXTRA_LATITUDE = "com.droidective.android.extra.LATITUDE"
         internal const val EXTRA_LONGITUDE = "com.droidective.android.extra.LONGITUDE"

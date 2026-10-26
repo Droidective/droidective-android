@@ -80,6 +80,11 @@ class BackgroundWorkTest {
         assertEquals("dumpsys deviceidle force-idle deep", Doze.forceDeep.line)
         assertEquals("dumpsys deviceidle unforce", Doze.unforce.line)
         assertEquals(
+            listOf("dumpsys deviceidle unforce", "dumpsys battery reset"),
+            Doze.putBack.lines,
+            "what the next start runs if the app went before Wake up",
+        )
+        assertEquals(
             "am get-standby-bucket 'com.example.app'",
             Doze.getBucket("com.example.app").line,
         )

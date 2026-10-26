@@ -6,6 +6,7 @@ import androidx.core.content.edit
 import com.droidective.android.automation.Automations
 import com.droidective.android.crashes.CrashReporting
 import com.droidective.android.crashes.OwnCrashes
+import com.droidective.android.location.MockLocationService
 import com.droidective.android.proxy.ProxyNotices
 import com.droidective.android.proxy.TrafficProxy
 import com.droidective.android.surface.AppPlatformToggles
@@ -16,10 +17,13 @@ import com.droidective.core.automations.AutomationLedger
 import com.droidective.core.automations.AutomationRepository
 import com.droidective.core.commands.CommandRepository
 import com.droidective.core.commands.DeepLinkRepository
+import com.droidective.core.device.PutBacks
+import com.droidective.core.device.SetToggle
 import com.droidective.core.device.ValueChanges
 import com.droidective.core.layout.LayoutRepository
 import com.droidective.core.toggles.Param
 import com.droidective.core.toggles.ToggleRunner
+import com.droidective.core.toggles.Toggles
 import com.droidective.platform.AccessMonitor
 import com.droidective.platform.AndroidPlatformToggles
 import com.droidective.platform.AndroidSettingsStore
@@ -69,6 +73,13 @@ class DroidectiveApplication : Application() {
     lateinit var ledger: AutomationLedger
         private set
 
+    /** What the app changed for a while, and how to undo each, if it's killed first. */
+    lateinit var putBacks: PutBacks
+        private set
+
+    /** Sets a toggle back the way a tap in the app would, for [putBacks]. */
+    val setToggle = SetToggle { id, state -> Toggles.byId(id)?.let { toggles.apply(it, state) } }
+
     private val params by lazy { getSharedPreferences("params", Context.MODE_PRIVATE) }
 
     /** A value a parameterised toggle reuses, such as the proxy's host and port. */
@@ -80,6 +91,7 @@ class DroidectiveApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        val startedAt = System.currentTimeMillis()
         // First, so a crash anywhere after this is on record.
         ownCrashes =
             OwnCrashes(File(filesDir, "own-crashes")).also {
@@ -94,6 +106,9 @@ class DroidectiveApplication : Application() {
         ledger = AutomationLedger(filesDir)
         valueChanges = ValueChanges(filesDir)
         savedIntents = SavedIntents(filesDir)
+        putBacks = PutBacks(filesDir)
+        // Before any service starts, so it never takes away a provider this process put in place.
+        MockLocationService.removeLeftovers(this)
         access = AccessMonitor(this, scope).also { it.start() }
         // A force stop clears the app's alarms; starting again puts the schedules back.
         scope.launch { Automations.reschedule(this@DroidectiveApplication) }
@@ -117,6 +132,8 @@ class DroidectiveApplication : Application() {
                 access = { access.access.value },
                 params = ::param,
             )
+        // A process that ended without cleaning up left these; the next one does it.
+        scope.launch { Leftovers.clean(this@DroidectiveApplication, startedAt) }
     }
 }
 

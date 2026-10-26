@@ -23,6 +23,8 @@ import com.droidective.android.R
 import com.droidective.android.droidective
 import com.droidective.android.surface.Launch
 import com.droidective.android.surface.Surfaces
+import com.droidective.core.device.PutBack
+import com.droidective.core.device.PutBacks
 import com.droidective.core.device.RecordOptions
 import com.droidective.core.device.ScreenRecording
 import com.droidective.core.device.SystemValues
@@ -270,38 +272,50 @@ class ScreenRecordService : Service() {
 
     /**
      * Shows taps and cleans the status bar if asked, and returns what puts them back. The two
-     * settings go back to their exact values, unset included, not just to "off".
+     * settings go back to their exact values, unset included, not just to "off". How to undo them
+     * is written down first ([PutBacks]): if the app is killed mid-recording, the next start undoes
+     * them, and a recording started before then undoes them before reading what they were.
      */
     private suspend fun changeForRecording(
         shell: Shell,
         request: RecordRequest,
     ): suspend () -> Unit {
+        val putBacks = droidective.putBacks
+        putBacks.clear(PUT_BACK, shell, droidective.setToggle)
         val settings =
             listOfNotNull(
                 SHOW_TAPS_SETTING.takeIf { request.showTaps },
                 DEMO_ALLOWED_SETTING.takeIf { request.cleanStatusBar },
             )
         val before = settings.associateWith { read(shell, it) }
-        if (request.showTaps)
-            run(shell, SystemValues.put(ValueTable.System, SHOW_TAPS_SETTING, "1"))
         val demo = Toggles.byId(DEMO_MODE)?.takeIf { request.cleanStatusBar }
         val demoWasOn = demo?.let { droidective.toggles.read(it) == ON } ?: true
+        putBacks.hold(
+            PutBack(
+                PUT_BACK,
+                "Show taps and the clean status bar from a recording",
+                lines =
+                    before.map { (key, value) ->
+                        val table = tableOf(key)
+                        (value?.let { SystemValues.put(table, key, it) }
+                                ?: SystemValues.delete(table, key))
+                            .line
+                    },
+                // Demo mode leaves first: with sysui_demo_allowed back to 0 it couldn't.
+                toggles = if (demoWasOn) emptyMap() else mapOf(DEMO_MODE to OFF),
+            )
+        )
+        if (request.showTaps)
+            run(shell, SystemValues.put(ValueTable.System, SHOW_TAPS_SETTING, "1"))
         if (!demoWasOn) droidective.toggles.apply(demo, ON)
-        return {
-            if (!demoWasOn) droidective.toggles.apply(demo, OFF)
-            before.forEach { (key, value) ->
-                val table = if (key == SHOW_TAPS_SETTING) ValueTable.System else ValueTable.Global
-                run(
-                    shell,
-                    value?.let { SystemValues.put(table, key, it) }
-                        ?: SystemValues.delete(table, key),
-                )
-            }
-        }
+        return { putBacks.clear(PUT_BACK, shell, droidective.setToggle) }
     }
 
+    private fun tableOf(key: String): ValueTable =
+        if (key == SHOW_TAPS_SETTING) ValueTable.System else ValueTable.Global
+
     private suspend fun read(shell: Shell, key: String): String? {
-        val table = if (key == SHOW_TAPS_SETTING) ValueTable.System else ValueTable.Global
+        val table = tableOf(key)
         return try {
             shell
                 .run(SystemValues.get(table, key))
@@ -429,6 +443,7 @@ class ScreenRecordService : Service() {
         private const val SHOW_TAPS_SETTING = "show_touches"
         private const val DEMO_ALLOWED_SETTING = "sysui_demo_allowed"
         private const val DEMO_MODE = "demo-mode"
+        private const val PUT_BACK = "screen-record"
         private const val ON = "on"
         private const val OFF = "off"
     }

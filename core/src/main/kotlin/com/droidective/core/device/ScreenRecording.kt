@@ -57,6 +57,9 @@ object ScreenRecording {
     fun fileName(atMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
         "screen-" + NAME.withZone(zone).format(Instant.ofEpochMilli(atMillis)) + ".mp4"
 
+    /** Whether [name] is one of [fileName]'s. */
+    fun isRecording(name: String): Boolean = name.startsWith("screen-") && name.endsWith(".mp4")
+
     /**
      * Half of [width] by [height], each rounded down to a multiple of 16, the block size video
      * encoders want.

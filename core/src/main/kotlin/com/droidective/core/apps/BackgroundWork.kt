@@ -1,5 +1,6 @@
 package com.droidective.core.apps
 
+import com.droidective.core.device.PutBack
 import com.droidective.core.shell.Parse
 import com.droidective.core.shell.ShellCommand
 import com.droidective.core.shell.shellQuote
@@ -126,6 +127,17 @@ object Doze {
 
     /** The real battery again. */
     val resetBattery: ShellCommand = ShellCommand.of("dumpsys", "battery", "reset")
+
+    /**
+     * What forcing Doze leaves the whole phone in until reboot, held from the moment it's forced:
+     * every app's work held back, on a battery that says it's unplugged.
+     */
+    val putBack: PutBack =
+        PutBack(
+            "doze",
+            "The phone forced into Doze, and told it's unplugged",
+            listOf(unforce.line, resetBattery.line),
+        )
 
     fun getBucket(packageName: String): ShellCommand =
         forApp(packageName, "am", "get-standby-bucket")

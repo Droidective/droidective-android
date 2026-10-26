@@ -4,6 +4,8 @@ import java.time.ZoneId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ScreenRecordingTest {
     private val path =
@@ -56,6 +58,9 @@ class ScreenRecordingTest {
     @Test
     fun stopsWithControlCSoTheFileIsFinished() {
         assertEquals("kill -INT 4242", ScreenRecording.stop(4242).line)
+        assertTrue(ScreenRecording.isRecording(ScreenRecording.fileName(0L)))
+        assertFalse(ScreenRecording.isRecording("ui-inspector.png"))
+        assertFalse(ScreenRecording.isRecording("droidective-2026.har"))
     }
 
     @Test

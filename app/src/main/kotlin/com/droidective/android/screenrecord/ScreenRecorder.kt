@@ -13,6 +13,7 @@ import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import android.os.Process
 import android.os.SystemClock
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -222,8 +223,8 @@ class ScreenRecordService : Service() {
     private suspend fun capture(shell: Shell, options: RecordOptions, file: File): String? {
         var last: String? = null
         try {
-            shell.stream(Stoppable.wrap(ScreenRecording.command(options, file.path))).collect { line
-                ->
+            val command = ScreenRecording.command(options, file.path)
+            shell.stream(Stoppable.wrap(command, Process.myPid())).collect { line ->
                 val said = Stoppable.pid(line)
                 if (said != null) {
                     pid = said

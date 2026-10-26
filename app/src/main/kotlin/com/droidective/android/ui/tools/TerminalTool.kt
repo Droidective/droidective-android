@@ -1,5 +1,6 @@
 package com.droidective.android.ui.tools
 
+import android.os.Process
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -25,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -95,7 +97,7 @@ fun TerminalTool(tool: ToolContext) {
         running = scope.launch {
             val shell: Shell = context.droidective.access.shell() ?: AppShell()
             try {
-                shell.stream(Terminal.wrap(line, cwd)).collect { printed ->
+                shell.stream(Terminal.wrap(line, cwd, Process.myPid())).collect { printed ->
                     val ending = Terminal.ending(printed)
                     val started = Stoppable.pid(printed)
                     if (started != null) {
@@ -118,6 +120,10 @@ fun TerminalTool(tool: ToolContext) {
     }
 
     LaunchedEffect(lines.size) { if (lines.isNotEmpty()) list.scrollToItem(lines.lastIndex) }
+    // Leaving ends the stream; as root that alone leaves the command running, so end it too.
+    DisposableEffect(Unit) {
+        onDispose { pid?.let { context.droidective.scope.launch { stopCommand(context, it) } } }
+    }
 
     BackHandler(onBack = tool.onBack)
     Scaffold(snackbarHost = { SnackbarHost(tool.snackbar) }) { padding ->

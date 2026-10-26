@@ -16,16 +16,22 @@ object Terminal {
     private const val MARK = "__droidective_end__"
 
     /**
-     * The command that says its process id ([Stoppable]), runs [line] in [cwd], then says how it
-     * ended. A newline before the report keeps a trailing comment or `&` in [line] from swallowing
-     * it.
+     * The command that runs [line] in [cwd], then says how it ended, as a [Stoppable] group that
+     * ends with the app at [appPid], whatever [line] left running in the background included.
      */
-    fun wrap(line: String, cwd: String): ShellCommand {
-        val script =
-            "${Stoppable.SAY_PID}\ncd ${shellQuote(cwd)} 2>/dev/null\n$line\n" +
-                "echo \"$MARK \$? \$(pwd)\""
-        return ShellCommand.of("sh", "-c", shellQuote(script))
-    }
+    fun wrap(line: String, cwd: String, appPid: Int): ShellCommand =
+        ShellCommand.of("sh", "-c", shellQuote(Stoppable.guard(script(line, cwd), appPid)))
+
+    /**
+     * Like [wrap], but [line] runs to its end even if the app goes first: an app snapshot stopped
+     * halfway would leave a broken copy, or an app's data half put back.
+     */
+    fun finishing(line: String, cwd: String): ShellCommand =
+        ShellCommand.of("sh", "-c", shellQuote("${Stoppable.SAY_PID}\n${script(line, cwd)}"))
+
+    /** A newline before the report keeps a trailing comment or `&` in [line] from swallowing it. */
+    private fun script(line: String, cwd: String): String =
+        "cd ${shellQuote(cwd)} 2>/dev/null\n$line\necho \"$MARK \$? \$(pwd)\""
 
     private val ending = Regex("^$MARK (\\d+) (.*)$")
 

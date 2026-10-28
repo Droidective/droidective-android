@@ -29,6 +29,7 @@ import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.droidective.android.ui.Symbols
@@ -37,6 +38,7 @@ import com.droidective.core.layout.CellIcon
 import com.droidective.core.layout.CellShape
 import com.droidective.core.layout.Display
 import com.droidective.core.layout.Style
+import com.droidective.core.layout.TextFit
 import com.droidective.core.layout.WidgetGrid
 
 /**
@@ -114,7 +116,15 @@ internal fun Bar(model: BarModel) {
 
 @Composable
 private fun Grid(cells: List<Cell>, style: Style, colors: WidgetColors) {
-    val columns = WidgetGrid.columns(LocalSize.current.width.value, cells.size, style)
+    val size = LocalSize.current
+    val columns = WidgetGrid.columns(size.width.value, cells.size, style)
+    val rows = (cells.size + columns - 1) / columns
+    // A cell's share of the space, less its margins: what a slot's text has to fit in.
+    val room =
+        CellRoom(
+            (size.width.value - 2 * style.padding) / columns - 2 * TEXT_MARGIN,
+            (size.height.value - 2 * style.padding) / rows - 2 * CELL_PADDING,
+        )
     Column(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         cells.chunked(columns).forEach { row ->
             Row(
@@ -122,7 +132,7 @@ private fun Grid(cells: List<Cell>, style: Style, colors: WidgetColors) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 row.forEach { cell ->
-                    GridCell(cell, style, colors, GlanceModifier.defaultWeight())
+                    GridCell(cell, style, colors, room, GlanceModifier.defaultWeight())
                 }
                 // Keep the last row's cells the same width as the rows above.
                 repeat(columns - row.size) { Spacer(GlanceModifier.defaultWeight()) }
@@ -132,21 +142,45 @@ private fun Grid(cells: List<Cell>, style: Style, colors: WidgetColors) {
 }
 
 @Composable
-private fun GridCell(cell: Cell, style: Style, colors: WidgetColors, modifier: GlanceModifier) {
-    val action = actionFor(LocalContext.current, cell)
+private fun GridCell(
+    cell: Cell,
+    style: Style,
+    colors: WidgetColors,
+    room: CellRoom,
+    modifier: GlanceModifier,
+) {
+    val context = LocalContext.current
+    val action = actionFor(context, cell)
+    val fontScale = context.resources.configuration.fontScale
+    val size = style.labelSize.toFloat()
+    // A slot whose text is the point fits it under its icon, or in the icon's place when the
+    // address couldn't be read there, as the notification bar shows it.
+    val under =
+        if (cell.readout) {
+            val below = room.height - style.iconSize - LABEL_GAP
+            TextFit.fitted(cell.label, room.width, below, size, MIN_READOUT, fontScale)
+        } else {
+            TextFit.Fitted(cell.label, size)
+        }
+    val label =
+        if (under.cutShort) {
+            val alone = size * ALONE_GROWTH
+            TextFit.fitted(cell.label, room.width, room.height, alone, MIN_READOUT, fontScale)
+        } else {
+            under
+        }
     Column(
-        modifier = (action?.let { modifier.clickable(it) } ?: modifier).padding(vertical = 4.dp),
+        modifier =
+            (action?.let { modifier.clickable(it) } ?: modifier).padding(
+                vertical = CELL_PADDING.dp
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(cell, style, colors)
+        if (!under.cutShort) Icon(cell, style, colors)
         if (style.labels || cell.readout) {
-            Spacer(GlanceModifier.height(2.dp))
-            Text(
-                cell.label,
-                maxLines = 1,
-                style = TextStyle(color = colors.label, fontSize = style.labelSize.sp),
-            )
+            if (!under.cutShort) Spacer(GlanceModifier.height(LABEL_GAP.dp))
+            CellLabel(label, cell.readout, colors.label, align = TextAlign.Center)
         }
         if (style.stateText && cell.state != null) {
             Text(
@@ -163,26 +197,43 @@ private fun GridCell(cell: Cell, style: Style, colors: WidgetColors, modifier: G
 @Composable
 private fun Rows(cells: List<Cell>, style: Style, colors: WidgetColors) {
     val context = LocalContext.current
+    val fontScale = context.resources.configuration.fontScale
+    // The width less the padding, each row's own, and the icon (as a chip, its largest) beside it.
+    val textWidth =
+        LocalSize.current.width.value -
+            2 * style.padding -
+            2 * ROW_PADDING -
+            style.iconSize * CHIP_SCALE -
+            ROW_GAP
     LazyColumn(GlanceModifier.fillMaxSize()) {
         items(cells, itemId = { it.key.hashCode().toLong() }) { cell ->
             val action = actionFor(context, cell)
-            val row = GlanceModifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)
+            val row =
+                GlanceModifier.fillMaxWidth().padding(horizontal = ROW_PADDING.dp, vertical = 6.dp)
             Row(
                 modifier = action?.let { row.clickable(it) } ?: row,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(cell, style, colors)
-                Spacer(GlanceModifier.width(12.dp))
+                Spacer(GlanceModifier.width(ROW_GAP.dp))
                 Column(GlanceModifier.defaultWeight()) {
-                    Text(
-                        cell.label,
-                        maxLines = 1,
-                        style =
-                            TextStyle(
-                                color = colors.label,
-                                fontSize = (style.labelSize + 3).sp,
-                                fontWeight = FontWeight.Medium,
-                            ),
+                    val size = (style.labelSize + 3).toFloat()
+                    CellLabel(
+                        if (cell.readout) {
+                            TextFit.fitted(
+                                cell.label,
+                                textWidth,
+                                ROW_TEXT_HEIGHT,
+                                size,
+                                MIN_READOUT,
+                                fontScale,
+                            )
+                        } else {
+                            TextFit.Fitted(cell.label, size)
+                        },
+                        cell.readout,
+                        colors.label,
+                        FontWeight.Medium,
                     )
                     if (style.stateText && cell.state != null) {
                         Text(
@@ -200,6 +251,31 @@ private fun Rows(cells: List<Cell>, style: Style, colors: WidgetColors) {
         }
     }
 }
+
+/** A slot's label as [label] fits it: a slot whose text is the point may take two lines. */
+@Composable
+private fun CellLabel(
+    label: TextFit.Fitted,
+    readout: Boolean,
+    color: ColorProvider,
+    weight: FontWeight? = null,
+    align: TextAlign? = null,
+) {
+    Text(
+        label.text,
+        maxLines = if (readout) 2 else 1,
+        style =
+            TextStyle(
+                color = color,
+                fontSize = label.size.sp,
+                fontWeight = weight,
+                textAlign = align,
+            ),
+    )
+}
+
+/** The space a grid cell's text has, in dp. */
+private data class CellRoom(val width: Float, val height: Float)
 
 /**
  * A slot's own colour shows while it's on, and always on a slot with no state (an app, a tool, an
@@ -277,6 +353,20 @@ private const val STAND_IN_DOT = 0xFFF0B552
 
 /** A chip is half again the icon's size, so the icon sits inside it with room around. */
 private const val CHIP_SCALE = 1.6f
+private const val TEXT_MARGIN = 2f
+private const val CELL_PADDING = 4f
+private const val LABEL_GAP = 2f
+
+/** How much bigger than a label a slot's address may be in its icon's place. */
+private const val ALONE_GROWTH = 1.4f
+
+/** A list row grows to its text, so two lines always have room. */
+private const val ROW_TEXT_HEIGHT = 120f
+private const val ROW_PADDING = 8f
+private const val ROW_GAP = 12f
+
+/** The smallest a slot's address goes before it splits over two lines. */
+private const val MIN_READOUT = 8f
 private const val CHIP_ON_ALPHA = 0x40
 private const val CHIP_OFF_ALPHA = 0x14
 private const val LUMA_R = 0.299

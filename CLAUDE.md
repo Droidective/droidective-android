@@ -115,6 +115,12 @@ permission granted), one of the app's tools (or the phone screen it stands in fo
   network (a PendingIntent network callback, asked again on every app start). The same facts
   fill network slots (`Item.Network`) on any surface; their cells are a `readout`, text that shows
   even with labels off, in place of the icon in the notification bar, and a tap is `Tap.Copy`.
+- **Widget text is sized from the widget's size** (Glance can't shrink text to fit): `TextFit`
+  estimates a line's width from the font, a little wide. The Network widget scales as a whole
+  (`NetworkCardFit`): as large as its width and height allow, the first address largest and the
+  rest following it, dropping the last lines, then the name, when even the smallest won't fit. A
+  bar's network slot fits its cell: one line while it can be 8 sp, else split at the middle dot
+  over two, and in the icon's place when it can't be read under it.
 
 ## Automations
 

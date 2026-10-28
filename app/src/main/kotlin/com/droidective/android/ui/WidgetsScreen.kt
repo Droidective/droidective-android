@@ -35,12 +35,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -66,6 +68,7 @@ import com.droidective.android.surface.TileSlots
 import com.droidective.android.widget.NetworkConfigureActivity
 import com.droidective.android.widget.NetworkWidgetReceiver
 import com.droidective.android.widget.NetworkWidgets
+import com.droidective.android.widget.PlacedReceiver
 import com.droidective.android.widget.Starter
 import com.droidective.android.widget.ToggleBarWidget
 import com.droidective.android.widget.WidgetReceiver
@@ -73,6 +76,7 @@ import com.droidective.core.device.AppFreezers
 import com.droidective.core.features.Features
 import com.droidective.core.layout.Cell
 import com.droidective.core.layout.Cells
+import com.droidective.core.layout.Display
 import com.droidective.core.layout.Item
 import com.droidective.core.layout.Layout
 import com.droidective.core.layout.LayoutKind
@@ -97,10 +101,14 @@ fun WidgetsScreen(app: DroidectiveApplication) {
     // A tap away from the app reports in a toast or a notification; Android hides both while
     // Droidective's notifications are off.
     var notesShow by remember { mutableStateOf(notificationsShow(context)) }
+    // Back from the home screen, where a widget may have been added or removed.
+    var resumes by remember { mutableIntStateOf(0) }
     LifecycleResumeEffect(Unit) {
         notesShow = notificationsShow(context)
+        resumes++
         onPauseOrDispose {}
     }
+    var cantPlace by remember { mutableStateOf<Layout?>(null) }
     val askNotifications =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
             notesShow = notificationsShow(context)
@@ -126,11 +134,14 @@ fun WidgetsScreen(app: DroidectiveApplication) {
         produceState(NetworkWidgets.placedIds(context)) {
             Surfaces.changes.collect { value = NetworkWidgets.placedIds(context) }
         }
-    val layouts by
-        produceState(app.layouts.all()) {
-            value = app.layouts.all()
-            Surfaces.changes.collect { value = app.layouts.all() }
+    // Read again on every change: a widget the launcher placed for us arrives after we're back.
+    val shown by
+        produceState(Shown.read(app, context), resumes) {
+            value = Shown.read(app, context)
+            Surfaces.changes.collect { value = Shown.read(app, context) }
         }
+    val layouts = shown.layouts
+    fun onHomeScreen(layout: Layout): Int = shown.widgets[layout.id] ?: 0
 
     fun create(kind: LayoutKind, name: String, starter: List<String>) {
         val layout =
@@ -189,8 +200,11 @@ fun WidgetsScreen(app: DroidectiveApplication) {
                     LayoutCard(
                         layout,
                         modifier,
+                        onHomeScreen =
+                            onHomeScreen(layout).takeIf { layout.kind == LayoutKind.Bar },
                         onEdit = { editing = layout.id },
                         onDelete = { deleting = layout },
+                        onPlace = { if (!placeLayout(context, layout)) cantPlace = layout },
                     )
                 }
             }
@@ -262,7 +276,7 @@ fun WidgetsScreen(app: DroidectiveApplication) {
         AlertDialog(
             onDismissRequest = { deleting = null },
             title = { Text("Delete “${layout.name}”?") },
-            text = { Text(deleteNote(layout.kind)) },
+            text = { Text(deleteNote(layout.kind, onHomeScreen(layout))) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -276,11 +290,51 @@ fun WidgetsScreen(app: DroidectiveApplication) {
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
         )
     }
+
+    cantPlace?.let { CantPlaceDialog(it) { cantPlace = null } }
 }
 
-private fun deleteNote(kind: LayoutKind): String =
+/** Every layout, and how many placed widgets show each home-screen one. */
+private data class Shown(val layouts: List<Layout>, val widgets: Map<String, Int>) {
+    companion object {
+        fun read(app: DroidectiveApplication, context: Context): Shown {
+            val layouts = app.layouts.all()
+            val placed = WidgetReceiver.placedIds(context)
+            val widgets = layouts.associate { layout ->
+                layout.id to app.layouts.widgetsShowing(layout.id).count { it in placed }
+            }
+            return Shown(layouts, widgets)
+        }
+    }
+}
+
+/** The launcher can't add a widget for the app: how to add it from the launcher's own list. */
+@Composable
+private fun CantPlaceDialog(layout: Layout, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add it from the home screen") },
+        text = {
+            Text(
+                "This launcher adds widgets from its own list: touch and hold the home screen, " +
+                    "then Widgets, then Droidective, and place a Bar. Its setup asks what it " +
+                    "shows: pick “${layout.name}”."
+            )
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+    )
+}
+
+private fun deleteNote(kind: LayoutKind, onHomeScreen: Int): String =
     when (kind) {
-        LayoutKind.Bar -> "If it’s on the home screen, it goes back to how it started."
+        LayoutKind.Bar ->
+            if (onHomeScreen == 0) {
+                "It isn’t on the home screen, so it goes for good."
+            } else {
+                "It’s on the home screen, and Android doesn’t let an app take a widget off it. " +
+                    "The widget stays, saying its layout was deleted, until you remove it (touch " +
+                    "and hold it, then Remove) or tap it to choose another layout."
+            }
         LayoutKind.Notification -> "Its notification goes away."
         LayoutKind.Folder -> "Slots that open it go away too."
     }
@@ -307,8 +361,10 @@ private fun EmptyWidgets() {
 private fun LayoutCard(
     layout: Layout,
     modifier: Modifier,
+    onHomeScreen: Int?,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onPlace: () -> Unit,
 ) {
     val context = LocalContext.current
     val cells by produceState(emptyList<Cell>(), layout) { value = Surfaces.cells(context, layout) }
@@ -331,7 +387,12 @@ private fun LayoutCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        "${layout.kind.title} · ${count(layout.items.size)}",
+                        listOfNotNull(
+                                layout.kind.title,
+                                count(layout.items.size),
+                                onHomeScreen?.let(::whereItIs),
+                            )
+                            .joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -348,6 +409,15 @@ private fun LayoutCard(
                                 onEdit()
                             },
                         )
+                        if (onHomeScreen != null) {
+                            DropdownMenuItem(
+                                text = { Text("Add to home screen") },
+                                onClick = {
+                                    menu = false
+                                    onPlace()
+                                },
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("Delete") },
                             onClick = {
@@ -359,9 +429,20 @@ private fun LayoutCard(
                 }
             }
             Preview(layout.previewStyle(), cells)
+            // Taken off the home screen, by accident or not: one tap puts it back.
+            if (onHomeScreen == 0) {
+                OutlinedButton(onClick = onPlace) { Text("Add to home screen") }
+            }
         }
     }
 }
+
+private fun whereItIs(widgets: Int): String =
+    when (widgets) {
+        0 -> "Not on the home screen"
+        1 -> "On the home screen"
+        else -> "On the home screen $widgets times"
+    }
 
 private fun count(items: Int): String =
     when (items) {
@@ -795,6 +876,29 @@ private fun NetworkCardRow(widgetId: Int) {
             SymbolIcon("chevron_right")
         }
     }
+}
+
+/**
+ * Asks the launcher to place a widget that shows [layout], of the kind that suits it; false when
+ * this launcher can't. The widget shows it from its first draw ([LayoutRepository.placing]), and
+ * the launcher's callback makes sure ([PlacedReceiver]).
+ */
+private fun placeLayout(context: Context, layout: Layout): Boolean {
+    val manager = AppWidgetManager.getInstance(context)
+    if (!manager.isRequestPinAppWidgetSupported) return false
+    context.droidective.layouts.placing(layout.id, System.currentTimeMillis())
+    val starter =
+        when {
+            layout.style.display == Display.List -> Starter.List
+            layout.items.size == 1 -> Starter.Button
+            else -> Starter.Bar
+        }
+    val receiver = WidgetReceiver.kinds.entries.first { it.value == starter }.key
+    return manager.requestPinAppWidget(
+        ComponentName(context, receiver),
+        null,
+        PlacedReceiver.callback(context, layout.id),
+    )
 }
 
 /** Asks the launcher to place a widget of [starter]'s kind; it shows its own confirmation. */

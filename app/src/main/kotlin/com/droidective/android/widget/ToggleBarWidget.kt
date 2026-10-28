@@ -35,8 +35,13 @@ import com.droidective.core.layout.Style
 import com.droidective.core.layout.Tap
 import java.util.UUID
 
-/** What one home-screen bar draws. */
-data class BarModel(val style: Style, val cells: List<Cell>)
+/**
+ * What one home-screen bar draws.
+ *
+ * @property deletedFor the widget's id when its layout was deleted in the app: it says so, and a
+ *   tap chooses another.
+ */
+data class BarModel(val style: Style, val cells: List<Cell>, val deletedFor: Int? = null)
 
 /**
  * What a newly placed widget starts as, by the kind picked from the launcher's widget list: a bar,
@@ -89,19 +94,65 @@ class ToggleBarWidget(private val starter: Starter = Starter.Bar) : GlanceAppWid
         val starterToggles = Starter.Bar.toggles
 
         suspend fun load(context: Context, widgetId: Int, starter: Starter): BarModel {
-            val layout = ensureLayout(context, widgetId, starter)
+            val layout =
+                ensureLayout(context, widgetId, starter)
+                    ?: return BarModel(Style(), emptyList(), deletedFor = widgetId)
             return BarModel(layout.style, Surfaces.cells(context, layout))
         }
 
-        /** The widget's layout, creating its starter the first time it's drawn. */
-        fun ensureLayout(context: Context, widgetId: Int, starter: Starter): Layout {
+        /**
+         * The widget's layout. The first time it's drawn that's the layout the app is placing, if
+         * it is, or else a new starter. Null once its layout was deleted in the app: an app can't
+         * take a widget off the home screen, so it says so until another layout is chosen for it.
+         */
+        fun ensureLayout(context: Context, widgetId: Int, starter: Starter): Layout? {
             val layouts = context.droidective.layouts
             layouts.layoutFor(widgetId)?.let {
                 return it
             }
+            if (layouts.isBound(widgetId)) return null
+            layouts.takePlacing(System.currentTimeMillis())?.let(layouts::get)?.let {
+                layouts.bind(widgetId, it.id)
+                AutomationService.sync(context)
+                return it
+            }
+            return newStarter(context, widgetId, starter)
+        }
+
+        /**
+         * Shows [layoutId] on [widgetId]. The starter the widget was given when it arrived goes, if
+         * it's still as it started and nothing else shows it: choosing a layout of one's own
+         * shouldn't leave a spare "Home-screen bar" behind.
+         */
+        fun show(context: Context, widgetId: Int, layoutId: String) {
+            val layouts = context.droidective.layouts
+            val before = layouts.layoutFor(widgetId)
+            layouts.bind(widgetId, layoutId)
+            val spare =
+                before != null &&
+                    before.id != layoutId &&
+                    before.id == starterId(widgetId) &&
+                    layouts.widgetsShowing(before.id).isEmpty() &&
+                    isUntouched(before)
+            if (spare) layouts.delete(before.id)
+            AutomationService.sync(context)
+        }
+
+        private fun starterId(widgetId: Int) = "bar-$widgetId"
+
+        private fun isUntouched(layout: Layout): Boolean =
+            Starter.entries.any { starter ->
+                layout.name == starter.title &&
+                    layout.style == starter.style &&
+                    layout.items.map { (it as? Item.Toggle)?.toggleId } == starter.toggles
+            }
+
+        /** A new [starter] layout for [widgetId], which shows it from now on. */
+        fun newStarter(context: Context, widgetId: Int, starter: Starter): Layout {
+            val layouts = context.droidective.layouts
             val layout =
                 Layout(
-                    id = "bar-$widgetId",
+                    id = starterId(widgetId),
                     kind = LayoutKind.Bar,
                     name = starter.title,
                     items = starter.toggles.map { Item.Toggle(UUID.randomUUID().toString(), it) },
@@ -221,6 +272,12 @@ abstract class WidgetReceiver(starter: Starter) : GlanceAppWidgetReceiver() {
         super.onDeleted(context, appWidgetIds)
         appWidgetIds.forEach { context.droidective.layouts.unbind(it) }
         AutomationService.sync(context)
+    }
+
+    /** A launcher restoring its widgets (a backup, a new phone) gives them new ids. */
+    override fun onRestored(context: Context, oldWidgetIds: IntArray, newWidgetIds: IntArray) {
+        super.onRestored(context, oldWidgetIds, newWidgetIds)
+        context.droidective.layouts.restored(oldWidgetIds.toList(), newWidgetIds.toList())
     }
 
     companion object {

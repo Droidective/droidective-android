@@ -99,6 +99,33 @@ class LayoutTest {
         repo.bind(18, "home")
         repo.delete("home")
         assertNull(repo.layoutFor(18))
+        assertTrue(repo.isBound(18), "the widget can say its layout was deleted")
+        assertTrue(!repo.isBound(17))
+    }
+
+    @Test
+    fun aLayoutPlacedFromTheAppGoesToTheNextNewWidgetOnce() {
+        val repo = LayoutRepository(dir)
+        repo.placing("work", now = 1_000)
+        assertEquals("work", repo.takePlacing(now = 5_000))
+        assertNull(repo.takePlacing(now = 6_000), "only once")
+        repo.placing("work", now = 1_000)
+        assertNull(
+            repo.takePlacing(now = 1_000 + LayoutRepository.PLACING_MILLIS + 1),
+            "a placing the launcher never finished doesn't catch a widget added later",
+        )
+    }
+
+    @Test
+    fun widgetsRestoredUnderNewIdsKeepTheirLayouts() {
+        val repo = LayoutRepository(dir)
+        repo.save(bar(toggle("a")))
+        repo.bind(17, "home")
+        repo.bind(18, "home")
+        repo.restored(oldIds = listOf(17, 18), newIds = listOf(41, 42))
+        assertEquals("home", repo.layoutFor(41)?.id)
+        assertEquals(listOf(41, 42), repo.widgetsShowing("home").sorted())
+        assertTrue(!repo.isBound(17))
     }
 
     @Test

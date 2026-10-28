@@ -98,6 +98,14 @@ permission granted), one of the app's tools (or the phone screen it stands in fo
   it's one 48 dp row of icons; labels, states and list show expanded (`NotificationBarViews`).
   Folders take the on and off colours alone. Each kind's editor offers only what it draws, and
   `Layout.previewStyle()` previews it that way.
+- **A layout outlives its widgets, and a widget its layout.** Removing a widget keeps its layout:
+  its card says "Not on the home screen" and Add to home screen puts it back
+  (`LayoutRepository.placing` for the widget's first draw, `PlacedReceiver` from the launcher's
+  callback). Deleting a placed layout keeps the widget's binding, since an app can't take a
+  widget off the home screen: the widget says its layout was deleted, and a tap opens the
+  chooser (`BarConfigureActivity`), which also lets a widget added from the launcher's own list
+  show a layout already made. Choosing one drops the widget's untouched starter. Restored widget
+  ids keep their layouts (`onRestored`).
 - **The launcher lists three kinds** (`Starter`: Bar, Button, List), one receiver each. They differ
   only in what a new one starts as; any can be restyled into any other. A new kind needs a
   receiver, an `appwidget-provider` file and a `ManifestTest` entry.

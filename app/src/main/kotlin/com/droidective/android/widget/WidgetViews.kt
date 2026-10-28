@@ -12,6 +12,7 @@ import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
@@ -103,6 +104,7 @@ internal fun Bar(model: BarModel) {
         contentAlignment = Alignment.Center,
     ) {
         when {
+            model.deletedFor != null -> Deleted(model.deletedFor, colors)
             model.cells.isEmpty() ->
                 Text(
                     "Long-press to add toggles",
@@ -111,6 +113,30 @@ internal fun Bar(model: BarModel) {
             style.display == Display.List -> Rows(model.cells, style, colors)
             else -> Grid(model.cells, style, colors)
         }
+    }
+}
+
+/** A widget whose layout was deleted in the app: it says so, and a tap chooses another. */
+@Composable
+private fun Deleted(widgetId: Int, colors: WidgetColors) {
+    val context = LocalContext.current
+    Column(
+        GlanceModifier.fillMaxSize()
+            .clickable(actionStartActivity(BarConfigureActivity.intent(context, widgetId))),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "Its layout was deleted",
+            maxLines = 1,
+            style =
+                TextStyle(color = colors.label, fontSize = 13.sp, fontWeight = FontWeight.Medium),
+        )
+        Text(
+            "Tap to choose one, or remove this widget",
+            maxLines = 2,
+            style = TextStyle(color = colors.off, fontSize = 11.sp, textAlign = TextAlign.Center),
+        )
     }
 }
 

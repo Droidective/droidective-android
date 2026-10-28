@@ -21,6 +21,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
@@ -57,6 +58,7 @@ import com.droidective.android.ui.Symbols
 import com.droidective.android.ui.copy
 import com.droidective.core.layout.Item
 import com.droidective.core.network.NetworkCard
+import com.droidective.core.network.NetworkCardFit
 import com.droidective.core.network.NetworkCards
 import com.droidective.core.network.NetworkNow
 import com.droidective.core.network.Transport
@@ -96,7 +98,8 @@ class NetworkWidget : GlanceAppWidget() {
 
 /**
  * The widget as it draws, in the same style as a bar: the network's name in the off colour with the
- * icon in the on colour, then each address, the first largest.
+ * icon in the on colour, then each address, the first largest. Every size comes from the widget's
+ * own size ([NetworkCardFit]): bigger when it's bigger, and small enough to fit when it's small.
  */
 @Composable
 private fun NetworkCardView(now: NetworkNow, card: NetworkCard) {
@@ -105,15 +108,24 @@ private fun NetworkCardView(now: NetworkNow, card: NetworkCard) {
     val value =
         if (style.dynamicColors) GlanceTheme.colors.onSurface
         else ColorProvider(Color(style.labelColor ?: contrastOf(style.background)))
-    val lines = NetworkCards.lines(now, card)
-    // One cell tall has room for the first address alone.
-    val roomy = LocalSize.current.height >= ROOMY_HEIGHT
+    val size = LocalSize.current
+    val fitted =
+        NetworkCardFit.fit(
+            size.width.value,
+            size.height.value,
+            LocalContext.current.resources.configuration.fontScale,
+            NetworkCards.title(now).takeIf { card.showName },
+            NetworkCards.lines(now, card),
+        )
     val copied = NetworkCards.copied(now, card)
     Column(
         GlanceModifier.fillMaxSize()
             .background(colors.background)
             .cornerRadius(style.cornerRadius.dp)
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .padding(
+                horizontal = NetworkCardFit.PADDING_SIDES.dp,
+                vertical = NetworkCardFit.PADDING_ENDS.dp,
+            )
             .clickable(
                 actionRunCallback<CopyAddressAction>(
                     actionParametersOf(CopyAddressAction.addressKey to copied.orEmpty())
@@ -121,67 +133,56 @@ private fun NetworkCardView(now: NetworkNow, card: NetworkCard) {
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (card.showName && roomy) {
+        fitted.name?.let { name ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
                     ImageProvider(Symbols.byName.getValue(symbolOf(now.transport)).outlined),
                     contentDescription = null,
                     colorFilter = ColorFilter.tint(colors.on),
-                    modifier = GlanceModifier.size(16.dp),
+                    modifier = GlanceModifier.size(fitted.icon.dp),
                 )
-                Spacer(GlanceModifier.width(6.dp))
+                Spacer(GlanceModifier.width(fitted.gap.dp))
                 Text(
                     NetworkCards.title(now),
                     maxLines = 1,
                     style =
                         TextStyle(
                             color = colors.label,
-                            fontSize = 13.sp,
+                            fontSize = name.sp,
                             fontWeight = FontWeight.Medium,
                         ),
                 )
             }
-            Spacer(GlanceModifier.height(4.dp))
+            Spacer(GlanceModifier.height(fitted.gap.dp))
         }
-        lines
-            .filter { roomy || it.main }
-            .forEach { line ->
-                if (line.main) {
-                    Text(
-                        line.value,
-                        maxLines = 1,
-                        style =
-                            TextStyle(
-                                color = value,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace,
-                            ),
-                    )
-                } else {
-                    // Its own line under a small label: a public IPv6 address is long.
-                    Spacer(GlanceModifier.height(4.dp))
-                    Text(
-                        line.label.uppercase(),
-                        style =
-                            TextStyle(
-                                color = colors.label,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium,
-                            ),
-                    )
-                    Text(
-                        line.value,
-                        maxLines = 1,
-                        style =
-                            TextStyle(
-                                color = value,
-                                fontSize = 14.sp,
-                                fontFamily = FontFamily.Monospace,
-                            ),
-                    )
-                }
+        fitted.lines.forEach { sized ->
+            val label = sized.label
+            if (label != null) {
+                // Its own line under a small label: a public IPv6 address is long.
+                Spacer(GlanceModifier.height(fitted.gap.dp))
+                Text(
+                    sized.line.label.uppercase(),
+                    maxLines = 1,
+                    style =
+                        TextStyle(
+                            color = colors.label,
+                            fontSize = label.sp,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                )
             }
+            Text(
+                sized.line.value,
+                maxLines = 1,
+                style =
+                    TextStyle(
+                        color = value,
+                        fontSize = sized.value.sp,
+                        fontWeight = if (label == null) FontWeight.Bold else FontWeight.Normal,
+                        fontFamily = FontFamily.Monospace,
+                    ),
+            )
+        }
     }
 }
 
@@ -340,5 +341,3 @@ object NetworkWidgets {
 
     private const val FILE = "network-widgets.json"
 }
-
-private val ROOMY_HEIGHT = 80.dp

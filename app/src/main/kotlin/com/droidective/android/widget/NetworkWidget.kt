@@ -232,6 +232,12 @@ class NetworkWidgetReceiver : GlanceAppWidgetReceiver() {
         super.onDeleted(context, appWidgetIds)
         NetworkWidgets.forget(context, appWidgetIds.toList())
     }
+
+    /** A launcher restoring its widgets (a backup, a new phone) gives them new ids. */
+    override fun onRestored(context: Context, oldWidgetIds: IntArray, newWidgetIds: IntArray) {
+        super.onRestored(context, oldWidgetIds, newWidgetIds)
+        NetworkWidgets.restored(context, oldWidgetIds.toList(), newWidgetIds.toList())
+    }
 }
 
 /** Android's word that the phone joined a network: the widgets redraw with its name and address. */
@@ -266,6 +272,17 @@ object NetworkWidgets {
     fun save(context: Context, widgetId: Int, card: NetworkCard) {
         val kept = store(context)
         kept.save(kept.load() + (widgetId.toString() to card))
+    }
+
+    /** Each restored widget keeps the settings it had under its old id. */
+    fun restored(context: Context, oldIds: List<Int>, newIds: List<Int>) {
+        val kept = store(context)
+        val now = kept.load()
+        val moved =
+            oldIds.zip(newIds).mapNotNull { (old, new) ->
+                now[old.toString()]?.let { new.toString() to it }
+            }
+        kept.save(now - oldIds.map(Int::toString).toSet() + moved)
     }
 
     fun forget(context: Context, widgetIds: List<Int>) {

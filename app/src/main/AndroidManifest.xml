@@ -93,6 +93,10 @@
             </intent-filter>
         </activity>
 
+        <receiver
+            android:name=".widget.PlacedReceiver"
+            android:exported="false" />
+
         <activity
             android:name=".widget.OpenActivity"
             android:excludeFromRecents="true"

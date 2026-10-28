@@ -144,7 +144,7 @@ internal class NotificationBarViews(
                 views.setInt(id, "setColorFilter", cell.tint(style.iconOn, style.iconOff).toInt())
             }
             is CellIcon.AppIcon ->
-                views.setImageViewBitmap(id, AppIcons.bitmap(context, icon.packageName))
+                views.setImageViewBitmap(id, AppIcons.forSlot(context, icon.packageName))
             is CellIcon.File -> views.setImageViewBitmap(id, AppIcons.file(context, icon.path))
         }
     }

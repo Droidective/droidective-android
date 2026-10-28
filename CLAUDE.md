@@ -81,6 +81,11 @@ permission granted), one of the app's tools (or the phone screen it stands in fo
   same thing wherever it's placed. Every tap ends in a toast saying how it went (`TapNotes`: the
   new state; nothing for a capture, which the toast would land in; wireless debugging's `ip:port`
   through `AdbPort`). A tap that needs a person also ends in a `Problems` notification.
+- **An app slot survives its app being uninstalled and reinstalled** (a developer swapping
+  builds): a tap goes through `LaunchAppActivity`, which looks the app up then: the saved activity
+  while the app has it, else its launch intent, and a toast ("isn't installed") with nothing
+  opened when it's gone. `AppIcons.forSlot` keeps the icon in `files/app-icons/` while the app is
+  installed, rewritten with each new build, and draws that while it isn't.
 - **A single action runs through the automation engine** (`ActionTaps`), so it does exactly what
   the same step does in an automation. It rides in the PendingIntent as the automation file's
   JSON (`SlotActions`). An action's level is `Action.level()`, and a slot without it opens Setup.

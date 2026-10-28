@@ -35,7 +35,11 @@ sealed interface Tap {
 }
 
 sealed interface Target {
-    data class App(val packageName: String, val activityName: String) : Target
+    /**
+     * Another app, by the activity it was added with. Looked up when tapped, since a developer
+     * uninstalls and reinstalls builds: [label] says which app isn't there.
+     */
+    data class App(val packageName: String, val activityName: String, val label: String) : Target
 
     /** Another app's shortcut intent. Started only as an activity, with grant flags stripped. */
     data class Shortcut(val intentUri: String) : Target
@@ -163,7 +167,7 @@ object Cells {
                     CellIcon.AppIcon(item.packageName),
                     active = false,
                     degraded = false,
-                    Tap.Open(Target.App(item.packageName, item.activityName)),
+                    Tap.Open(Target.App(item.packageName, item.activityName, item.label)),
                 )
             is Item.Shortcut ->
                 Cell(

@@ -28,6 +28,7 @@ class SurfaceWatchTest {
             )
         assertEquals(setOf("wifi", "bluetooth", "flashlight"), watch.toggleIds)
         assertEquals(setOf("cmd-1", "cmd-2"), watch.commandIds)
+        assertEquals(setOf("com.example"), watch.appPackages, "its icon changes with each build")
     }
 
     @Test

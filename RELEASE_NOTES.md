@@ -3,6 +3,16 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.29.0
+
+- **The Network widget fits its address at any size.** Its text is now sized from the widget's
+  own size. Make it bigger and the numbers get bigger; make it smaller and they shrink to fit, so
+  even 255.255.255.255 shows in full. The first address stays the largest. When a widget is too
+  short for everything, the last lines go first, then the network's name.
+- **Network slots fit their cell.** On a bar, an IP address that's too long for one line splits
+  over two ("255.255." over "255.255"). Where it can't be read under its icon, it takes the icon's
+  place.
+
 ## 0.28.0
 
 Closing Droidective now cleans up after it: nothing it started keeps running, and nothing it

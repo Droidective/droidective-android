@@ -3,6 +3,26 @@
 Each release has a `## X.Y.Z` section; `scripts/release-notes.sh` copies it into the GitHub
 release, and a tag without one fails the release.
 
+## 0.30.0
+
+App shortcuts keep working as you reinstall builds, and widgets can be put back on the home screen
+or deleted while they're there.
+
+- **App shortcuts survive reinstalls.** An app on a widget keeps its own icon after it's
+  uninstalled. A tap opens it if it's installed, even when a new build moved its launcher screen.
+  If it isn't installed, a toast says so ("Icon Test isn't installed") and nothing else opens.
+  Before, a removed app showed Android's default icon and a tap opened Droidective. When you
+  install a new build, the shortcut shows its icon after your next tap on it, or straight away
+  with Keep widgets live on.
+- **Put a widget back.** Each home-screen widget's card says whether it's on the home screen. If
+  it isn't, Add to home screen puts it back, and the menu can add it more than once. When you
+  add a Droidective widget from the launcher's own list, its setup now asks which of your
+  layouts it shows.
+- **Delete a widget that's on the home screen.** Deleting it used to look like it did nothing,
+  because the widget came straight back as a new one. Android doesn't let an app take a widget
+  off the home screen, so the widget now says its layout was deleted until you remove it or tap
+  it to choose another.
+
 ## 0.29.0
 
 - **The Network widget fits its address at any size.** Its text is now sized from the widget's

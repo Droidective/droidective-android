@@ -26,9 +26,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Redraws placed surfaces when what they show changes outside the app: settings through a content
- * observer, the broadcasts Android sends a running receiver, the torch callback, and a look every
- * half minute for what announces nothing. A change settles for a moment first, since one switch can
- * write several settings.
+ * observer, the broadcasts Android sends a running receiver (an app in a slot installed again, so
+ * its icon is the new build's), the torch callback, and a look every half minute for what announces
+ * nothing. A change settles for a moment first, since one switch can write several settings.
  */
 internal class SurfaceListener(private val service: Service, private val watch: SurfaceWatch) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -44,6 +44,12 @@ internal class SurfaceListener(private val service: Service, private val watch: 
     private val receiver =
         object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) = changed()
+        }
+    private val apps =
+        object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.data?.schemeSpecificPart in watch.appPackages) changed()
+            }
         }
     private val torch =
         object : CameraManager.TorchCallback() {
@@ -69,12 +75,28 @@ internal class SurfaceListener(private val service: Service, private val watch: 
             service.getSystemService(CameraManager::class.java).registerTorchCallback(torch, main)
             torchFollowed = true
         }
+        if (watch.appPackages.isNotEmpty()) {
+            val packages =
+                IntentFilter().apply {
+                    addAction(Intent.ACTION_PACKAGE_ADDED)
+                    addAction(Intent.ACTION_PACKAGE_REPLACED)
+                    addAction(Intent.ACTION_PACKAGE_REMOVED)
+                    addDataScheme("package")
+                }
+            ContextCompat.registerReceiver(
+                service,
+                apps,
+                packages,
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+        }
         if (toggles.any(LiveSurfaces::needsPolling) || watch.commandIds.isNotEmpty()) poll()
     }
 
     fun stop() {
         service.contentResolver.unregisterContentObserver(observer)
         runCatching { service.unregisterReceiver(receiver) }
+        if (watch.appPackages.isNotEmpty()) runCatching { service.unregisterReceiver(apps) }
         if (torchFollowed) {
             service.getSystemService(CameraManager::class.java).unregisterTorchCallback(torch)
         }

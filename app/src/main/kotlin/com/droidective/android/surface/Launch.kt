@@ -1,6 +1,5 @@
 package com.droidective.android.surface
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.core.net.toUri
@@ -29,11 +28,14 @@ object Launch {
      */
     fun intentFor(context: Context, target: Target): Intent? =
         when (target) {
+            // Looked up when tapped: the app may have been uninstalled, or reinstalled, since.
             is Target.App ->
-                Intent(Intent.ACTION_MAIN)
-                    .addCategory(Intent.CATEGORY_LAUNCHER)
-                    .setComponent(ComponentName(target.packageName, target.activityName))
-                    .addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                LaunchAppActivity.intent(
+                    context,
+                    target.packageName,
+                    target.activityName,
+                    target.label,
+                )
             is Target.Shortcut -> shortcutIntent(context, target.intentUri)
             is Target.DeepLink -> Intent(Intent.ACTION_VIEW, target.uri.toUri())
             is Target.SystemScreen -> Intent(target.action)

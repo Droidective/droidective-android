@@ -7,7 +7,12 @@ import com.droidective.core.automations.Action
  * actions that set one) and the stateful commands on home-screen bars, notification bars and Quick
  * Settings tiles. A folder's items aren't on screen until it opens, and it reads them then.
  */
-data class SurfaceWatch(val toggleIds: Set<String>, val commandIds: Set<String>) {
+data class SurfaceWatch(
+    val toggleIds: Set<String>,
+    val commandIds: Set<String>,
+    /** Apps a slot opens, whose icon changes with each build installed over them, or removed. */
+    val appPackages: Set<String> = emptySet(),
+) {
     companion object {
         /**
          * @param shown the layouts on screen: bars a widget shows and every notification bar.
@@ -22,6 +27,7 @@ data class SurfaceWatch(val toggleIds: Set<String>, val commandIds: Set<String>)
                 toggleIds =
                     (items.filterIsInstance<Item.Toggle>().map { it.toggleId } + setters).toSet(),
                 commandIds = items.filterIsInstance<Item.Command>().map { it.commandId }.toSet(),
+                appPackages = items.filterIsInstance<Item.App>().map { it.packageName }.toSet(),
             )
         }
     }

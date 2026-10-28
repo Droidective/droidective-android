@@ -102,6 +102,14 @@
             android:theme="@android:style/Theme.NoDisplay" />
 
         <activity
+            android:name=".surface.LaunchAppActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay" />
+
+        <activity
             android:name=".automation.RunAutomationActivity"
             android:excludeFromRecents="true"
             android:exported="false"

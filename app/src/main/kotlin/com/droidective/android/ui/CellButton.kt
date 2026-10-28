@@ -83,7 +83,7 @@ fun CellIconView(cell: Cell, tint: Color, modifier: Modifier) {
             )
         }
         is CellIcon.AppIcon -> {
-            val bitmap = remember(icon.packageName) { AppIcons.bitmap(context, icon.packageName) }
+            val bitmap = remember(icon.packageName) { AppIcons.forSlot(context, icon.packageName) }
             Image(bitmap.asImageBitmap(), contentDescription = cell.label, modifier = modifier)
         }
         is CellIcon.File -> {

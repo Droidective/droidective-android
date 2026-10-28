@@ -26,6 +26,7 @@ import com.droidective.android.surface.BackgroundTaps
 import com.droidective.android.surface.Launch
 import com.droidective.android.surface.SlotActions
 import com.droidective.android.surface.Surfaces
+import com.droidective.core.apps.AppActions
 import com.droidective.core.layout.Cell
 import com.droidective.core.layout.Display
 import com.droidective.core.layout.Item
@@ -258,23 +259,89 @@ class ButtonWidgetReceiver : WidgetReceiver(Starter.Button)
 
 class ListWidgetReceiver : WidgetReceiver(Starter.List)
 
-/** App and shortcut icons, sized for a widget slot and cached, so widget updates stay small. */
+/**
+ * App and shortcut icons, sized for a widget slot and cached, so widget updates stay small. A
+ * slot's app icon is also kept on disk while the app is installed, and drawn from there while it
+ * isn't: a developer uninstalls and reinstalls builds, and the slot should still look like the app.
+ */
 object AppIcons {
     private val cache = android.util.LruCache<String, Bitmap>(64)
 
-    fun bitmap(context: Context, packageName: String, sizeDp: Int = DEFAULT_DP): Bitmap {
+    /** [packageName]'s icon, or Android's default when it isn't installed. */
+    fun bitmap(context: Context, packageName: String, sizeDp: Int = DEFAULT_DP): Bitmap =
+        load(context, packageName, sizeDp, keep = false)
+
+    /**
+     * [packageName]'s icon for a slot: kept while it's installed, updated with each new build, and
+     * the kept one while it isn't installed.
+     */
+    fun forSlot(context: Context, packageName: String, sizeDp: Int = DEFAULT_DP): Bitmap =
+        load(context, packageName, sizeDp, keep = true)
+
+    private fun load(context: Context, packageName: String, sizeDp: Int, keep: Boolean): Bitmap {
         val px = (sizeDp * context.resources.displayMetrics.density).toInt()
-        return cache.get("$packageName@$px")
-            ?: run {
-                val drawable =
-                    try {
-                        context.packageManager.getApplicationIcon(packageName)
-                    } catch (_: android.content.pm.PackageManager.NameNotFoundException) {
-                        context.packageManager.defaultActivityIcon
-                    }
-                drawable.toBitmap(px, px).also { cache.put("$packageName@$px", it) }
+        val packages = context.packageManager
+        // Part of the key, so a reinstalled build's new icon replaces the old one at once.
+        val installed =
+            try {
+                packages.getPackageInfo(packageName, 0).lastUpdateTime
+            } catch (_: android.content.pm.PackageManager.NameNotFoundException) {
+                null
             }
+        val key = "$packageName@$px@$installed"
+        cache.get(key)?.let {
+            return it
+        }
+        val icon = installed?.let {
+            try {
+                packages.getApplicationIcon(packageName)
+            } catch (_: android.content.pm.PackageManager.NameNotFoundException) {
+                null // Uninstalled just now.
+            }
+        }
+        val bitmap =
+            if (icon != null) {
+                if (keep) keepOnDisk(context, packageName, icon, installed)
+                icon.toBitmap(px, px)
+            } else {
+                kept(context, packageName)?.scale(px, px)
+                    ?: packages.defaultActivityIcon.toBitmap(px, px)
+            }
+        cache.put(key, bitmap)
+        return bitmap
     }
+
+    /** Writes [icon] for [packageName] unless what's kept is newer than its last install. */
+    private fun keepOnDisk(
+        context: Context,
+        packageName: String,
+        icon: android.graphics.drawable.Drawable,
+        installed: Long,
+    ) {
+        val file = keptFile(context, packageName) ?: return
+        if (file.exists() && file.lastModified() >= installed) return
+        try {
+            file.parentFile?.mkdirs()
+            file.outputStream().use {
+                icon.toBitmap(KEPT_PX, KEPT_PX).compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
+        } catch (_: java.io.IOException) {
+            // Kept next time; until then a removed app would draw Android's default icon.
+        }
+    }
+
+    private fun kept(context: Context, packageName: String): Bitmap? =
+        keptFile(context, packageName)
+            ?.takeIf { it.exists() }
+            ?.let { BitmapFactory.decodeFile(it.path) }
+
+    /** Null for a name that isn't a package's, which never becomes a path. */
+    private fun keptFile(context: Context, packageName: String): java.io.File? =
+        if (AppActions.isPackageName(packageName)) {
+            java.io.File(context.filesDir, "app-icons/$packageName.png")
+        } else {
+            null
+        }
 
     fun file(context: Context, path: String, sizeDp: Int = DEFAULT_DP): Bitmap {
         val px = (sizeDp * context.resources.displayMetrics.density).toInt()
@@ -288,4 +355,7 @@ object AppIcons {
     }
 
     private const val DEFAULT_DP = 28
+
+    /** Big enough for the largest slot icon on a dense screen. */
+    private const val KEPT_PX = 256
 }

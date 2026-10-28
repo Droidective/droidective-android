@@ -335,7 +335,7 @@ private fun CellImage(cell: Cell, sizeDp: Int, tint: ColorProvider, modifier: Gl
         }
         is CellIcon.AppIcon ->
             Image(
-                provider = ImageProvider(AppIcons.bitmap(context, icon.packageName, sizeDp)),
+                provider = ImageProvider(AppIcons.forSlot(context, icon.packageName, sizeDp)),
                 contentDescription = cell.label,
                 modifier = modifier,
             )
